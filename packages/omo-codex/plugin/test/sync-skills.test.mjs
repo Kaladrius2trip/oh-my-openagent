@@ -17,11 +17,16 @@ import {
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const repoRoot = join(root, "..", "..", "..");
 const opencodeOnlyToolPattern = /\b(?:call_omo_agent|background_output|team_[a-z_]+|task)\s*\(/;
+const generatedSkillMetadataFiles = new Set(["agents/openai.yaml"]);
 
 async function readPackagedSkillFile(...segments) {
 	const path = join(root, "skills", ...segments);
 	const content = await readFile(path, "utf8");
 	return { path, content };
+}
+
+function excludeGeneratedSkillMetadata(files) {
+	return files.filter((file) => !generatedSkillMetadataFiles.has(file.replaceAll("\\", "/")));
 }
 
 test("#given synced aggregate Codex skills #when inspected #then component and shared skills are present", async () => {
@@ -107,10 +112,22 @@ test("#given shared skill source tests #when aggregate Codex skills are synced #
 	const aggregateSkillsRoot = join(root, "skills");
 
 	// when
-	const visualQaFiles = await listSkillFiles(join(aggregateSkillsRoot, "visual-qa"));
+	const forbiddenFiles = [];
+	for (const skillName of expectedSkills) {
+		for (const file of await listSkillFiles(join(aggregateSkillsRoot, skillName))) {
+			const normalized = file.replaceAll("\\", "/");
+			const segments = normalized.split("/");
+			const scriptsIndex = segments.lastIndexOf("scripts");
+			const hasPythonTestDir = scriptsIndex !== -1 && segments[scriptsIndex + 1] === "tests";
+			const isSourceMetadata = normalized === ".gitignore" || normalized === ".npmignore" || normalized === "pyrightconfig.json";
+			if (normalized.endsWith(".test.ts") || hasPythonTestDir || segments.includes("__pycache__") || normalized.endsWith(".pyc") || isSourceMetadata) {
+				forbiddenFiles.push(`${skillName}/${normalized}`);
+			}
+		}
+	}
 
 	// then
-	assert.equal(visualQaFiles.some((file) => file.endsWith(".test.ts")), false);
+	assert.deepEqual(forbiddenFiles, []);
 });
 
 test("#given component skill sources #when aggregate Codex component skills are inspected #then generated copies have no hand-authored drift", async () => {
@@ -121,8 +138,8 @@ test("#given component skill sources #when aggregate Codex component skills are 
 	for (const [skillName, sourcePath] of componentSkillSources) {
 		const sourceDir = join(root, sourcePath);
 		const aggregateDir = join(aggregateSkillsRoot, skillName);
-		const sourceFiles = await listSkillFiles(sourceDir);
-		const aggregateFiles = await listSkillFiles(aggregateDir);
+		const sourceFiles = excludeGeneratedSkillMetadata(await listSkillFiles(sourceDir));
+		const aggregateFiles = excludeGeneratedSkillMetadata(await listSkillFiles(aggregateDir));
 		assert.deepEqual(aggregateFiles, sourceFiles, `${skillName} resource set drifted from its component skill source`);
 		for (const relativePath of sourceFiles) {
 			const sourceContent = await readFile(join(sourceDir, relativePath), "utf8");
@@ -146,7 +163,7 @@ test("#given synced ulw-loop skill #when Codex hint metadata is inspected #then 
 
 	// then
 	assert.match(skill, /^---\r?\nname: ulw-loop\r?\n/m);
-	assert.match(interfaceMetadata, /display_name: "ulw-loop \(omo\)"/);
+	assert.match(interfaceMetadata, /display_name: "\(OmO\) ulw-loop"/);
 	assert.doesNotMatch(interfaceMetadata, /ulw-loop \/ ulw-loop/);
 	assert.match(interfaceMetadata, /short_description: "Goal-like ultrawork loop for systematic decomposition"/);
 	assert.match(interfaceMetadata, /default_prompt: "Use \$ulw-loop/);
@@ -164,6 +181,20 @@ test("#given synced ulw-loop skill #when Codex hint metadata is inspected #then 
 	assert.match(interfaceMetadata, /- "ulw-loop"/);
 });
 
+test("#given synced legacy ultraresearch alias #when inspected #then it points users at ulw-research", async () => {
+	// given
+	const skillRoot = join(root, "skills", "ultraresearch");
+
+	// when
+	const skill = await readFile(join(skillRoot, "SKILL.md"), "utf8");
+	const interfaceMetadata = await readFile(join(skillRoot, "agents", "openai.yaml"), "utf8");
+
+	// then
+	assert.match(skill, /^---\r?\nname: ultraresearch\r?\n/m);
+	assert.match(skill, /legacy name for `ulw-research`/);
+	assert.match(interfaceMetadata, /display_name: "\(OmO\) ultraresearch"/);
+});
+
 test("#given synced git-master skill #when inspected #then commits and git history route through it", async () => {
 	// given
 	const skillRoot = join(root, "skills", "git-master");
@@ -179,7 +210,7 @@ test("#given synced git-master skill #when inspected #then commits and git histo
 	assert.match(skill, /Choose the Git tool by the question/);
 	assert.match(skill, /git log -S "text"/);
 	assert.match(skill, /git blame -L start,end -- file/);
-	assert.match(interfaceMetadata, /display_name: "git-master \(omo\)"/);
+	assert.match(interfaceMetadata, /display_name: "\(OmO\) git-master"/);
 	assert.match(interfaceMetadata, /- "git commit"/);
 	assert.match(interfaceMetadata, /- "history search"/);
 });
