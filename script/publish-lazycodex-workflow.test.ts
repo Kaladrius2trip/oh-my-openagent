@@ -7,10 +7,11 @@ import { readFileSync } from "node:fs"
 
 const publishWorkflowPath = new URL("../.github/workflows/publish.yml", import.meta.url)
 const webTerminalVisualQaRuntimePaths = [
+  "script/qa/strip-ansi.mjs",
   "script/qa/web-terminal-redaction.d.mts",
   "script/qa/web-terminal-redaction.mjs",
-  "script/qa/web-terminal-renderer.mjs",
   "script/qa/web-terminal-visual-qa.mjs",
+  "script/qa/xterm-live-terminal.mjs",
 ] as const
 const packageGuidanceDocPaths = [
   "docs/reference/github-attachment-upload.md",
@@ -111,7 +112,7 @@ describe("LazyCodex publish workflow", () => {
       workflow.includes('https://registry.npmjs.org/lazycodex-ai/${VERSION}')
     const publishesLazycodexNpm = publishLazycodexStep.includes("name: Publish lazycodex-ai") &&
       publishLazycodexStep.includes("if: inputs.publish_lazycodex == true && steps.check-lazycodex.outputs.skip != 'true'") &&
-      publishLazycodexStep.includes("npm publish --access public --provenance --tag latest --loglevel verbose") &&
+      publishLazycodexStep.includes("npm publish --ignore-scripts --access public --provenance --tag latest --loglevel verbose") &&
       !publishLazycodexStep.includes("continue-on-error: true")
     const syncsLazycodexMarketplaceOnStableReleases = workflow.includes("name: Sync LazyCodex Codex marketplace") &&
       syncMarketplaceStep.includes("if: needs.release-metadata.outputs.dist_tag == ''") &&

@@ -49,9 +49,10 @@ exercises the surface; capture the artifact.
   1. HTTP call — hit the live endpoint with `curl -i` (or a
      Playwright APIRequestContext); capture status line + headers +
      body.
-  2. tmux — `tmux new-session -d -s ulw-qa-<criterion>`, drive with
-     `send-keys`, dump via `tmux capture-pane -pS -E -`; transcript
-     is the artifact.
+  2. Terminal / TUI - drive a real pty and prove it through the
+     xterm.js web terminal (see the TUI visual QA note below). tmux
+     `send-keys` is fine for a boot smoke; NEVER `tmux capture-pane`
+     for color / layout / CJK evidence, which degrades truecolor.
   3. Browser use — in Codex, use `browser:control-in-app-browser`
      first when available and no authenticated/persistent user browser
      profile is required. Otherwise use Chrome to drive the REAL page;
@@ -79,13 +80,13 @@ channel scenario when the behavior is user-facing. `--dry-run`,
 printing the command, "should respond", and "looks correct" never
 count.
 
-For TUI visual QA, terminal transcripts alone are not enough when a
-visual surface is being evaluated. In this repo, prefer
-`node script/qa/web-terminal-visual-qa.mjs --title "<surface>" --from-file <capture.txt> --evidence-dir <dir>`
-or the helper's `--command` tmux-backed PTY connector when available.
-Outside this repo, capture equivalent browser/computer-use rendered
-terminal evidence: screenshot, plain transcript, rendered HTML or action
-log, and cleanup receipt.
+For TUI visual QA, render the terminal through the real xterm.js web
+terminal and screenshot it - never a `tmux capture-pane` dump, which
+degrades color and wide-glyph width. In this repo:
+`node script/qa/web-terminal-visual-qa.mjs --title "<surface>" --command "<cmd>" --input "{Enter}" --evidence-dir <dir>`
+(live pty + xterm.js in Chrome; `--from-file <capture>` replays a raw
+stream). Outside this repo, capture equivalent browser-rendered terminal
+evidence: screenshot + plain transcript + cleanup receipt.
 
 # Bootstrap (DO ALL FOUR BEFORE ANY OTHER WORK — NO SKIPPING)
 
@@ -287,6 +288,13 @@ evidence for that step. Do not start dependent implementation until the
 audit, research, or review result is integrated or explicitly recorded
 as inconclusive. Do not generate a plan before spawned research lanes
 that feed the plan have returned or been closed as inconclusive.
+Spawn every independent child for the current wave first. After the wave
+is launched, run `multi_agent_v1.wait_agent` for each spawned child until
+each reaches terminal status (`completed`, `failed`, `blocked`, or
+explicitly recorded inconclusive) before any dependent `update_plan`
+transition, `create_goal` continuation, implementation tool call, plan
+drafting, approval-gate work, PR handoff, or final response. A timeout is
+not terminal status.
 Do not write the final answer, PR handoff, or completion summary while
 active child agents remain open. Use short `multi_agent_v1.wait_agent` cycles.
 After two silent waits send `TASK STILL ACTIVE: return <deliverable> or
