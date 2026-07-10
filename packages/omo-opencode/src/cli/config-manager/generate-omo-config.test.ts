@@ -12,6 +12,7 @@ describe("generateOmoConfig - model fallback system", () => {
       platform: "opencode",
       hasOpenCode: true,
       hasCodex: false,
+      hasSenpi: false,
       codexAutonomous: false,
       hasClaude: false,
       isMax20: false,
@@ -23,6 +24,8 @@ describe("generateOmoConfig - model fallback system", () => {
       hasKimiForCoding: false,
       hasOpencodeGo: false,
       hasBailianCodingPlan: false,
+      hasMinimaxCnCodingPlan: false,
+      hasMinimaxCodingPlan: false,
       hasVercelAiGateway: false,
     }
 
@@ -42,6 +45,7 @@ describe("generateOmoConfig - model fallback system", () => {
       platform: "opencode",
       hasOpenCode: true,
       hasCodex: false,
+      hasSenpi: false,
       codexAutonomous: false,
       hasClaude: false,
       isMax20: false,
@@ -53,6 +57,8 @@ describe("generateOmoConfig - model fallback system", () => {
       hasKimiForCoding: false,
       hasOpencodeGo: false,
       hasBailianCodingPlan: false,
+      hasMinimaxCnCodingPlan: false,
+      hasMinimaxCodingPlan: false,
       hasVercelAiGateway: false,
     }
 
@@ -70,6 +76,7 @@ describe("generateOmoConfig - model fallback system", () => {
       platform: "opencode",
       hasOpenCode: true,
       hasCodex: false,
+      hasSenpi: false,
       codexAutonomous: false,
       hasClaude: true,
       isMax20: true,
@@ -81,6 +88,8 @@ describe("generateOmoConfig - model fallback system", () => {
       hasKimiForCoding: false,
       hasOpencodeGo: false,
       hasBailianCodingPlan: false,
+      hasMinimaxCnCodingPlan: false,
+      hasMinimaxCodingPlan: false,
       hasVercelAiGateway: false,
     }
 
@@ -99,6 +108,7 @@ describe("generateOmoConfig - model fallback system", () => {
       platform: "opencode",
       hasOpenCode: true,
       hasCodex: false,
+      hasSenpi: false,
       codexAutonomous: false,
       hasClaude: false,
       isMax20: false,
@@ -110,6 +120,8 @@ describe("generateOmoConfig - model fallback system", () => {
       hasKimiForCoding: false,
       hasOpencodeGo: false,
       hasBailianCodingPlan: false,
+      hasMinimaxCnCodingPlan: false,
+      hasMinimaxCodingPlan: false,
       hasVercelAiGateway: false,
     }
 
@@ -129,6 +141,7 @@ describe("generateOmoConfig - model fallback system", () => {
       platform: "opencode",
       hasOpenCode: true,
       hasCodex: false,
+      hasSenpi: false,
       codexAutonomous: false,
       hasClaude: true,
       isMax20: false,
@@ -140,6 +153,8 @@ describe("generateOmoConfig - model fallback system", () => {
       hasKimiForCoding: false,
       hasOpencodeGo: false,
       hasBailianCodingPlan: false,
+      hasMinimaxCnCodingPlan: false,
+      hasMinimaxCodingPlan: false,
       hasVercelAiGateway: false,
     }
 
@@ -184,6 +199,7 @@ describe("generateOmoConfig - model fallback system", () => {
       platform: "opencode",
       hasOpenCode: true,
       hasCodex: false,
+      hasSenpi: false,
       codexAutonomous: false,
       hasClaude: true,
       isMax20: false,
@@ -195,6 +211,8 @@ describe("generateOmoConfig - model fallback system", () => {
       hasKimiForCoding: false,
       hasOpencodeGo: true,
       hasBailianCodingPlan: false,
+      hasMinimaxCnCodingPlan: false,
+      hasMinimaxCodingPlan: false,
       hasVercelAiGateway: false,
     }
 
@@ -224,6 +242,7 @@ describe("generateOmoConfig - model fallback system", () => {
       platform: "opencode",
       hasOpenCode: true,
       hasCodex: false,
+      hasSenpi: false,
       codexAutonomous: false,
       hasClaude: true,
       isMax20: true,
@@ -235,6 +254,8 @@ describe("generateOmoConfig - model fallback system", () => {
       hasKimiForCoding: false,
       hasOpencodeGo: false,
       hasBailianCodingPlan: false,
+      hasMinimaxCnCodingPlan: false,
+      hasMinimaxCodingPlan: false,
       hasVercelAiGateway: false,
     }
 
@@ -251,6 +272,7 @@ describe("generateOmoConfig - model fallback system", () => {
       platform: "opencode",
       hasOpenCode: true,
       hasCodex: false,
+      hasSenpi: false,
       codexAutonomous: false,
       hasClaude: true,
       isMax20: false,
@@ -262,6 +284,8 @@ describe("generateOmoConfig - model fallback system", () => {
       hasKimiForCoding: false,
       hasOpencodeGo: false,
       hasBailianCodingPlan: false,
+      hasMinimaxCnCodingPlan: false,
+      hasMinimaxCodingPlan: false,
       hasVercelAiGateway: false,
     }
 
