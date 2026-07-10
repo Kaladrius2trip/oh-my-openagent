@@ -5992,6 +5992,111 @@ describe("BackgroundManager.handleEvent - session.error", () => {
     manager.shutdown()
   })
 
+  test("terminates task and notifies parent on terminal session.error (e.g. no provider available) even when session is still alive", async () => {
+    //#given
+    const logCalls: Array<{ message: string; data?: unknown }> = []
+    const manager = createBackgroundManagerWithOptions({
+      log: (message: string, data?: unknown) => {
+        logCalls.push({ message, data })
+      },
+    })
+    mockVerifySessionExists(manager, true)
+    const concurrencyManager = getConcurrencyManager(manager)
+    const concurrencyKey = "explore/anthropic"
+    await concurrencyManager.acquire(concurrencyKey)
+
+    const task = createMockTask({
+      id: "task-session-error-terminal-alive",
+      sessionId: "ses-terminal-alive",
+      parentSessionId: "parent-terminal",
+      parentMessageId: "msg-terminal",
+      description: "task where provider is gone",
+      agent: "explore",
+      status: "running",
+      concurrencyKey,
+    })
+    getTaskMap(manager).set(task.id, task)
+    getPendingByParent(manager).set(task.parentSessionId, new Set([task.id]))
+
+    //#when
+    manager.handleEvent({
+      type: "session.error",
+      properties: {
+        sessionID: task.sessionId,
+        error: {
+          name: "ProviderUnavailableError",
+          message: "no provider available",
+        },
+      },
+    })
+
+    await flushBackgroundNotifications()
+
+    //#then
+    expect(task.status).toBe("error")
+    expect(task.error).toContain("no provider available")
+    expect(task.completedAt).toBeInstanceOf(Date)
+    expect(task.concurrencyKey).toBeUndefined()
+    expect(concurrencyManager.getCount(concurrencyKey)).toBe(0)
+    expect(getPendingByParent(manager).get(task.parentSessionId)).toBeUndefined()
+    expect(getCompletionTimers(manager).has(task.id)).toBe(true)
+    expect(
+      logCalls.some((call) => call.message.includes("Finalizing task after terminal session.error")),
+    ).toBe(true)
+
+    manager.shutdown()
+  })
+
+  test.each([
+    ["model lookup failure", "ProviderModelNotFoundError", "Model not found: openai/gpt-missing"],
+    ["credential failure", "MissingApiKeyError", "Google Generative AI API key is missing"],
+  ])(
+    "terminates task and notifies parent on terminal %s while session is still alive",
+    async (_case: string, errorName: string, errorMessage: string) => {
+      //#given
+      const manager = createBackgroundManager()
+      mockVerifySessionExists(manager, true)
+      const notifyParentSession = mock(async (_task: BackgroundTask) => {})
+      ;(cast<{ notifyParentSession: (task: BackgroundTask) => Promise<void> }>(manager)).notifyParentSession = notifyParentSession
+      const concurrencyManager = getConcurrencyManager(manager)
+      const concurrencyKey = `terminal/${errorName}`
+      await concurrencyManager.acquire(concurrencyKey)
+
+      const task = createMockTask({
+        id: `task-terminal-${errorName}`,
+        sessionId: `ses-terminal-${errorName}`,
+        parentSessionId: "parent-terminal-expanded",
+        parentMessageId: "msg-terminal-expanded",
+        description: "task with an unrecoverable session error",
+        agent: "explore",
+        status: "running",
+        concurrencyKey,
+      })
+      getTaskMap(manager).set(task.id, task)
+      getPendingByParent(manager).set(task.parentSessionId, new Set([task.id]))
+
+      //#when
+      manager.handleEvent({
+        type: "session.error",
+        properties: {
+          sessionID: task.sessionId,
+          error: { name: errorName, message: errorMessage },
+        },
+      })
+      await flushBackgroundNotifications()
+
+      //#then
+      expect(task.status).toBe("error")
+      expect(task.error).toBe(errorMessage)
+      expect(task.concurrencyKey).toBeUndefined()
+      expect(concurrencyManager.getCount(concurrencyKey)).toBe(0)
+      expect(getPendingByParent(manager).get(task.parentSessionId)).toBeUndefined()
+      expect(notifyParentSession).toHaveBeenCalledWith(task)
+
+      manager.shutdown()
+    },
+  )
+
   test("terminates task when agent-not-found arrives as async session.error after promptAsync accept", async () => {
     //#given
     const manager = createBackgroundManager()

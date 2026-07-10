@@ -3,7 +3,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { insertCodexCompatibilityGuidance } from "../scripts/sync-skills.mjs";
+import { codexHarnessToolCompatibility, insertCodexCompatibilityGuidance } from "../scripts/sync-skills.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -207,7 +207,8 @@ test("#given synced aggregate Codex skills #when they describe background orches
 		["working progress message", /WORKING:/],
 		["blocked progress message", /BLOCKED:/],
 		["mailbox timeout framing", /timeout only means no new mailbox update arrived/],
-		["multi_agent_v1.wait_agent ref", /multi_agent_v1\.wait_agent/],
+		// Skills route by session tool surface: the namespaced V1 tool or the flat V2 tool both count.
+		["wait-agent tool ref", /multi_agent_v1\.wait_agent|`wait_agent`/],
 		["explicit fallback conditions", /Fallback only when|Mark a file for retry only when/],
 	];
 	const bannedPatterns = [
@@ -264,4 +265,10 @@ test("#given PR and review skills #when synced for Codex #then worktree lifecycl
 
 	assert.match(reviewWork, /dedicated review worktree attached to that branch/);
 	assert.match(reviewWork, /Never\s+checkout, test, or edit the review branch in the main worktree/);
+});
+
+test("#given generated Codex compatibility guidance #when multi-agent lifecycle tools are mentioned #then optional tools are guarded by the active tools list", () => {
+	assert.match(codexHarnessToolCompatibility, /when exposed in the active tools list/, "send_input/close_agent must be marked optional (lazycodex#116)");
+	assert.match(codexHarnessToolCompatibility, /multi_agent_v1\.spawn_agent/);
+	assert.match(codexHarnessToolCompatibility, /multi_agent_v1\.wait_agent/);
 });
