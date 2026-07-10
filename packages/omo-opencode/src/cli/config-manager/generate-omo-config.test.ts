@@ -178,6 +178,46 @@ describe("generateOmoConfig - model fallback system", () => {
     ])
   })
 
+  test("puts Atlas GPT fallback before Claude-like models when both are available", () => {
+    //#given
+    const config: InstallConfig = {
+      platform: "opencode",
+      hasOpenCode: true,
+      hasCodex: false,
+      codexAutonomous: false,
+      hasClaude: true,
+      isMax20: false,
+      hasOpenAI: true,
+      hasGemini: false,
+      hasCopilot: false,
+      hasOpencodeZen: false,
+      hasZaiCodingPlan: false,
+      hasKimiForCoding: false,
+      hasOpencodeGo: true,
+      hasBailianCodingPlan: false,
+      hasVercelAiGateway: false,
+    }
+
+    //#when
+    const result = generateOmoConfig(config)
+    const atlas = (result.agents as Record<string, {
+      model: string
+      fallback_models?: Array<{ model: string; variant?: string }>
+    }>).atlas
+
+    //#then
+    expect(atlas.model).toBe("anthropic/claude-sonnet-4-6")
+    expect(atlas.fallback_models?.slice(0, 2)).toEqual([
+      {
+        model: "openai/gpt-5.5",
+        variant: "medium",
+      },
+      {
+        model: "opencode-go/kimi-k2.6",
+      },
+    ])
+  })
+
   test("uses haiku for explore when Claude max20", () => {
     //#given
     const config: InstallConfig = {

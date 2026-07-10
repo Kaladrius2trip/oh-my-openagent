@@ -41,11 +41,11 @@ flowchart TB
     end
 
     subgraph Execution["Execution Layer (Orchestrator)"]
-        Orchestrator[" Atlas<br/>(Conductor)<br/>claude-sonnet-4-6 / kimi-k2.6 / gpt-5.5 / minimax-m3 / minimax-m2.7"]
+        Orchestrator[" Atlas<br/>(Conductor)<br/>claude-sonnet-4-6 / gpt-5.5 / kimi-k2.6 / minimax-m3 / minimax-m2.7"]
     end
 
     subgraph Workers["Worker Layer (Specialized Agents)"]
-        Junior[" Sisyphus-Junior<br/>(Task Executor)<br/>claude-sonnet-4-6 / kimi-k2.6 / gpt-5.5 / minimax-m3 / minimax-m2.7"]
+        Junior[" Sisyphus-Junior<br/>(Task Executor)<br/>claude-sonnet-4-6 / gpt-5.5 / kimi-k2.6 / minimax-m3 / minimax-m2.7"]
         Oracle[" Oracle<br/>(Architecture)<br/>gpt-5.5 / gemini-3.1-pro / claude-opus-4-7 / glm-5"]
         Explore[" Explore<br/>(Codebase Grep)<br/>gpt-5.4-mini-fast / minimax-m2.7-highspeed / minimax-m3 / claude-haiku-4-5"]
         Librarian[" Librarian<br/>(Docs/OSS)<br/>gpt-5.4-mini-fast / minimax-m2.7-highspeed / minimax-m3 / claude-haiku-4-5"]

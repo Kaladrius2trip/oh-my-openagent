@@ -159,12 +159,12 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
   atlas: {
     fallbackChain: [
       { providers: ["anthropic", "github-copilot", "opencode", "vercel"], model: "claude-sonnet-4-6" },
-      { providers: ["opencode-go", "vercel"], model: "kimi-k2.6" },
       {
         providers: ["openai", "github-copilot", "opencode", "vercel"],
         model: "gpt-5.5",
         variant: "medium",
       },
+      { providers: ["opencode-go", "vercel"], model: "kimi-k2.6" },
       { providers: ["opencode-go", "vercel"], model: "minimax-m3" },
       { providers: ["minimax-coding-plan", "minimax-cn-coding-plan"], model: "MiniMax-M3" },
       { providers: ["opencode-go", "vercel"], model: "minimax-m2.7" },
@@ -173,12 +173,12 @@ export const AGENT_MODEL_REQUIREMENTS: Record<string, ModelRequirement> = {
   "sisyphus-junior": {
     fallbackChain: [
       { providers: ["anthropic", "github-copilot", "opencode", "vercel"], model: "claude-sonnet-4-6" },
-      { providers: ["opencode-go", "vercel"], model: "kimi-k2.6" },
       {
         providers: ["openai", "github-copilot", "opencode", "vercel"],
         model: "gpt-5.5",
         variant: "medium",
       },
+      { providers: ["opencode-go", "vercel"], model: "kimi-k2.6" },
       { providers: ["opencode-go", "vercel"], model: "minimax-m3" },
       { providers: ["minimax-coding-plan", "minimax-cn-coding-plan"], model: "MiniMax-M3" },
       { providers: ["opencode-go", "vercel"], model: "minimax-m2.7" },
