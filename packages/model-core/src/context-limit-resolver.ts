@@ -39,7 +39,7 @@ export function resolveActualContextLimit(
     if (explicit1M === ANTHROPIC_GA_1M_LIMIT) return explicit1M
 
     const cachedLimit = modelCacheState?.modelContextLimitsCache?.get(`${providerID}/${modelID}`)
-    if (cachedLimit && hasGA1MContext(modelID)) return cachedLimit
+    if (cachedLimit && hasGA1MContext(modelID)) return Math.max(cachedLimit, ANTHROPIC_GA_1M_LIMIT)
 
     if (hasGA1MContext(modelID)) return ANTHROPIC_GA_1M_LIMIT
 
