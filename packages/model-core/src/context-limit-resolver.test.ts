@@ -96,18 +96,32 @@ describe("resolveActualContextLimit", () => {
     expect(actualLimit).toBe(1_048_576)
   })
 
-  it("uses cached limit for GA Anthropic models when cache exists", () => {
+  it("uses cached limit for GA Anthropic models when cache is above 1M", () => {
     delete process.env[ANTHROPIC_CONTEXT_ENV_KEY]
     delete process.env[VERTEX_CONTEXT_ENV_KEY]
     const modelContextLimitsCache = new Map<string, number>()
-    modelContextLimitsCache.set("anthropic/claude-opus-4-7", 700_000)
+    modelContextLimitsCache.set("anthropic/claude-opus-4-7", 1_200_000)
 
     const actualLimit = resolveActualContextLimit("anthropic", "claude-opus-4-7", {
       anthropicContext1MEnabled: false,
       modelContextLimitsCache,
     })
 
-    expect(actualLimit).toBe(700_000)
+    expect(actualLimit).toBe(1_200_000)
+  })
+
+  it("does not let cached limits downgrade GA Anthropic models below 1M", () => {
+    delete process.env[ANTHROPIC_CONTEXT_ENV_KEY]
+    delete process.env[VERTEX_CONTEXT_ENV_KEY]
+    const modelContextLimitsCache = new Map<string, number>()
+    modelContextLimitsCache.set("anthropic/claude-sonnet-4-6", 200_000)
+
+    const actualLimit = resolveActualContextLimit("anthropic", "claude-sonnet-4-6", {
+      anthropicContext1MEnabled: false,
+      modelContextLimitsCache,
+    })
+
+    expect(actualLimit).toBe(1_000_000)
   })
 
   it("returns 1M when ANTHROPIC_1M_CONTEXT=true regardless of model", () => {

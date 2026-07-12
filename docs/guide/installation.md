@@ -583,7 +583,7 @@ Priority: **Claude > GPT > Claude-like models**
 | Agent          | Role              | Default Chain                                                                      | Prompt behavior |
 | -------------- | ----------------- | ---------------------------------------------------------------------------------- | --------------- |
 | **Prometheus** | Strategic planner | anthropic\|github-copilot\|opencode/claude-opus-4-7 (max) → openai\|github-copilot\|opencode/gpt-5.5 (high) → opencode-go/glm-5.1 → google\|github-copilot\|opencode/gemini-3.1-pro | Single thin prompt backed by `ulw-plan`; model family does not switch the prompt |
-| **Atlas**      | Todo orchestrator | anthropic\|github-copilot\|opencode/claude-sonnet-4-6 → opencode-go/kimi-k2.6 → openai\|github-copilot\|opencode/gpt-5.5 (medium) → opencode-go/minimax-m3 → opencode-go/minimax-m2.7 | GPT-optimized todo management path |
+| **Atlas**      | Todo orchestrator | anthropic\|github-copilot\|opencode/claude-sonnet-4-6 → openai\|github-copilot\|opencode/gpt-5.5 (medium) → opencode-go/kimi-k2.6 → opencode-go/minimax-m3 → opencode-go/minimax-m2.7 | GPT-optimized todo management path |
 
 **GPT-Native Agents** (built for GPT, don't override to Claude):
 

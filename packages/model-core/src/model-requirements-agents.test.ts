@@ -179,7 +179,7 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     expect(primary?.providers[0]).toBe("openai")
   })
 
-  test("atlas keeps sonnet, kimi, gpt-5.5, and minimax fallback order", () => {
+  test("atlas falls back from sonnet to gpt-5.5 before Claude-like models", () => {
     // given
     const atlas = AGENT_MODEL_REQUIREMENTS["atlas"]
 
@@ -190,13 +190,13 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     expect(atlas.fallbackChain).toHaveLength(6)
     expect(primary?.model).toBe("claude-sonnet-4-6")
     expect(primary?.providers[0]).toBe("anthropic")
-    expect(secondary?.model).toBe("kimi-k2.6")
-    expect(secondary?.providers[0]).toBe("opencode-go")
-    expect(tertiary).toEqual({
+    expect(secondary).toEqual({
       providers: ["openai", "github-copilot", "opencode", "vercel"],
       model: "gpt-5.5",
       variant: "medium",
     })
+    expect(tertiary?.model).toBe("kimi-k2.6")
+    expect(tertiary?.providers[0]).toBe("opencode-go")
     expect(fourth?.model).toBe("minimax-m3")
     expect(fourth?.providers[0]).toBe("opencode-go")
     expect(fifth).toEqual({
@@ -207,7 +207,7 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     expect(sixth?.providers[0]).toBe("opencode-go")
   })
 
-  test("sisyphus-junior keeps OpenAI fallback before minimax and big-pickle", () => {
+  test("sisyphus-junior falls back from sonnet to gpt-5.5 before Claude-like models", () => {
     // given
     const sisyphusJunior = AGENT_MODEL_REQUIREMENTS["sisyphus-junior"]
 
@@ -218,6 +218,7 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
     const openAiFallbackIndex = sisyphusJunior.fallbackChain.findIndex((entry) =>
       entry.providers.includes("openai")
     )
+    const kimiIndex = sisyphusJunior.fallbackChain.findIndex((entry) => entry.model === "kimi-k2.6")
     const minimaxM3Index = sisyphusJunior.fallbackChain.findIndex(
       (entry) => entry.model === "minimax-m3"
     )
@@ -238,6 +239,7 @@ describe("AGENT_MODEL_REQUIREMENTS", () => {
       variant: "medium",
     })
     expect(openAiFallbackIndex).toBeGreaterThan(-1)
+    expect(kimiIndex).toBeGreaterThan(openAiFallbackIndex)
     expect(minimaxM3Index).toBeGreaterThan(openAiFallbackIndex)
     expect(minimaxCodingPlanIndex).toBeGreaterThan(minimaxM3Index)
     expect(minimaxIndex).toBeGreaterThan(minimaxCodingPlanIndex)
