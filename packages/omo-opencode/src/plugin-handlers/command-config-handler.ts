@@ -45,6 +45,7 @@ export async function applyCommandConfig(params: {
   const builtinCommands = loadBuiltinCommands(params.pluginConfig.disabled_commands, {
     useRegisteredAgents: true,
     teamModeEnabled: params.pluginConfig.team_mode?.enabled ?? false,
+    moaEnabled: params.pluginConfig.moa?.enabled ?? false,
   });
   const builtinSkillCommands = builtinSkillsToCommandDefinitionRecord(
     resolveActiveBuiltinSkills({
