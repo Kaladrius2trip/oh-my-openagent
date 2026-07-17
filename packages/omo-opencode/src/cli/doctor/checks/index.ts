@@ -6,6 +6,7 @@ import { checkTools, gatherToolsSummary } from "./tools"
 import { checkModels } from "./model-resolution"
 import { checkTelemetry } from "./telemetry"
 import { checkTeamMode } from "./team-mode"
+import { checkMoA } from "./moa"
 import { checkTuiPluginConfig } from "./tui-plugin-config"
 import { checkCodex, gatherCodexSummary } from "./codex"
 import { CODEX_COMPONENTS_CHECK_ID, CODEX_COMPONENTS_CHECK_NAME, checkCodexComponents } from "./codex-components"
@@ -53,6 +54,11 @@ export function getAllCheckDefinitions(): CheckDefinition[] {
       id: CHECK_IDS.TEAM_MODE,
       name: CHECK_NAMES[CHECK_IDS.TEAM_MODE],
       check: checkTeamMode,
+    },
+    {
+      id: CHECK_IDS.MOA,
+      name: CHECK_NAMES[CHECK_IDS.MOA],
+      check: checkMoA,
     },
   ]
 }
