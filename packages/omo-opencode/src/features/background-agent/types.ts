@@ -14,6 +14,7 @@ export type BackgroundTaskVisibility = "normal" | "internal"
 export type BackgroundTaskNotificationPolicy = "auto" | "manual"
 export type BackgroundTaskContinuationPolicy = "allow" | "forbid"
 export type BackgroundTaskToolPolicy = "default" | "none"
+export type BackgroundTaskUserPermission = Record<string, "ask" | "allow" | "deny">
 
 export interface BackgroundTaskOrchestration {
   readonly kind: "moa"
@@ -120,6 +121,9 @@ export interface BackgroundTask extends BackgroundTaskPolicyFields {
   parentAgent?: string
   /** Parent session's tool restrictions for notification prompts */
   parentTools?: Record<string, boolean>
+  suppressTmuxSpawn?: boolean
+  skills?: string[]
+  userPermission?: BackgroundTaskUserPermission
   skillContent?: string
   sessionPermission?: SessionPermissionRule[]
   /** Marks if the task was launched from an unstable agent/category */
@@ -177,7 +181,7 @@ export interface LaunchInput extends BackgroundTaskPolicyFields {
   sessionPermission?: SessionPermissionRule[]
   onSessionCreated?: (sessionId: string) => void | Promise<void>
   /** User tool overrides (ask/allow/deny) from category or agent config. Merged into launchTools before hardcoded restrictions. */
-  userPermission?: Record<string, "ask" | "allow" | "deny">
+  userPermission?: BackgroundTaskUserPermission
 }
 
 export interface ResumeInput {

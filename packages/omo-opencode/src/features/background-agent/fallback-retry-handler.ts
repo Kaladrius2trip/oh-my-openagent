@@ -49,6 +49,39 @@ const defaultFallbackRetryHandlerDeps: FallbackRetryHandlerDeps = {
   isProviderExhaustionFallbackEligible,
 }
 
+export function buildRetryLaunchInput(
+  task: BackgroundTask,
+  nextModel: NonNullable<LaunchInput["model"]>,
+): LaunchInput {
+  return {
+    description: task.description,
+    prompt: task.prompt,
+    agent: task.agent,
+    parentSessionId: task.parentSessionId,
+    parentMessageId: task.parentMessageId,
+    parentModel: task.parentModel,
+    parentAgent: task.parentAgent,
+    parentTools: task.parentTools,
+    teamRunId: task.teamRunId,
+    suppressTmuxSpawn: task.suppressTmuxSpawn,
+    model: nextModel,
+    fallbackChain: task.fallbackChain,
+    isUnstableAgent: task.isUnstableAgent,
+    skills: task.skills,
+    skillContent: task.skillContent,
+    category: task.category,
+    sessionPermission: task.sessionPermission,
+    onSessionCreated: task.onSessionCreated,
+    userPermission: task.userPermission,
+    visibility: task.visibility,
+    notificationPolicy: task.notificationPolicy,
+    continuationPolicy: task.continuationPolicy,
+    toolPolicy: task.toolPolicy,
+    capabilityProfile: task.capabilityProfile,
+    orchestration: task.orchestration,
+  }
+}
+
 export async function tryFallbackRetry(args: {
   task: BackgroundTask
   errorInfo: { name?: string; message?: string; statusCode?: number }
@@ -208,24 +241,7 @@ export async function tryFallbackRetry(args: {
   const rawKey = task.model ? `${task.model.providerID}/${task.model.modelID}` : task.agent
   const key = concurrencyManager.getConcurrencyKey(rawKey)
   const queue = queuesByKey.get(key) ?? []
-  const retryInput: LaunchInput = {
-    description: task.description,
-    prompt: task.prompt,
-    agent: task.agent,
-    parentSessionId: task.parentSessionId,
-    parentMessageId: task.parentMessageId,
-    parentModel: task.parentModel,
-    parentAgent: task.parentAgent,
-    parentTools: task.parentTools,
-    teamRunId: task.teamRunId,
-    model: nextModel,
-    fallbackChain: task.fallbackChain,
-    skillContent: task.skillContent,
-    sessionPermission: task.sessionPermission,
-    category: task.category,
-    isUnstableAgent: task.isUnstableAgent,
-    onSessionCreated: task.onSessionCreated,
-  }
+  const retryInput = buildRetryLaunchInput(task, nextModel)
 
   if (previousSessionID) {
     await abortWithTimeout(client, previousSessionID).catch(() => {})
