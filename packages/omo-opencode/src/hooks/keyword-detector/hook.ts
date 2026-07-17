@@ -41,6 +41,7 @@ export function createKeywordDetectorHook(
   _ralphLoop?: unknown,
   config?: KeywordDetectorConfig,
   defaultMode?: DefaultModeConfig,
+  moaEnabled: boolean = false,
 ) {
   const disabledKeywords = config?.disabled_keywords
   const enabledExpansions = config?.enabled_expansions
@@ -93,6 +94,9 @@ export function createKeywordDetectorHook(
       const cleanText = removeSystemReminders(promptText)
       const modelID = input.model?.modelID
       let detectedKeywords = detectKeywordsWithType(cleanText, currentAgent, modelID, disabledKeywords, enabledExpansions)
+      if (!moaEnabled) {
+        detectedKeywords = detectedKeywords.filter((k) => k.type !== "moa")
+      }
       detectedKeywords = suppressComboStandalones(detectedKeywords)
 
       if (isPlannerAgent(currentAgent)) {

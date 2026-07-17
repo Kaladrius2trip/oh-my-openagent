@@ -30,3 +30,4 @@ export {
   HYPERPLAN_MODE_PROMPT,
   TEAM_MODE_PROMPT,
 } from "./mode-prompts"
+export { MOA_DEFAULT_PROMPT } from "./moa-prompts"

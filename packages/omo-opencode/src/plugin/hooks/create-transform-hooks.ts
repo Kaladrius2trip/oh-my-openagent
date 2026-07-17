@@ -62,6 +62,7 @@ export function createTransformHooks(args: {
             undefined,
             pluginConfig.keyword_detector,
             pluginConfig.default_mode,
+            pluginConfig.moa?.enabled ?? false,
           ),
         { enabled: safeHookEnabled },
       )
