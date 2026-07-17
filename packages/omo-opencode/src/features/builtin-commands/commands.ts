@@ -12,6 +12,7 @@ import { HYPERPLAN_TEMPLATE } from "./templates/hyperplan"
 interface LoadBuiltinCommandsOptions {
   useRegisteredAgents?: boolean
   teamModeEnabled?: boolean
+  moaEnabled?: boolean
 }
 
 function resolveStartWorkAgent(options?: LoadBuiltinCommandsOptions): "atlas" | "sisyphus" {
@@ -113,6 +114,22 @@ ${HYPERPLAN_TEMPLATE}
 </command-instruction>`,
       argumentHint: "[planning-request]",
     },
+    moa: {
+      description:
+        "(builtin) Consult the Mixture of Advisors panel for a synthesized decision bundle (advisors are consultation-only; the parent implements)",
+      template: `<command-instruction>
+The user invoked /moa. Mixture of Advisors (MoA) fans a question out to a panel of tool-free advisor models plus one aggregator and returns a synthesized decision bundle. Advisors never read or write files; you, the parent agent, keep all implementation authority.
+
+When <user-request> below is non-empty, call the moa_consult tool with the request as its prompt, then act on the returned decision bundle yourself.
+
+When <user-request> is empty, explain what /moa does and ask the user for the decision or design question to consult on, optionally naming a preset.
+</command-instruction>
+
+<user-request>
+$ARGUMENTS
+</user-request>`,
+      argumentHint: "<decision or design question>",
+    },
   }
 }
 
@@ -122,6 +139,7 @@ export function loadBuiltinCommands(
 ): BuiltinCommands {
   const builtinCommandDefinitions = createBuiltinCommandDefinitions(options)
   const disabled = new Set(disabledCommands ?? [])
+  if (options?.moaEnabled !== true) disabled.add("moa")
   const commands: BuiltinCommands = {}
 
   for (const [name, definition] of Object.entries(builtinCommandDefinitions)) {
