@@ -1,0 +1,10 @@
+Task: T1.6 notification suppression
+Focused command: bun test packages/omo-opencode/src/features/background-agent/notification-suppression.test.ts
+Focused exit code: 0
+Focused observed: 4 pass, 0 fail, 6 expect() calls, 1 file, 227ms.
+
+Regression command: bun test notification-suppression, cancel cleanup, three fallback retry suites, and parent-wake-* suites
+Regression exit code: 0
+Regression observed: 131 pass, 0 fail, 438 expect() calls, 25 files, 17.51s.
+
+Coverage: internal/manual completion, error, cancel, retry announcement, retry-session-ready announcement, launch toast, running toast, resume toast, stale/crash paths, notification preparation, notification queue, and completion toast are gated. Normal complete/error/cancel/retry remains pinned at 3 notify, 6 toast-manager, and 4 parent-wake calls.

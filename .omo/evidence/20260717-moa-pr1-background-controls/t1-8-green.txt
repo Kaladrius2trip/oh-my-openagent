@@ -1,0 +1,9 @@
+Focused command: bun test packages/omo-opencode/src/tools/background-task/background-output-internal.test.ts packages/omo-opencode/src/tools/background-task/background-cancel-internal.test.ts
+Exit code: 0
+Result: 4 pass, 0 fail, 14 expect() calls, 2 files.
+
+Regression command: bun test packages/omo-opencode/src/tools/background-task
+Exit code: 0
+Result: 47 pass, 0 fail, 130 expect() calls, 13 files.
+
+Observed: internal output is denied before metadata or session reads; direct internal cancellation is denied; cancel-all cancels internal descendants but enumerates only normal tasks; direct normal cancellation remains unchanged.

@@ -1,0 +1,5 @@
+Task: T1.2 policy persistence
+Command: bun test packages/omo-opencode/src/features/background-agent/manager-policy-persistence.test.ts
+Exit code: 1
+Observed: 0 pass, 2 fail, 2 expect() calls, 1 file, 189ms.
+Expected red reason: buildTaskRecord and BackgroundManager launch records omitted capabilityProfile, continuationPolicy, notificationPolicy, orchestration, toolPolicy, and visibility. Both toMatchObject assertions showed all six missing while parentSessionId remained present.

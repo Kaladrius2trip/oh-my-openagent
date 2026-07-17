@@ -1,0 +1,14 @@
+Task: T1.5 continuation policy gates
+Command: bun test packages/omo-opencode/src/features/background-agent/continuation-policy.test.ts
+Exit code: 1
+Observed: 0 pass, 8 fail, 8 expect() calls, 1 file, 260ms.
+Expected red reasons:
+- durable predicate was absent;
+- delegate continuation resumed the forbidden session;
+- todo idle read the forbidden session;
+- Atlas idle read state for the forbidden session;
+- Atlas retry scheduled a timer for the forbidden session;
+- Atlas eligibility accepted the forbidden direct session;
+- team idle resolved the forbidden session;
+- BackgroundManager.resume resolved instead of rejecting.
+Each paired allowed-session fixture reached the existing path, preventing false-positive early-return tests.

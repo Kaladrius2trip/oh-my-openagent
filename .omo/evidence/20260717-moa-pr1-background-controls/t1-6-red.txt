@@ -1,0 +1,11 @@
+Task: T1.6 notification suppression
+Command: bun test packages/omo-opencode/src/features/background-agent/notification-suppression.test.ts
+Exit code: 1
+Observed: 1 pass, 3 fail, 6 expect() calls, 1 file, 255ms.
+Expected red reasons:
+- internal/manual complete, error, cancel, and retry paths produced 3 notify calls, 6 toast calls, and 4 parent-wake queues instead of zero;
+- manual plus normal launch produced 4 toast-manager calls instead of the normal-only 2;
+- manual plus normal resume produced 2 addTask calls instead of the normal-only 1.
+The normal terminal/retry characterization passed at exactly 3 notify, 6 toast, and 4 wake calls.
+
+Systematic-debugging note: the initial normal-toast expectation was corrected from 9 to 6 after tracing TaskToastManager.showCompletionToast, which returns before its internal removeTask when no TUI client exists. Crutch-detection found no weakened path or bypass.

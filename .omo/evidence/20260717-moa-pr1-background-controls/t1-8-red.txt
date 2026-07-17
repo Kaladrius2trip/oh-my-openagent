@@ -1,0 +1,14 @@
+Command: bun test packages/omo-opencode/src/tools/background-task/background-output-internal.test.ts packages/omo-opencode/src/tools/background-task/background-cancel-internal.test.ts
+Exit code: 1
+
+bun test v1.3.14 (0d9b296a)
+
+background-cancel-internal.test.ts
+- cancel-all expected "Cancelled 1 background task(s)" but received "Cancelled 2 background task(s)" and enumerated bg-internal.
+- direct internal cancel expected "task is internal" but received "Task cancelled successfully".
+
+background-output-internal.test.ts
+- internal output expected "task is internal" but received the full session output containing SECRET_RESULT.
+
+Result: 1 pass, 3 fail, 6 expect() calls, 2 files.
+The failures demonstrate the missing T1.8 boundary before production edits.

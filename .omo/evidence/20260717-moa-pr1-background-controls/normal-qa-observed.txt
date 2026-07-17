@@ -1,0 +1,7 @@
+sandbox_db=/tmp/omo-qa-sandbox.iQSWWN/data/opencode/opencode.db
+sandbox_session_count=2
+normal_task_tool_seen=yes
+child_completion_seen=yes
+parent_notify_seen=yes
+parent_wake_queue_seen=yes
+parent_wake_model_turn_seen=no

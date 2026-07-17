@@ -1,0 +1,16 @@
+All-six control seam
+
+Command: bun test packages/omo-opencode/src/features/background-agent/manager-policy-persistence.test.ts packages/omo-opencode/src/features/background-agent/capability-profile.test.ts packages/omo-opencode/src/features/background-agent/continuation-policy.test.ts packages/omo-opencode/src/features/background-agent/notification-suppression.test.ts packages/omo-opencode/src/features/background-agent/task-visibility.test.ts
+Exit code: 0
+Result: 20 pass, 0 fail, 34 expect() calls, 5 files.
+
+Observed at the closest real BackgroundManager seams:
+- A launch carrying visibility, notificationPolicy, continuationPolicy, toolPolicy, capabilityProfile, and orchestration persisted all six plus parentSessionId.
+- The consultation profile/tool-none resolver produced an empty tool map.
+- Durable child-session metadata rejected resume and skipped all continuation gates.
+- Internal/manual complete, error, cancel, and retry paths produced zero notify, toast, and parent-wake queue calls while normal behavior retained pinned counts.
+- Internal snapshots were absent from the real sidebar snapshot builder.
+- An internal manager launch did not invoke the tmux pane callback.
+
+Public live-launch limitation:
+PR1 intentionally adds only the BackgroundManager control surface. No public tool accepts the six policy fields until the MoA adapter in PR3. Therefore an all-six task cannot be launched through `opencode run`, and absence of its parent wake cannot be observed on a live SSE stream in PR1. The SSE plumbing was separately proven with the authoritative helper; the zero-wake behavior was proven at the manager queue seam. No live all-six/SSE result is claimed.

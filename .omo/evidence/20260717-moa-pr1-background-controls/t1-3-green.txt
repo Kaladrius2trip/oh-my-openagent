@@ -1,0 +1,10 @@
+Task: T1.3 retry preservation
+Focused command: bun test packages/omo-opencode/src/features/background-agent/fallback-retry-preservation.test.ts
+Focused exit code: 0
+Focused observed: 1 pass, 0 fail, 2 expect() calls, 1 file, 152ms.
+
+Regression command: bun test packages/omo-opencode/src/features/background-agent/fallback-retry-handler.test.ts packages/omo-opencode/src/features/background-agent/fallback-retry-provider-exhaustion.test.ts packages/omo-opencode/src/features/background-agent/fallback-retry-preservation.test.ts
+Regression exit code: 0
+Regression observed: 31 pass, 0 fail, 73 expect() calls, 3 files, 163ms.
+
+Crutch-detection: clean. The fix uses one production builder from the persisted task, preserves the real retry queue path, introduces no hidden fallback, unsafe cast, weakened assertion, or test-only branch.

@@ -1,0 +1,5 @@
+Task: T1.3 retry preservation
+Command: bun test packages/omo-opencode/src/features/background-agent/fallback-retry-preservation.test.ts
+Exit code: 1
+Observed: 0 pass, 1 fail, 2 expect() calls, 1 file, 188ms.
+Expected red reason: retry LaunchInput omitted the pre-existing suppressTmuxSpawn, skills, and userPermission controls and all six new policy fields. The retry itself succeeded and was queued, isolating the field-dropping defect.

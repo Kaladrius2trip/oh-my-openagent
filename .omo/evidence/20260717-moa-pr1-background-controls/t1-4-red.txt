@@ -1,0 +1,5 @@
+Task: T1.4 capability profile
+Command: bun test packages/omo-opencode/src/features/background-agent/capability-profile.test.ts
+Exit code: 1
+Observed: 0 pass, 3 fail, 2 expect() calls, 1 file, 139ms.
+Expected red reason: moa-consultation-only returned the full default/restriction map, toolPolicy=none returned the default three-tool map, and the shared resolver module did not exist. The first two assertion diffs prove tools were exposed instead of an empty map.

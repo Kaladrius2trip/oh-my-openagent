@@ -1,0 +1,2 @@
+command=opencode run <normal background prompt> --format json --model openai/gpt-fake --dir <isolated project>
+exit_code=0

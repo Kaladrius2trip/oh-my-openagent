@@ -1,0 +1,7 @@
+real_db=/root/.local/share/opencode/opencode.db
+real_session_count_before=1128
+real_session_count_after=1128
+real_session_count_unchanged=yes
+fake_server_stopped=yes
+sandbox_removed=yes
+driver_exit=0

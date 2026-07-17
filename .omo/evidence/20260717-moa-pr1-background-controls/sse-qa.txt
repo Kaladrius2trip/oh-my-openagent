@@ -1,0 +1,17 @@
+OpenCode SSE helper
+
+Authoritative helper: .agents/skills/opencode-qa/scripts/sse-hook-probe.sh
+Requested script/agent/sse-hook-probe.sh path: absent in this checkout.
+
+Self-test command: bash .agents/skills/opencode-qa/scripts/sse-hook-probe.sh --self-test
+Exit code: 0
+Output:
+first matching event: {"type":"server.connected"}
+PASS: SSE /event opened and delivered server.connected
+
+The first two attempts exposed a custom-fork startup race: the helper's first health curl accepted a connection but never completed because it has no per-request timeout. Both exact probe PIDs were terminated; their EXIT traps stopped the servers and removed /tmp/oqa-xdg.jzM37e and /tmp/oqa-xdg.eDFn2C. A bounded authenticated health request independently returned HTTP 200 and the final helper run passed.
+
+Common helper self-check:
+- Dependencies, SQL escaping, free-port selection, isolated HOME, shim preservation, and sandbox auto-removal passed.
+- Exit code 1 only because this custom pre-sync OpenCode build routes `opencode db path` to command help instead of printing the path.
+- Isolation counts therefore use read-only sqlite3 against the standard XDG DB path.

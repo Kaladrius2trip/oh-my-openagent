@@ -1,0 +1,5 @@
+Task: T1.2 policy persistence
+Command: bun test packages/omo-opencode/src/features/background-agent/manager-policy-persistence.test.ts
+Exit code: 0
+Observed: 2 pass, 0 fail, 3 expect() calls, 1 file, 178ms.
+Coverage: all six controls persisted by buildTaskRecord and BackgroundManager, parentSessionId retained, and child session metadata stores continuationPolicy=forbid.

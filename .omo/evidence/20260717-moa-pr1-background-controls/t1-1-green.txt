@@ -1,0 +1,5 @@
+Task: T1.1 policy fields
+Command: bun test packages/omo-opencode/src/features/background-agent/policy-fields.test.ts
+Exit code: 0
+Observed: 2 pass, 0 fail, 3 expect() calls, 1 file, 138ms.
+Coverage: both launch/task field shapes and normal/auto/allow/default unset behavior.
