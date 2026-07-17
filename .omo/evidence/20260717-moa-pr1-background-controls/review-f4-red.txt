@@ -1,0 +1,17 @@
+Command: bun test packages/omo-opencode/src/features/background-agent/task-visibility.test.ts
+Exit code: 1
+
+bun test v1.3.14 (0d9b296a)
+
+(fail) background task visibility > given PR1 policy tests when synchronization is audited then no test awaits an arbitrary delay
+
+Received violations:
+- packages/omo-opencode/src/features/background-agent/notification-suppression.test.ts
+- packages/omo-opencode/src/features/background-agent/task-visibility.test.ts
+
+3 pass
+1 fail
+6 expect() calls
+Ran 4 tests across 1 file.
+
+Failure classification: expected static red. Both PR1 policy tests use directly awaited setTimeout delays as synchronization.

@@ -1,0 +1,15 @@
+c7afc795be src/features/background-agent/manager.ts (YeonGyu-Kim 2026-04-03 21:42:10 +0900 345)     } catch (error) {
+050502f8d0 src/features/background-agent/manager.ts (Jim Park 2026-04-04 21:57:37 -0700 991)         } catch (retryError) {
+da251c9b30 src/features/background-agent/manager.ts (YeonGyu-Kim 2026-05-02 03:01:03 +0900 1421)       applySessionPromptParams(existingTask.sessionId!, existingTask.model)
+174cbd0fbd src/features/background-agent/manager.ts (YeonGyu-Kim 2026-05-15 11:29:48 +0900 1445)             setSessionTools(existingTask.sessionId!, tools)
+c7afc795be src/features/background-agent/manager.ts (YeonGyu-Kim 2026-04-03 21:42:10 +0900 1544)     } catch (error) {
+3e9a0ef9aa src/features/background-agent/manager.ts (justsisyphus 2026-02-01 16:51:11 +0900 2350)     } catch (error) {
+e36dde6e64 src/features/background-agent/manager.ts (YeonGyu-Kim 2026-02-03 12:11:45 +0900 2516)     } catch (err) {
+31cd979900 (acamq 2026-06-15 15:49:11 -0600 2653)       } catch (err) {
+da251c9b30 src/features/background-agent/manager.ts (YeonGyu-Kim 2026-05-02 03:01:03 +0900 2692)     this.completedTaskSummaries.get(task.parentSessionId)!.push({
+d44cd1c1a0 src/features/background-agent/manager.ts (YeonGyu-Kim 2026-05-18 14:05:01 +0900 2835)     } catch (error) {
+d53bcfbced src/features/background-agent/manager.ts (YeonGyu-Kim 2026-02-22 11:58:57 +0900 2944)         log("[background-agent] Pruning stale task:", { taskId, status: task.status, age: Math.round(((wasPending ? task.queuedAt?.getTime() : task.startedAt?.getTime()) ? (Date.now() - (wasPending ? task.queuedAt!.getTime() : task.startedAt!.getTime())) : 0) / 1000) + "s" })
+3ae9f5f104 src/features/background-agent/manager.ts (YeonGyu-Kim 2026-05-04 16:30:06 +0900 3075)         } catch (error) {
+2237c1accd src/features/background-agent/manager.ts (Choi Kijin / 최 기진 / チョイ キジン 2026-04-28 21:43:09 +0900 3168)         } catch (error) {
+b4973954e3 src/features/background-agent/manager.ts (YeonGyu-Kim 2026-01-29 18:29:47 +0900 3224)       } catch (error) {
+29155ec7bc src/tools/delegate-task/background-continuation.ts (YeonGyu-Kim 2026-02-08 13:57:26 +0900 81)   } catch (error) {

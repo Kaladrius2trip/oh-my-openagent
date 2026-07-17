@@ -1,0 +1,17 @@
+Task: T1.1 policy fields
+Command: bun test packages/omo-opencode/src/features/background-agent/policy-fields.test.ts
+Exit code: 1
+Observed:
+bun test v1.3.14 (0d9b296a)
+
+packages/omo-opencode/src/features/background-agent/policy-fields.test.ts:
+
+# Unhandled error between tests
+SyntaxError: Export named 'resolveBackgroundTaskPolicies' not found in module 'packages/omo-opencode/src/features/background-agent/types.ts'.
+
+0 pass
+1 fail
+1 error
+Ran 1 test across 1 file. [159.00ms]
+
+Expected red reason: the policy resolver and policy field contract do not exist yet.

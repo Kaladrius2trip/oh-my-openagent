@@ -1,0 +1,9 @@
+Command: bun test packages/omo-opencode/src/features/background-agent/has-active-child-tasks-internal.test.ts
+Exit code: 1
+
+bun test v1.3.14 (0d9b296a)
+
+Failure: the default getTasksByParentSession("parent-session") returned the running internal child instead of an empty list. The normal-child characterization passed.
+
+Result: 1 pass, 1 fail, 3 expect() calls, 1 file.
+The failure demonstrates the missing T1.9 parent-hold exclusion before production edits.

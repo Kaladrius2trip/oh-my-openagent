@@ -1,0 +1,298 @@
+diff --git a/packages/omo-opencode/src/features/background-agent/manager.ts b/packages/omo-opencode/src/features/background-agent/manager.ts
+index 7c205fdb1..094f9ec5b 100644
+--- a/packages/omo-opencode/src/features/background-agent/manager.ts
++++ b/packages/omo-opencode/src/features/background-agent/manager.ts
+@@ -13 +12,0 @@ import {
+-  getAgentToolRestrictions,
+@@ -57,0 +57,6 @@ import { ConcurrencyManager } from "./concurrency"
++import {
++  clearContinuationSessionMetadata,
++  isContinuationForbidden,
++  setContinuationSessionMetadata,
++} from "./continuation-policy"
++import { resolveCapabilityProfile } from "./capability-profile"
+@@ -86 +91 @@ import { registerManagerForCleanup, unregisterManagerForCleanup } from "./proces
+-import { removeTaskToastTracking } from "./remove-task-toast-tracking"
++import { removeTaskToastTracking as removeTrackedTaskToast } from "./remove-task-toast-tracking"
+@@ -110 +115,5 @@ import { checkAndInterruptStaleTasks, pruneStaleTasksAndNotifications, type Sess
+-import { toBackgroundTaskSnapshots } from "./task-snapshot"
++import {
++  toBackgroundTaskSnapshots,
++  toBackgroundTaskSnapshotsIncludingInternal,
++} from "./task-snapshot"
++import { filterVisibleTasks } from "./task-visibility"
+@@ -536 +545 @@ export class BackgroundManager {
+-    removeTaskToastTracking(task.id)
++    this.removeTaskToast(task)
+@@ -604,0 +614,9 @@ export class BackgroundManager {
++        suppressTmuxSpawn: input.suppressTmuxSpawn,
++        skills: input.skills,
++        userPermission: input.userPermission,
++        visibility: input.visibility,
++        notificationPolicy: input.notificationPolicy,
++        continuationPolicy: input.continuationPolicy,
++        toolPolicy: input.toolPolicy,
++        capabilityProfile: input.capabilityProfile,
++        orchestration: input.orchestration,
+@@ -635 +653 @@ export class BackgroundManager {
+-      if (toastManager) {
++      if (toastManager && this.shouldPublishTaskSignals(task)) {
+@@ -716 +734 @@ export class BackgroundManager {
+-          removeTaskToastTracking(item.task.id)
++          this.removeTaskToast(item.task)
+@@ -727,2 +745 @@ export class BackgroundManager {
+-          this.markForNotification(item.task)
+-          this.enqueueNotificationForParent(item.task.parentSessionId, () => this.notifyParentSession(item.task)).catch(err => {
++          this.publishTaskNotification(item.task).catch(err => {
+@@ -788,0 +806,3 @@ export class BackgroundManager {
++    setContinuationSessionMetadata(sessionID, {
++      continuationPolicy: input.continuationPolicy ?? "allow",
++    })
+@@ -834 +854 @@ export class BackgroundManager {
+-    if (task.retryNotification) {
++    if (task.retryNotification && this.shouldPublishTaskSignals(task)) {
+@@ -868 +887,0 @@ The fallback retry session is now created and can be inspected directly.
+-      task.retryNotification = undefined
+@@ -869,0 +889 @@ The fallback retry session is now created and can be inspected directly.
++    task.retryNotification = undefined
+@@ -889,16 +909,7 @@ The fallback retry session is now created and can be inspected directly.
+-    const userDenied: Record<string, boolean> = {}
+-    if (input.userPermission) {
+-      for (const [tool, value] of Object.entries(input.userPermission)) {
+-        if (value === "deny") userDenied[tool] = false
+-      }
+-    }
+-
+-    const launchTools = {
+-      task: false,
+-      call_omo_agent: true,
+-      question: false,
+-      ...userDenied,
+-      ...getAgentToolRestrictions(input.agent, {
+-        includeTeamToolDenylist: input.teamRunId === undefined,
+-      }),
+-    }
++    const launchTools = resolveCapabilityProfile({
++      agent: input.agent,
++      includeTeamToolDenylist: input.teamRunId === undefined,
++      userPermission: input.userPermission,
++      toolPolicy: input.toolPolicy,
++      capabilityProfile: input.capabilityProfile,
++    })
+@@ -919 +930 @@ The fallback retry session is now created and can be inspected directly.
+-    if (toastManager) {
++    if (toastManager && this.shouldPublishTaskSignals(task)) {
+@@ -952 +963 @@ The fallback retry session is now created and can be inspected directly.
+-          const fallbackBody = buildFallbackBody(promptBody, FALLBACK_AGENT, {
++          const fallbackBodyWithDefaults = buildFallbackBody(promptBody, FALLBACK_AGENT, {
+@@ -955 +966,8 @@ The fallback retry session is now created and can be inspected directly.
+-          const fallbackTools = fallbackBody.tools as Record<string, boolean>
++          const fallbackTools = resolveCapabilityProfile({
++            agent: FALLBACK_AGENT,
++            includeTeamToolDenylist: input.teamRunId === undefined,
++            userPermission: input.userPermission,
++            toolPolicy: input.toolPolicy,
++            capabilityProfile: input.capabilityProfile,
++          })
++          const fallbackBody = { ...fallbackBodyWithDefaults, tools: fallbackTools }
+@@ -1018 +1036 @@ The fallback retry session is now created and can be inspected directly.
+-        removeTaskToastTracking(existingTask.id)
++        this.removeTaskToast(existingTask)
+@@ -1025,2 +1043 @@ The fallback retry session is now created and can be inspected directly.
+-        this.markForNotification(existingTask)
+-        this.enqueueNotificationForParent(existingTask.parentSessionId, () => this.notifyParentSession(existingTask)).catch(err => {
++        this.publishTaskNotification(existingTask).catch(err => {
+@@ -1040 +1057 @@ The fallback retry session is now created and can be inspected directly.
+-    if (!input.suppressTmuxSpawn && this.onSubagentSessionCreated && this.tmuxEnabled && isInsideTmux()) {
++    if (task.visibility !== "internal" && !input.suppressTmuxSpawn && this.onSubagentSessionCreated && this.tmuxEnabled && isInsideTmux()) {
+@@ -1062 +1079,8 @@ The fallback retry session is now created and can be inspected directly.
+-  getTasksByParentSession(sessionID: string): BackgroundTask[] {
++  getTasksSnapshotIncludingInternal(): BackgroundTaskSnapshot[] {
++    return toBackgroundTaskSnapshotsIncludingInternal(this.tasks.values())
++  }
++
++  getTasksByParentSession(
++    sessionID: string,
++    options: { includeInternal?: boolean } = {},
++  ): BackgroundTask[] {
+@@ -1063,0 +1088 @@ The fallback retry session is now created and can be inspected directly.
++    const tasks: BackgroundTask[] = []
+@@ -1065 +1089,0 @@ The fallback retry session is now created and can be inspected directly.
+-      const result: BackgroundTask[] = []
+@@ -1068 +1092 @@ The fallback retry session is now created and can be inspected directly.
+-          result.push(task)
++          tasks.push(task)
+@@ -1071,8 +1095,6 @@ The fallback retry session is now created and can be inspected directly.
+-      return result
+-    }
+-
+-    const tasks: BackgroundTask[] = []
+-    for (const taskID of taskIDs) {
+-      const task = this.tasks.get(taskID)
+-      if (task) {
+-        tasks.push(task)
++    } else {
++      for (const taskID of taskIDs) {
++        const task = this.tasks.get(taskID)
++        if (task) {
++          tasks.push(task)
++        }
+@@ -1081 +1103 @@ The fallback retry session is now created and can be inspected directly.
+-    return tasks
++    return options.includeInternal ? tasks : filterVisibleTasks(tasks)
+@@ -1140 +1162 @@ The fallback retry session is now created and can be inspected directly.
+-    const directChildren = this.getTasksByParentSession(sessionID)
++    const directChildren = this.getTasksByParentSession(sessionID, { includeInternal: true })
+@@ -1301,0 +1324,3 @@ The fallback retry session is now created and can be inspected directly.
++    if (isContinuationForbidden(input.sessionId)) {
++      throw new Error(`Task continuation is forbidden for session: ${input.sessionId}`)
++    }
+@@ -1367 +1392 @@ The fallback retry session is now created and can be inspected directly.
+-    if (toastManager) {
++    if (toastManager && this.shouldPublishTaskSignals(existingTask)) {
+@@ -1413,8 +1438,7 @@ The fallback retry session is now created and can be inspected directly.
+-            const tools = {
+-              task: false,
+-              call_omo_agent: true,
+-              question: false,
+-              ...getAgentToolRestrictions(existingTask.agent, {
+-                includeTeamToolDenylist: existingTask.teamRunId === undefined,
+-              }),
+-            }
++            const tools = resolveCapabilityProfile({
++              agent: existingTask.agent,
++              includeTeamToolDenylist: existingTask.teamRunId === undefined,
++              userPermission: existingTask.userPermission,
++              toolPolicy: existingTask.toolPolicy,
++              capabilityProfile: existingTask.capabilityProfile,
++            })
+@@ -1481 +1505 @@ The fallback retry session is now created and can be inspected directly.
+-      removeTaskToastTracking(existingTask.id)
++      this.removeTaskToast(existingTask)
+@@ -1490,2 +1514 @@ The fallback retry session is now created and can be inspected directly.
+-      this.markForNotification(existingTask)
+-      this.enqueueNotificationForParent(existingTask.parentSessionId, () => this.notifyParentSession(existingTask)).catch(err => {
++      this.publishTaskNotification(existingTask).catch(err => {
+@@ -1868,0 +1892 @@ The fallback retry session is now created and can be inspected directly.
++      clearContinuationSessionMetadata(sessionID)
+@@ -1968 +1992,3 @@ The fallback retry session is now created and can be inspected directly.
+-    const notificationParentSessionID = task.parentSessionId
++    const notificationParentSessionID = this.shouldPublishTaskSignals(task)
++      ? task.parentSessionId
++      : undefined
+@@ -2020 +2046 @@ The fallback retry session is now created and can be inspected directly.
+-    removeTaskToastTracking(task.id)
++    this.removeTaskToast(task)
+@@ -2030,2 +2056 @@ The fallback retry session is now created and can be inspected directly.
+-    this.markForNotification(task)
+-    this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task)).catch(err => {
++    this.publishTaskNotification(task).catch(err => {
+@@ -2134 +2159 @@ The fallback retry session is now created and can be inspected directly.
+-    if (toastManager) {
++    if (toastManager && this.shouldPublishTaskSignals(task)) {
+@@ -2148,2 +2173 @@ The fallback retry session is now created and can be inspected directly.
+-    this.markForNotification(task)
+-    this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task)).catch(err => {
++    this.publishTaskNotification(task).catch(err => {
+@@ -2189 +2213 @@ The task was re-queued on a fallback model after a retryable failure.
+-    if (retried && retryingNotification) {
++    if (retried && retryingNotification && this.shouldPublishTaskSignals(task)) {
+@@ -2208,0 +2233,3 @@ The task was re-queued on a fallback model after a retryable failure.
++    if (!this.shouldPublishTaskSignals(task)) {
++      return
++    }
+@@ -2213,0 +2241,26 @@ The task was re-queued on a fallback model after a retryable failure.
++  private shouldPublishTaskSignals(task: BackgroundTask): boolean {
++    return task.notificationPolicy !== "manual"
++  }
++
++  private removeTaskToast(task: BackgroundTask): void {
++    if (this.shouldPublishTaskSignals(task)) {
++      removeTrackedTaskToast(task.id)
++    }
++  }
++
++  private async publishTaskNotification(task: BackgroundTask): Promise<void> {
++    if (!this.shouldPublishTaskSignals(task)) {
++      this.cleanupPendingByParent(task)
++      if (task.status !== "running" && task.status !== "pending") {
++        this.scheduleTaskRemoval(task.id)
++      }
++      return
++    }
++
++    this.markForNotification(task)
++    await this.enqueueNotificationForParent(
++      task.parentSessionId,
++      () => this.notifyParentSession(task),
++    )
++  }
++
+@@ -2446 +2499 @@ The task was re-queued on a fallback model after a retryable failure.
+-    removeTaskToastTracking(task.id)
++    this.removeTaskToast(task)
+@@ -2460,2 +2512,0 @@ The task was re-queued on a fallback model after a retryable failure.
+-    this.markForNotification(task)
+-
+@@ -2463 +2514 @@ The task was re-queued on a fallback model after a retryable failure.
+-      await this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task))
++      await this.publishTaskNotification(task)
+@@ -2543 +2594,3 @@ The task was re-queued on a fallback model after a retryable failure.
+-    const notificationParentSessionID = task.parentSessionId
++    const notificationParentSessionID = this.shouldPublishTaskSignals(task)
++      ? task.parentSessionId
++      : undefined
+@@ -2561 +2614 @@ The task was re-queued on a fallback model after a retryable failure.
+-      removeTaskToastTracking(task.id)
++      this.removeTaskToast(task)
+@@ -2569,2 +2621,0 @@ The task was re-queued on a fallback model after a retryable failure.
+-      this.markForNotification(task)
+-
+@@ -2600 +2651 @@ The task was re-queued on a fallback model after a retryable failure.
+-        await this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task))
++        await this.publishTaskNotification(task)
+@@ -2616,0 +2668,7 @@ The task was re-queued on a fallback model after a retryable failure.
++    if (!this.shouldPublishTaskSignals(task)) {
++      this.cleanupPendingByParent(task)
++      if (task.status !== "running" && task.status !== "pending") {
++        this.scheduleTaskRemoval(task.id)
++      }
++      return
++    }
+@@ -2648 +2706,4 @@ The task was re-queued on a fallback model after a retryable failure.
+-      remainingCount = pendingSet.size
++      remainingCount = Array.from(pendingSet).filter((taskID) => {
++        const pendingTask = this.tasks.get(taskID)
++        return pendingTask !== undefined && this.shouldPublishTaskSignals(pendingTask)
++      }).length
+@@ -2655 +2716 @@ The task was re-queued on a fallback model after a retryable failure.
+-        .filter(t => t.parentSessionId === task.parentSessionId && t.id !== task.id && (t.status === "running" || t.status === "pending"))
++        .filter(t => t.parentSessionId === task.parentSessionId && t.id !== task.id && (t.status === "running" || t.status === "pending") && this.shouldPublishTaskSignals(t))
+@@ -2895 +2956 @@ The task was re-queued on a fallback model after a retryable failure.
+-        removeTaskToastTracking(task.id)
++        this.removeTaskToast(task)
+@@ -2924,2 +2985 @@ The task was re-queued on a fallback model after a retryable failure.
+-        this.markForNotification(task)
+-        this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task)).catch(err => {
++        this.publishTaskNotification(task).catch(err => {
+@@ -2941 +3001,2 @@ The task was re-queued on a fallback model after a retryable failure.
+-      notifyParentSession: (task) => this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task)),
++      notifyParentSession: (task) => this.publishTaskNotification(task),
++      onTaskInterrupted: (task) => this.removeTaskToast(task),
+@@ -2980 +3041 @@ The task was re-queued on a fallback model after a retryable failure.
+-    removeTaskToastTracking(task.id)
++    this.removeTaskToast(task)
+@@ -2992,2 +3053 @@ The task was re-queued on a fallback model after a retryable failure.
+-    this.markForNotification(task)
+-    this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task)).catch(err => {
++    this.publishTaskNotification(task).catch(err => {
+diff --git a/packages/omo-opencode/src/tools/delegate-task/background-continuation.ts b/packages/omo-opencode/src/tools/delegate-task/background-continuation.ts
+index 6733d1ce1..90e71fe02 100644
+--- a/packages/omo-opencode/src/tools/delegate-task/background-continuation.ts
++++ b/packages/omo-opencode/src/tools/delegate-task/background-continuation.ts
+@@ -8,0 +9 @@ import { getTaskID } from "./task-id"
++import { isContinuationForbidden } from "../../features/background-agent/continuation-policy"
+@@ -23,0 +25,3 @@ export async function executeBackgroundContinuation(
++    if (isContinuationForbidden(taskID)) {
++      throw new Error(`Background task continuation is forbidden for session: ${taskID}`)
++    }

@@ -1,0 +1,11 @@
+Command: bun test packages/omo-opencode/src/features/background-agent/notification-suppression.test.ts
+Exit code: 0
+
+bun test v1.3.14 (0d9b296a)
+
+5 pass
+0 fail
+7 expect() calls
+Ran 5 tests across 1 file.
+
+Observed: manual/internal terminal and retry paths remain signal-free, normal signal counts remain pinned, and a manual/internal sibling no longer delays the normal sibling's all-complete parent wake.

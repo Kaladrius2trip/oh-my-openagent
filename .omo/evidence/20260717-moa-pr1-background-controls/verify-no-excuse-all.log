@@ -1,0 +1,21 @@
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:345:7: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:991:11: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:1421:32: [no-non-null-assertion] `x!` — use narrowing or optional chaining
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:1445:29: [no-non-null-assertion] `x!` — use narrowing or optional chaining
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:1544:7: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:2350:7: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:2516:7: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:2653:9: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:2692:5: [no-non-null-assertion] `x!` — use narrowing or optional chaining
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:2835:7: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:2944:201: [no-non-null-assertion] `x!` — use narrowing or optional chaining
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:2944:228: [no-non-null-assertion] `x!` — use narrowing or optional chaining
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:3075:11: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:3168:11: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/features/background-agent/manager.ts:3224:9: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr1/packages/omo-opencode/src/tools/delegate-task/background-continuation.ts:81:5: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+
+16 violation(s) in 27 file(s).
+
+exit_code=123
+reported_violation_lines_blame_to_pre_PR1_commits=true

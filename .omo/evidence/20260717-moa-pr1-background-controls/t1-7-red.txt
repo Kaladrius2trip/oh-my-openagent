@@ -1,0 +1,8 @@
+Task: T1.7 task visibility
+Command: bun test packages/omo-opencode/src/features/background-agent/task-visibility.test.ts
+Exit code: 1
+Observed: 0 pass, 3 fail, 3 expect() calls, 1 file, 210ms.
+Expected red reasons:
+- getTasksSnapshot returned internal alongside normal/default tasks;
+- the real TUI snapshot jobBoard included the internal row;
+- with TMUX forced and both sessions prompted, the tmux callback ran twice instead of only for the normal task.

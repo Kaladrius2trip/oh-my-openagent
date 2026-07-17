@@ -1,4 +1,5 @@
 import type { BackgroundTask, BackgroundTaskSnapshot } from "./types"
+import { filterVisibleTasks } from "./task-visibility"
 
 function toSnapshot(task: BackgroundTask): BackgroundTaskSnapshot {
   return Object.freeze({
@@ -11,5 +12,11 @@ function toSnapshot(task: BackgroundTask): BackgroundTaskSnapshot {
 }
 
 export function toBackgroundTaskSnapshots(tasks: Iterable<BackgroundTask>): BackgroundTaskSnapshot[] {
+  return filterVisibleTasks(tasks).map(toSnapshot)
+}
+
+export function toBackgroundTaskSnapshotsIncludingInternal(
+  tasks: Iterable<BackgroundTask>,
+): BackgroundTaskSnapshot[] {
   return Array.from(tasks, toSnapshot)
 }

@@ -1,0 +1,27 @@
+All-six BackgroundManager control acceptance
+
+Command: bash .omo/evidence/20260717-moa-pr1-background-controls/run-all-controls-manager-qa.sh
+Exit code: 0
+Artifact: all-controls-manager-qa.json
+Cleanup: all-controls-manager-cleanup.txt
+
+Observed from actual BackgroundManager.launch and prompt dispatch:
+- visibility=internal
+- notificationPolicy=manual
+- continuationPolicy=forbid
+- toolPolicy=none
+- capabilityProfile=moa-consultation-only
+- orchestration.kind=moa
+- notify=0, toast=0, wake=0, tmux=0
+- public snapshot rows=0, sidebar rows=0, internal snapshot rows=1
+- prompt tool count=0
+- continuation forbidden=true
+- parent session ID preserved=true
+
+Focused reviewer reproduction command:
+bun test packages/omo-opencode/src/features/background-agent/continuation-policy.test.ts packages/omo-opencode/src/features/background-agent/manager-policy-persistence.test.ts packages/omo-opencode/src/features/background-agent/notification-suppression.test.ts packages/omo-opencode/src/features/background-agent/task-visibility.test.ts
+Exit code: 0
+Result: 21 pass, 0 fail, 38 expectations, 4 files.
+
+Public surface limitation:
+PR1 exposes these fields only through BackgroundManager. The public task tool cannot carry them until PR3. No public all-six launch or live absence claim is made.

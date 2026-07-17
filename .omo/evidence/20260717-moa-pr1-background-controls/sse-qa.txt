@@ -1,0 +1,5 @@
+$ bash .agents/skills/opencode-qa/scripts/sse-hook-probe.sh --attach <isolated-server> --event server.connected
+watching http://127.0.0.1:46849/event?directory=/tmp/omo-qa-sandbox.YrTeN5/home/proj for 'server.connected' (<=15s)
+first matching event: {"type":"server.connected"}
+PASS: observed 'server.connected' on http://127.0.0.1:46849
+exit_code=0

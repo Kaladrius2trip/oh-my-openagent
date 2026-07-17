@@ -1,0 +1,19 @@
+Command: bun test packages/omo-opencode/src/features/background-agent/continuation-policy.test.ts
+Exit code: 1
+
+bun test v1.3.14 (0d9b296a)
+
+(fail) durable continuation policy gates > given forbidden metadata when a fresh process reads it then the policy remains forbidden
+Expected: ["true", "true"]
+Received: ["true", "false"]
+
+(fail) durable continuation policy gates > given forbidden metadata when its session is deleted then the policy is removed
+Expected: false
+Received: true
+
+8 pass
+2 fail
+22 expect() calls
+Ran 10 tests across 1 file.
+
+Failure classification: expected behavioral red. The existing process-local metadata is neither durable nor removed when the definitive session.deleted event arrives.

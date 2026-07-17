@@ -1,0 +1,9 @@
+Focused command: bun test packages/omo-opencode/src/features/background-agent/has-active-child-tasks-internal.test.ts
+Exit code: 0
+Result: 2 pass, 0 fail, 6 expect() calls, 1 file.
+
+Regression command: bun test packages/omo-opencode/src/features/background-agent/manager.test.ts packages/omo-opencode/src/tools/background-task/background-cancel-internal.test.ts
+Exit code: 0
+Result: 198 pass, 0 fail, 650 expect() calls, 2 files.
+
+Observed: a parent with only internal running children has an empty default child list and hasActiveChildTasks=false; explicit includeInternal access and recursive descendant traversal retain the internal child; normal active children retain existing hold behavior.

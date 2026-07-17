@@ -1,0 +1,10 @@
+Task: T1.4 capability profile
+Focused command: bun test packages/omo-opencode/src/features/background-agent/capability-profile.test.ts
+Focused exit code: 0
+Focused observed: 3 pass, 0 fail, 4 expect() calls, 1 file, 155ms.
+
+Regression command: bun test packages/omo-opencode/src/features/background-agent/capability-profile.test.ts packages/omo-opencode/src/features/background-agent/spawner.test.ts packages/omo-opencode/src/features/background-agent/manager-policy-persistence.test.ts
+Regression exit code: 0
+Regression observed: 21 pass, 0 fail, 57 expect() calls, 3 files, 249ms.
+
+Coverage: moa-consultation-only and toolPolicy=none both yield an empty map despite permissive user inputs and agent restrictions; the exact default map remains pinned. BackgroundManager launch, fallback-agent launch, resume, and task-prompt body all use the shared resolver.

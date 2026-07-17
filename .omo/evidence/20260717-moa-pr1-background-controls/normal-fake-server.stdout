@@ -1,0 +1,7 @@
+fake-openai listening on 44807
+[2026-07-17T19:36:22.616Z] branch=title call=1
+[2026-07-17T19:36:27.533Z] branch=parent-tool-call call=2
+[2026-07-17T19:36:27.639Z] branch=child call=3
+[2026-07-17T19:36:27.767Z] branch=parent-hold call=4
+[2026-07-17T19:36:35.879Z] branch=default call=5
+[2026-07-17T19:36:36.001Z] FINAL_COUNTS title=1 parent-tool-call=1 parent-hold=1 child=1 wake=0 default=1

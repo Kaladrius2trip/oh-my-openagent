@@ -33,12 +33,17 @@ export function createBackgroundCancel(manager: BackgroundManager, _client: Back
               skipNotification: true,
             })
             if (!cancelled) continue
+            if (task.visibility === "internal") continue
             cancelledInfo.push({
               id: task.id,
               description: task.description,
               status: originalStatus === "pending" ? "pending" : "running",
               sessionID: task.sessionId,
             })
+          }
+
+          if (cancelledInfo.length === 0) {
+            return `No user-visible running or pending background tasks to report.`
           }
 
           const tableRows = cancelledInfo
@@ -78,6 +83,9 @@ ${resumeSection}`
         const task = manager.getTask(taskId)
         if (!task) {
           return `[ERROR] Task not found: ${taskId}`
+        }
+        if (task.visibility === "internal") {
+          return `[ERROR] task is internal: ${task.id}`
         }
 
         if (task.status !== "running" && task.status !== "pending") {

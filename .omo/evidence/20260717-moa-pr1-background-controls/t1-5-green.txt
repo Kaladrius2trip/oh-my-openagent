@@ -1,0 +1,10 @@
+Task: T1.5 continuation policy gates
+Focused command: bun test packages/omo-opencode/src/features/background-agent/continuation-policy.test.ts
+Focused exit code: 0
+Focused observed: 8 pass, 0 fail, 16 expect() calls, 1 file, 298ms.
+
+Regression command: bun test continuation-policy plus delegate background-continuation, todo idle, Atlas idle, and four team idle wake suites (12 files total)
+Regression exit code: 0
+Regression observed: 56 pass, 0 fail, 159 expect() calls, 12 files, 3.50s.
+
+Coverage: durable predicate, six listed continuation/idle files, retry timer entry and callback, and explicit BackgroundManager.resume rejection. Every forbidden case is paired with an allowed session reaching the prior path.

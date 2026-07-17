@@ -1,0 +1,11 @@
+Command: bun test packages/omo-opencode/src/features/background-agent/continuation-policy.test.ts packages/omo-opencode/src/features/background-agent/manager-policy-persistence.test.ts
+Exit code: 0
+
+bun test v1.3.14 (0d9b296a)
+
+12 pass
+0 fail
+25 expect() calls
+Ran 12 tests across 2 files.
+
+Observed: a fresh Bun process reads the forbidden policy written by another process, every continuation gate remains covered, manager launch persistence remains intact, and session.deleted removes the durable policy.

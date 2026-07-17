@@ -1,4 +1,5 @@
 import type { TeamModeConfig } from "../../config/schema/team-mode"
+import { isContinuationForbidden } from "../../features/background-agent/continuation-policy"
 import { findResolvedMemberSession } from "../../features/team-mode/member-session-resolution"
 import {
   applyMemberSessionRouting,
@@ -103,6 +104,7 @@ export function createTeamIdleWakeHint(ctx: TeamIdleWakeHintContext, config: Tea
 
     const sessionID = getIdleSessionID(event.properties)
     if (!sessionID) return
+    if (isContinuationForbidden(sessionID)) return
 
     try {
       const runtimeMember = await findResolvedMemberSession(sessionID, config, "team idle wake hint")

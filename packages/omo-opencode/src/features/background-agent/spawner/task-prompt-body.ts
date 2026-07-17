@@ -1,9 +1,15 @@
-import { createInternalAgentTextPart, getAgentToolRestrictions } from "../../../shared"
+import { createInternalAgentTextPart } from "../../../shared"
+import { resolveCapabilityProfile } from "../capability-profile"
 import type { LaunchInput } from "../types"
 
 type PromptModel = LaunchInput["model"]
 
-type TaskPromptBodyOptions =
+type TaskPromptPolicyOptions = Pick<
+  LaunchInput,
+  "capabilityProfile" | "toolPolicy" | "userPermission"
+>
+
+type TaskPromptBodyOptions = TaskPromptPolicyOptions & (
   | {
       readonly kind: "launch"
       readonly agent: string
@@ -19,6 +25,7 @@ type TaskPromptBodyOptions =
       readonly prompt: string
       readonly includeTeamToolDenylist: boolean
     }
+)
 
 export type TaskPromptBody = {
   readonly agent: string
@@ -50,14 +57,13 @@ export function buildTaskPromptBody(options: TaskPromptBodyOptions): TaskPromptB
     ...(promptModel ? { model: promptModel } : {}),
     ...(promptVariant ? { variant: promptVariant } : {}),
     ...(options.kind === "launch" ? { system: options.system } : {}),
-    tools: {
-      task: false,
-      call_omo_agent: true,
-      question: false,
-      ...getAgentToolRestrictions(options.agent, {
-        includeTeamToolDenylist: options.includeTeamToolDenylist,
-      }),
-    },
+    tools: resolveCapabilityProfile({
+      agent: options.agent,
+      includeTeamToolDenylist: options.includeTeamToolDenylist,
+      userPermission: options.userPermission,
+      toolPolicy: options.toolPolicy,
+      capabilityProfile: options.capabilityProfile,
+    }),
     parts: [createInternalAgentTextPart(options.prompt)],
   }
 }

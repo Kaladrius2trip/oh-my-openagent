@@ -1,0 +1,12 @@
+Command: bash .omo/evidence/20260717-moa-pr1-background-controls/qa-evidence-audit.sh
+Exit code: 2
+
+jq: error: Could not open file .omo/evidence/20260717-moa-pr1-background-controls/normal-qa-observed.json: No such file or directory
+
+Failure classification: expected evidence red. The existing bundle has no identifier-bound normal-run JSON, no executable all-six manager result JSON, and no exact changed-file manifest for the audit to validate.
+
+Independent reproduction of the reviewer claims:
+- normal-plugin.log contains real /root/.claude plugin paths.
+- normal-plugin.log begins with an unrelated background task ID.
+- controls-seam-qa.txt records test-suite summaries rather than an executable all-six manager acceptance run.
+- README.md reports 18 production and 9 test TypeScript files; the actual baseline diff reports 17 production and 10 test files.

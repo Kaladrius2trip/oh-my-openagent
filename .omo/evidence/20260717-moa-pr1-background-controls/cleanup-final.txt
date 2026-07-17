@@ -1,0 +1,4 @@
+qa_processes:
+sandbox_directories:
+evidence_audit_exit=0
+script_syntax_exit=0

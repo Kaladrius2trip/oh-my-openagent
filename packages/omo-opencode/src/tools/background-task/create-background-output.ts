@@ -119,6 +119,9 @@ export function createBackgroundOutput(manager: BackgroundOutputManager, client:
         if (!task) {
           return formatTaskNotFoundMessage(args.task_id)
         }
+        if (task.visibility === "internal") {
+          return `[ERROR] task is internal: ${task.id}`
+        }
 
         const meta = {
           title: formatResolvedTitle(task),

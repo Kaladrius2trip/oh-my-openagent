@@ -1,0 +1,10 @@
+Task: T1.7 task visibility
+Focused command: bun test packages/omo-opencode/src/features/background-agent/task-visibility.test.ts
+Focused exit code: 0
+Focused observed: 3 pass, 0 fail, 5 expect() calls, 1 file, 261ms.
+
+Regression command: bun test task-visibility, task-snapshot, and tui-sidebar/snapshot-builder
+Regression exit code: 0
+Regression observed: 10 pass, 0 fail, 24 expect() calls, 3 files, 833ms.
+
+Coverage: one filter at snapshot conversion, visible/default behavior, explicit internal-inclusive accessor, sidebar exclusion through the real provider, and paired tmux callback reachability.

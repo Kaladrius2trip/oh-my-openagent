@@ -1,5 +1,6 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { BackgroundManager } from "../../features/background-agent"
+import { isContinuationForbidden } from "../../features/background-agent/continuation-policy"
 import { getSessionAgent, handedBackSyncSessions } from "../../features/claude-code-session-state"
 import { normalizeSDKResponse } from "../../shared"
 import { getAgentConfigKey } from "../../shared/agent-display-names"
@@ -33,6 +34,11 @@ export async function handleSessionIdle(args: {
     skipAgents = DEFAULT_SKIP_AGENTS,
     isContinuationStopped,
   } = args
+
+  if (isContinuationForbidden(sessionID)) {
+    log(`[${HOOK_NAME}] Skipped: continuation forbidden for session`, { sessionID })
+    return
+  }
 
   log(`[${HOOK_NAME}] session.idle`, { sessionID })
 

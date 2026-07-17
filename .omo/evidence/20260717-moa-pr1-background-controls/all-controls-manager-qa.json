@@ -1,0 +1,29 @@
+{
+  "controls": {
+    "visibility": "internal",
+    "notificationPolicy": "manual",
+    "continuationPolicy": "forbid",
+    "toolPolicy": "none",
+    "capabilityProfile": "moa-consultation-only",
+    "orchestration": {
+      "kind": "moa",
+      "runId": "qa-run",
+      "role": "advisor",
+      "slot": "qa"
+    }
+  },
+  "signals": {
+    "notify": 0,
+    "toast": 0,
+    "wake": 0,
+    "tmux": 0
+  },
+  "visibility": {
+    "publicSnapshotRows": 0,
+    "sidebarRows": 0,
+    "internalSnapshotRows": 1
+  },
+  "promptToolCount": 0,
+  "continuationForbidden": true,
+  "parentSessionIdPreserved": true
+}
