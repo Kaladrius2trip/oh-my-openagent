@@ -46,14 +46,6 @@ function createSnapshotManager(tasks: readonly BackgroundTask[]): BackgroundMana
   return manager
 }
 
-async function waitFor(predicate: () => boolean): Promise<void> {
-  const deadline = Date.now() + 1_000
-  while (!predicate()) {
-    if (Date.now() >= deadline) throw new Error("Timed out waiting for background launch")
-    await new Promise((resolve) => setTimeout(resolve, 5))
-  }
-}
-
 describe("background task visibility", () => {
   test("given PR1 policy tests when synchronization is audited then no test awaits an arbitrary delay", () => {
     const testFiles = [
@@ -107,8 +99,13 @@ describe("background task visibility", () => {
 
   test("given tmux-enabled normal and internal launches when sessions start then only normal opens a pane", async () => {
     let createdSessions = 0
-    let promptCalls = 0
-    const onSubagentSessionCreated = mock(async () => {})
+    let resolveNormalPane: () => void = () => {}
+    const normalPaneOpened = new Promise<void>((resolve) => {
+      resolveNormalPane = resolve
+    })
+    const onSubagentSessionCreated = mock(async (event: { title: string }) => {
+      if (event.title === "normal") resolveNormalPane()
+    })
     const client = {
       session: {
         get: async ({ path }: { path: { id: string } }) => ({
@@ -118,7 +115,7 @@ describe("background task visibility", () => {
           createdSessions += 1
           return { data: { id: `child-${createdSessions}` } }
         },
-        promptAsync: async () => { promptCalls += 1; return { data: {} } },
+        promptAsync: async () => ({ data: {} }),
         abort: async () => ({ data: true }),
       },
     }
@@ -147,7 +144,20 @@ describe("background task visibility", () => {
       }
       await manager.launch({ ...base, description: "internal", visibility: "internal" })
       await manager.launch({ ...base, description: "normal", visibility: "normal" })
-      await waitFor(() => promptCalls === 2)
+      let diagnosticTimeout: ReturnType<typeof setTimeout> | undefined
+      try {
+        await Promise.race([
+          normalPaneOpened,
+          new Promise<never>((_resolve, reject) => {
+            diagnosticTimeout = setTimeout(
+              () => reject(new Error("Timed out waiting for normal task tmux callback")),
+              1_000,
+            )
+          }),
+        ])
+      } finally {
+        if (diagnosticTimeout !== undefined) clearTimeout(diagnosticTimeout)
+      }
 
       expect(onSubagentSessionCreated).toHaveBeenCalledTimes(1)
     } finally {

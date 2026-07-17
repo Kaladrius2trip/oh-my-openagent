@@ -177,7 +177,19 @@ describe("background task notification suppression", () => {
   })
 
   test("given manual and normal launches when started then only normal launch toasts are tracked", async () => {
-    const { getCount } = createToastCounter()
+    const { toastManager, getCount } = createToastCounter()
+    const updatedTaskIDs = new Set<string>()
+    let normalTaskID: string | undefined
+    let resolveNormalToast: () => void = () => {}
+    const normalToastUpdated = new Promise<void>((resolve) => {
+      resolveNormalToast = resolve
+    })
+    const originalUpdate = toastManager.updateTask.bind(toastManager)
+    toastManager.updateTask = (taskID, status) => {
+      originalUpdate(taskID, status)
+      updatedTaskIDs.add(taskID)
+      if (taskID === normalTaskID) resolveNormalToast()
+    }
     const manager = createManager()
     const createInput = (description: string, notificationPolicy?: "auto" | "manual"): LaunchInput => ({
       description,
@@ -190,8 +202,23 @@ describe("background task notification suppression", () => {
     })
 
     await manager.launch(createInput("manual", "manual"))
-    await manager.launch(createInput("normal"))
-    await new Promise((resolve) => setTimeout(resolve, 20))
+    const normalTask = await manager.launch(createInput("normal"))
+    normalTaskID = normalTask.id
+    if (updatedTaskIDs.has(normalTaskID)) resolveNormalToast()
+    let diagnosticTimeout: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        normalToastUpdated,
+        new Promise<never>((_resolve, reject) => {
+          diagnosticTimeout = setTimeout(
+            () => reject(new Error("Timed out waiting for normal task running toast")),
+            1_000,
+          )
+        }),
+      ])
+    } finally {
+      if (diagnosticTimeout !== undefined) clearTimeout(diagnosticTimeout)
+    }
 
     expect(getCount()).toBe(2)
   })
