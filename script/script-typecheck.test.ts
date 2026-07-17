@@ -93,4 +93,15 @@ describe("script TypeScript project", () => {
     expect(scriptTypecheck).toBe("tsgo --noEmit -p script/tsconfig.json")
     expect(typecheck).toContain("bun run typecheck:script")
   })
+
+  test("#given nested script harnesses #when checking script tsconfig #then recursive TypeScript files are included", () => {
+    // given
+    const scriptRoot = join(repositoryRoot, "script")
+
+    // when
+    const scriptTsconfig = parseScriptTsconfig(readFileSync(join(scriptRoot, "tsconfig.json"), "utf8"))
+
+    // then
+    expect(scriptTsconfig.include).toContain("./**/*.ts")
+  })
 })
