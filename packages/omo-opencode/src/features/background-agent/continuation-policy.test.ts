@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, mock, test } from "bun:test"
+import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
+import { join } from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
 import { unsafeTestValue } from "../../../../../test-support/unsafe-test-value"
 import type { TeamModeConfig } from "../../config/schema/team-mode"
@@ -43,6 +45,42 @@ function createResumeInput(sessionId: string): ResumeInput {
 }
 
 describe("durable continuation policy gates", () => {
+  test("given forbidden metadata when a fresh process reads it then the policy remains forbidden", async () => {
+    const dataDirectory = mkdtempSync(join(tmpdir(), "continuation-policy-restart-"))
+    const modulePath = join(import.meta.dir, "continuation-policy.ts")
+    const runProbe = async (script: string): Promise<string> => {
+      const process = Bun.spawn([Bun.which("bun") ?? "bun", "-e", script], {
+        cwd: import.meta.dir,
+        env: { ...globalThis.process.env, XDG_DATA_HOME: dataDirectory },
+        stdout: "pipe",
+        stderr: "pipe",
+      })
+      const [stdout, stderr, exitCode] = await Promise.all([
+        new Response(process.stdout).text(),
+        new Response(process.stderr).text(),
+        process.exited,
+      ])
+      expect(exitCode).toBe(0)
+      expect(stderr).toBe("")
+      return stdout.trim()
+    }
+
+    try {
+      const moduleSpecifier = JSON.stringify(modulePath)
+
+      const writerResult = await runProbe(
+        `import { setContinuationSessionMetadata, isContinuationForbidden } from ${moduleSpecifier}; setContinuationSessionMetadata("session-restart", { continuationPolicy: "forbid" }); console.log(isContinuationForbidden("session-restart"));`,
+      )
+      const readerResult = await runProbe(
+        `import { isContinuationForbidden } from ${moduleSpecifier}; console.log(isContinuationForbidden("session-restart"));`,
+      )
+
+      expect([writerResult, readerResult]).toEqual(["true", "true"])
+    } finally {
+      rmSync(dataDirectory, { recursive: true, force: true })
+    }
+  })
+
   test("given durable metadata when queried then forbid and allow resolve independently", async () => {
     setPolicy(forbiddenSessionID, "forbid")
     setPolicy(allowedSessionID, "allow")
