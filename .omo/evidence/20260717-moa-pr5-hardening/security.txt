@@ -1,0 +1,14 @@
+Commands:
+bun test packages/omo-opencode/src/features/moa/prompt-injection.test.ts packages/moa-core/src/prompts/prompt-pack.test.ts
+bun test packages/omo-opencode/src/features/moa/zero-writes-e2e.test.ts packages/omo-opencode/src/features/moa/fallback-collapse-diversity.test.ts
+
+Observed:
+- Prompt suite: 18 pass, 0 fail, 74 assertions.
+- Acceptance suite: 2 pass, 0 fail, 10 assertions.
+- Seven injection fixtures stayed in one untrusted report boundary.
+- Sensitive diagnostic data was redacted and capped at 200 characters.
+- Tool invocation count: 0.
+- Exposed tool count: 0.
+- Sandbox file writes: 0.
+- Active fake sessions after completion: 0.
+- Fallback collapse terminal status: degraded.
