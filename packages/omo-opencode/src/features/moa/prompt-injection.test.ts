@@ -39,6 +39,15 @@ function input(output: string): ComposeAggregatorPromptInput {
 }
 
 describe("MoA prompt injection boundary", () => {
+  test("#given hardened aggregation templates #when prompt pack resolves #then security revisions are explicit", () => {
+    // when
+    const pack = resolvePromptPack(DEFAULT_PROMPT_PACK_ID)
+
+    // then
+    expect(pack.aggregatorBase.version).toBe("1.1")
+    expect(pack.aggregationEnvelope.version).toBe("1.1")
+  })
+
   test("#given adversarial advisor fixtures #when aggregation prompts are composed #then each report stays in one untrusted block", async () => {
     // given
     const pack = resolvePromptPack(DEFAULT_PROMPT_PACK_ID)
