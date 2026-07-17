@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, mock, test } from "bun:test"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { PluginInput } from "@opencode-ai/plugin"
@@ -55,6 +55,21 @@ async function waitFor(predicate: () => boolean): Promise<void> {
 }
 
 describe("background task visibility", () => {
+  test("given PR1 policy tests when synchronization is audited then no test awaits an arbitrary delay", () => {
+    const testFiles = [
+      join(import.meta.dir, "notification-suppression.test.ts"),
+      join(import.meta.dir, "task-visibility.test.ts"),
+    ]
+
+    const violations = testFiles.filter((testFile) => (
+      /await\s+new\s+Promise(?:<[^>]+>)?\s*\(\s*\([^)]*\)\s*=>\s*setTimeout/.test(
+        readFileSync(testFile, "utf-8"),
+      )
+    ))
+
+    expect(violations).toEqual([])
+  })
+
   test("given normal default and internal tasks when snapshots are read then only explicit internal access includes all", () => {
     const tasks = [
       createTask("normal", "normal"),
