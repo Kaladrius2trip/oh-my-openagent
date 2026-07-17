@@ -10,6 +10,53 @@ export type BackgroundTaskStatus =
   | "cancelled"
   | "interrupt"
 
+export type BackgroundTaskVisibility = "normal" | "internal"
+export type BackgroundTaskNotificationPolicy = "auto" | "manual"
+export type BackgroundTaskContinuationPolicy = "allow" | "forbid"
+export type BackgroundTaskToolPolicy = "default" | "none"
+
+export interface BackgroundTaskOrchestration {
+  readonly kind: "moa"
+  readonly runId: string
+  readonly role: "advisor" | "aggregator"
+  readonly slot?: string
+}
+
+export interface BackgroundTaskPolicyFields {
+  readonly visibility?: BackgroundTaskVisibility
+  readonly notificationPolicy?: BackgroundTaskNotificationPolicy
+  readonly continuationPolicy?: BackgroundTaskContinuationPolicy
+  readonly toolPolicy?: BackgroundTaskToolPolicy
+  readonly capabilityProfile?: string
+  readonly orchestration?: BackgroundTaskOrchestration
+}
+
+export interface ResolvedBackgroundTaskPolicies {
+  readonly visibility: BackgroundTaskVisibility
+  readonly notificationPolicy: BackgroundTaskNotificationPolicy
+  readonly continuationPolicy: BackgroundTaskContinuationPolicy
+  readonly toolPolicy: BackgroundTaskToolPolicy
+  readonly capabilityProfile?: string
+  readonly orchestration?: BackgroundTaskOrchestration
+}
+
+export function resolveBackgroundTaskPolicies(
+  fields: BackgroundTaskPolicyFields,
+): ResolvedBackgroundTaskPolicies {
+  return {
+    visibility: fields.visibility ?? "normal",
+    notificationPolicy: fields.notificationPolicy ?? "auto",
+    continuationPolicy: fields.continuationPolicy ?? "allow",
+    toolPolicy: fields.toolPolicy ?? "default",
+    ...(fields.capabilityProfile !== undefined
+      ? { capabilityProfile: fields.capabilityProfile }
+      : {}),
+    ...(fields.orchestration !== undefined
+      ? { orchestration: fields.orchestration }
+      : {}),
+  }
+}
+
 export interface ToolCallWindow {
   lastSignature: string
   consecutiveCount: number
@@ -41,7 +88,7 @@ export interface BackgroundTaskAttempt {
   completedAt?: Date
 }
 
-export interface BackgroundTask {
+export interface BackgroundTask extends BackgroundTaskPolicyFields {
   id: string
   sessionId?: string
   rootSessionId?: string
@@ -109,7 +156,7 @@ export interface BackgroundTaskSnapshot {
   readonly agent: string
 }
 
-export interface LaunchInput {
+export interface LaunchInput extends BackgroundTaskPolicyFields {
   description: string
   prompt: string
   agent: string
