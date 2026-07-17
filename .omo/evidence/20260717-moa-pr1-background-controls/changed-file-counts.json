@@ -1,0 +1,36 @@
+{
+  "base": "da0ad92b4",
+  "productionCount": 17,
+  "testCount": 10,
+  "productionFiles": [
+    "packages/omo-opencode/src/features/background-agent/capability-profile.ts",
+    "packages/omo-opencode/src/features/background-agent/continuation-policy.ts",
+    "packages/omo-opencode/src/features/background-agent/fallback-retry-handler.ts",
+    "packages/omo-opencode/src/features/background-agent/manager.ts",
+    "packages/omo-opencode/src/features/background-agent/spawner/task-prompt-body.ts",
+    "packages/omo-opencode/src/features/background-agent/spawner/task-record.ts",
+    "packages/omo-opencode/src/features/background-agent/task-snapshot.ts",
+    "packages/omo-opencode/src/features/background-agent/task-visibility.ts",
+    "packages/omo-opencode/src/features/background-agent/types.ts",
+    "packages/omo-opencode/src/hooks/atlas/idle-continuation.ts",
+    "packages/omo-opencode/src/hooks/atlas/idle-event.ts",
+    "packages/omo-opencode/src/hooks/atlas/idle-session-eligibility.ts",
+    "packages/omo-opencode/src/hooks/team-session-events/team-idle-wake-hint.ts",
+    "packages/omo-opencode/src/hooks/todo-continuation-enforcer/idle-event.ts",
+    "packages/omo-opencode/src/tools/background-task/create-background-cancel.ts",
+    "packages/omo-opencode/src/tools/background-task/create-background-output.ts",
+    "packages/omo-opencode/src/tools/delegate-task/background-continuation.ts"
+  ],
+  "testFiles": [
+    "packages/omo-opencode/src/features/background-agent/capability-profile.test.ts",
+    "packages/omo-opencode/src/features/background-agent/continuation-policy.test.ts",
+    "packages/omo-opencode/src/features/background-agent/fallback-retry-preservation.test.ts",
+    "packages/omo-opencode/src/features/background-agent/has-active-child-tasks-internal.test.ts",
+    "packages/omo-opencode/src/features/background-agent/manager-policy-persistence.test.ts",
+    "packages/omo-opencode/src/features/background-agent/notification-suppression.test.ts",
+    "packages/omo-opencode/src/features/background-agent/policy-fields.test.ts",
+    "packages/omo-opencode/src/features/background-agent/task-visibility.test.ts",
+    "packages/omo-opencode/src/tools/background-task/background-cancel-internal.test.ts",
+    "packages/omo-opencode/src/tools/background-task/background-output-internal.test.ts"
+  ]
+}

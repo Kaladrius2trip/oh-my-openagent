@@ -1,0 +1,5 @@
+Requested: changed-file LSP diagnostics
+Result: unavailable in this executor session
+Tool inventory: no lsp_diagnostics or other LSP tool is exposed
+Fallback: bun run typecheck ran root tsgo, script tsgo, and every package tsgo with exit code 0
+Residual: test files are excluded by packages/omo-opencode/tsconfig.json, but all changed tests execute in the green Bun suites

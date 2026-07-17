@@ -1,30 +1,103 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="/root/workspace/oh-my-openagent-moa-pr1"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 evidence_dir="$repo_root/.omo/evidence/20260717-moa-pr1-background-controls"
+opencode_bin="$(command -v opencode)"
+real_home="$HOME"
 real_db="${XDG_DATA_HOME:-$HOME/.local/share}/opencode/opencode.db"
-real_count_before="$(sqlite3 "$real_db" 'SELECT count(*) FROM session' 2>/dev/null || printf 'unavailable')"
+real_count_before="missing"
+if [ -f "$real_db" ]; then
+  real_count_before="$(sqlite3 "$real_db" 'SELECT count(*) FROM session')"
+fi
+
 fake_pid=""
+fake_stopped=false
 sandbox_root=""
+sandbox_removed=false
+run_exit=1
 qa_exit=1
+normal_task_tool_seen=false
+child_completion_seen=false
+task_bound_launch_seen=false
+task_bound_notify_seen=false
+task_bound_wake_queue_seen=false
+per_run_plugin_log=false
+isolated_home=false
+background_task_id=""
+child_session_id=""
+parent_session_id=""
+sandbox_count=0
 
 cleanup() {
   if [ -n "$fake_pid" ]; then
     kill "$fake_pid" 2>/dev/null || true
     wait "$fake_pid" 2>/dev/null || true
+    fake_stopped=true
+  fi
+  sandbox_opencode_log="$XDG_DATA_HOME/opencode/log/opencode.log"
+  if [ -f "$sandbox_opencode_log" ]; then
+    cp "$sandbox_opencode_log" "$evidence_dir/normal-opencode-internal.log"
   fi
   if [ -n "$sandbox_root" ] && [ -d "$sandbox_root" ]; then
     rm -rf "$sandbox_root"
   fi
-  real_count_after="$(sqlite3 "$real_db" 'SELECT count(*) FROM session' 2>/dev/null || printf 'unavailable')"
+  if [ -n "$sandbox_root" ] && [ ! -d "$sandbox_root" ]; then
+    sandbox_removed=true
+  fi
+
+  real_count_after="missing"
+  if [ -f "$real_db" ]; then
+    real_count_after="$(sqlite3 "$real_db" 'SELECT count(*) FROM session')"
+  fi
+  real_count_unchanged=false
+  if [ "$real_count_before" = "$real_count_after" ]; then
+    real_count_unchanged=true
+  fi
+
+  jq -n \
+    --argjson runExitCode "$run_exit" \
+    --argjson normalTaskToolSeen "$normal_task_tool_seen" \
+    --argjson childCompletionSeen "$child_completion_seen" \
+    --argjson taskBoundLaunchSeen "$task_bound_launch_seen" \
+    --argjson taskBoundNotifySeen "$task_bound_notify_seen" \
+    --argjson taskBoundWakeQueueSeen "$task_bound_wake_queue_seen" \
+    --argjson perRunPluginLog "$per_run_plugin_log" \
+    --argjson isolatedHome "$isolated_home" \
+    --argjson realSessionCountUnchanged "$real_count_unchanged" \
+    --argjson sandboxSessionCount "$sandbox_count" \
+    --arg backgroundTaskID "$background_task_id" \
+    --arg childSessionID "$child_session_id" \
+    --arg parentSessionID "$parent_session_id" \
+    --arg realDatabase "$real_db" \
+    --arg realSessionCountBefore "$real_count_before" \
+    --arg realSessionCountAfter "$real_count_after" \
+    '{
+      runExitCode: $runExitCode,
+      normalTaskToolSeen: $normalTaskToolSeen,
+      childCompletionSeen: $childCompletionSeen,
+      taskBoundLaunchSeen: $taskBoundLaunchSeen,
+      taskBoundNotifySeen: $taskBoundNotifySeen,
+      taskBoundWakeQueueSeen: $taskBoundWakeQueueSeen,
+      perRunPluginLog: $perRunPluginLog,
+      isolatedHome: $isolatedHome,
+      realSessionCountUnchanged: $realSessionCountUnchanged,
+      backgroundTaskID: $backgroundTaskID,
+      childSessionID: $childSessionID,
+      parentSessionID: $parentSessionID,
+      sandboxSessionCount: $sandboxSessionCount,
+      realDatabase: $realDatabase,
+      realSessionCountBefore: $realSessionCountBefore,
+      realSessionCountAfter: $realSessionCountAfter
+    }' >"$evidence_dir/normal-qa-observed.json"
+
   {
     printf 'real_db=%s\n' "$real_db"
     printf 'real_session_count_before=%s\n' "$real_count_before"
     printf 'real_session_count_after=%s\n' "$real_count_after"
-    printf 'real_session_count_unchanged=%s\n' "$([ "$real_count_before" = "$real_count_after" ] && printf yes || printf no)"
-    printf 'fake_server_stopped=%s\n' "$([ -n "$fake_pid" ] && ! kill -0 "$fake_pid" 2>/dev/null && printf yes || printf no)"
-    printf 'sandbox_removed=%s\n' "$([ -n "$sandbox_root" ] && [ ! -d "$sandbox_root" ] && printf yes || printf no)"
+    printf 'real_session_count_unchanged=%s\n' "$real_count_unchanged"
+    printf 'fake_server_stopped=%s\n' "$fake_stopped"
+    printf 'sandbox_removed=%s\n' "$sandbox_removed"
     printf 'driver_exit=%s\n' "$qa_exit"
   } >"$evidence_dir/normal-qa-cleanup.txt"
 }
@@ -32,14 +105,23 @@ trap cleanup EXIT
 
 source "$repo_root/script/agent/qa-sandbox.sh"
 sandbox_root="$OMO_QA_ROOT"
-qa_project="$OMO_QA_ROOT/proj"
-mkdir -p "$qa_project"
-omo_log="${TMPDIR:-/tmp}/oh-my-opencode.log"
-omo_log_offset=0
-if [ -f "$omo_log" ]; then
-  omo_log_offset="$(wc -c <"$omo_log" | tr -d ' ')"
+export HOME="$OMO_QA_ROOT/home"
+export USERPROFILE="$HOME"
+export TMPDIR="$OMO_QA_ROOT/tmp"
+export TMP="$TMPDIR"
+export TEMP="$TMPDIR"
+qa_project="$HOME/proj"
+mkdir -p "$qa_project" "$HOME" "$TMPDIR"
+if [[ "$HOME" == "$OMO_QA_ROOT"/* ]]; then
+  isolated_home=true
 fi
-rm -f "$evidence_dir/normal-fake-llm.log" "$evidence_dir/normal-plugin.log"
+
+plugin_log="$TMPDIR/oh-my-opencode.log"
+test ! -e "$plugin_log"
+rm -f \
+  "$evidence_dir/normal-fake-llm.log" \
+  "$evidence_dir/normal-plugin.log" \
+  "$evidence_dir/normal-qa-observed.json"
 
 FAKE_LLM_LOG="$evidence_dir/normal-fake-llm.log" \
   bun run --bun "$repo_root/.agents/skills/opencode-qa/scripts/lib/fake-openai-server.mjs" \
@@ -58,7 +140,18 @@ done
 test -n "$fake_port"
 curl --max-time 5 -fsS "http://127.0.0.1:$fake_port/health" >/dev/null
 
-mkdir -p "$XDG_CONFIG_HOME/opencode"
+mkdir -p "$XDG_CONFIG_HOME/opencode/node_modules"
+printf '%s\n' \
+  '{' \
+  '  "dependencies": { "@opencode-ai/plugin": "0.0.0-qa-local" }' \
+  '}' >"$XDG_CONFIG_HOME/opencode/package.json"
+printf '%s\n' \
+  '{' \
+  '  "lockfileVersion": 3,' \
+  '  "packages": {' \
+  '    "": { "dependencies": { "@opencode-ai/plugin": "0.0.0-qa-local" } }' \
+  '  }' \
+  '}' >"$XDG_CONFIG_HOME/opencode/package-lock.json"
 printf '%s\n' \
   '{' \
   "  \"plugin\": [\"file://$repo_root/packages/omo-opencode/src/index.ts\"]," \
@@ -90,7 +183,7 @@ printf '%s\n' \
   '}' >"$XDG_CONFIG_HOME/opencode/oh-my-openagent.json"
 
 set +e
-timeout 150 opencode run \
+timeout "${OMO_QA_RUN_TIMEOUT_SECONDS:-150}" "$opencode_bin" run \
   "Run the split probe: call task exactly once as instructed, then run the bash hold command." \
   --format json \
   --model openai/gpt-fake \
@@ -100,24 +193,44 @@ timeout 150 opencode run \
 run_exit=$?
 set -e
 
-printf 'command=opencode run <normal background prompt> --format json --model openai/gpt-fake --dir <isolated project>\nexit_code=%s\n' \
-  "$run_exit" >"$evidence_dir/normal-opencode-run-command.txt"
+printf 'command=%s run <normal background prompt> --format json --model openai/gpt-fake --dir <isolated project>\nexit_code=%s\n' \
+  "$opencode_bin" "$run_exit" >"$evidence_dir/normal-opencode-run-command.txt"
 test "$run_exit" -eq 0
-grep -q '"tool":"task"' "$evidence_dir/normal-opencode-run.jsonl"
-grep -q 'branch=parent-tool-call' "$evidence_dir/normal-fake-llm.log"
+
+task_event="$(jq -c 'select(
+  .type == "tool_use" and
+  .part.tool == "task" and
+  .part.state.status == "completed"
+)' "$evidence_dir/normal-opencode-run.jsonl" | head -1)"
+test -n "$task_event"
+normal_task_tool_seen=true
+parent_session_id="$(jq -r '.sessionID' <<<"$task_event")"
+background_task_id="$(jq -r '.part.state.metadata.backgroundTaskId' <<<"$task_event")"
+child_session_id="$(jq -r '.part.state.metadata.sessionId' <<<"$task_event")"
+[[ "$parent_session_id" == ses_* ]]
+[[ "$background_task_id" == bg_* ]]
+[[ "$child_session_id" == ses_* ]]
+
 grep -q 'branch=child' "$evidence_dir/normal-fake-llm.log"
-if [ -f "$omo_log" ]; then
-  tail -c "+$((omo_log_offset + 1))" "$omo_log" >"$evidence_dir/normal-plugin.log"
+child_completion_seen=true
+test -f "$plugin_log"
+cp "$plugin_log" "$evidence_dir/normal-plugin.log"
+if ! grep -Fq "$real_home/.claude" "$evidence_dir/normal-plugin.log"; then
+  per_run_plugin_log=true
 fi
-grep -q '\[background-agent\] notifyParentSession called for task' "$evidence_dir/normal-plugin.log"
-grep -q '\[background-agent\] Queued notification' "$evidence_dir/normal-plugin.log"
+
+launch_line="$(grep -F '[background-agent] Launching task:' "$evidence_dir/normal-plugin.log" | grep -F "\"taskId\":\"$background_task_id\"" | grep -F "\"sessionID\":\"$child_session_id\"" || true)"
+test -n "$launch_line"
+task_bound_launch_seen=true
+grep -Fq "[background-agent] notifyParentSession called for task: \"$background_task_id\"" "$evidence_dir/normal-plugin.log"
+task_bound_notify_seen=true
+wake_line="$(grep -F '[background-agent] Queued notification' "$evidence_dir/normal-plugin.log" | grep -F "\"taskId\":\"$background_task_id\"" || true)"
+test -n "$wake_line"
+task_bound_wake_queue_seen=true
 
 sandbox_db="$XDG_DATA_HOME/opencode/opencode.db"
 test -f "$sandbox_db"
 sandbox_count="$(sqlite3 "$sandbox_db" 'SELECT count(*) FROM session')"
 test "$sandbox_count" -ge 2
-wake_turn_seen="$([ "$(grep -c 'branch=wake' "$evidence_dir/normal-fake-llm.log" || true)" -gt 0 ] && printf yes || printf no)"
-printf 'sandbox_db=%s\nsandbox_session_count=%s\nnormal_task_tool_seen=yes\nchild_completion_seen=yes\nparent_notify_seen=yes\nparent_wake_queue_seen=yes\nparent_wake_model_turn_seen=%s\n' \
-  "$sandbox_db" "$sandbox_count" "$wake_turn_seen" >"$evidence_dir/normal-qa-observed.txt"
 
 qa_exit=0

@@ -1,0 +1,38 @@
+timestamp=2026-07-17T19:36:18.006Z level=INFO run=be8afbfb message="creating instance" directory=/tmp/omo-qa-sandbox.iJhEmP/home/proj
+timestamp=2026-07-17T19:36:18.006Z level=INFO run=be8afbfb message=fromDirectory directory=/tmp/omo-qa-sandbox.iJhEmP/home/proj
+timestamp=2026-07-17T19:36:18.016Z level=INFO run=be8afbfb message=bootstrapping directory=/tmp/omo-qa-sandbox.iJhEmP/home/proj
+timestamp=2026-07-17T19:36:18.020Z level=INFO run=be8afbfb message=loading path=/tmp/omo-qa-sandbox.iJhEmP/config/opencode/config.json
+timestamp=2026-07-17T19:36:18.021Z level=INFO run=be8afbfb message=loading path=/tmp/omo-qa-sandbox.iJhEmP/config/opencode/opencode.json
+timestamp=2026-07-17T19:36:18.021Z level=INFO run=be8afbfb message=loading path=/tmp/omo-qa-sandbox.iJhEmP/config/opencode/opencode.jsonc
+timestamp=2026-07-17T19:36:19.010Z level=INFO run=be8afbfb message="all LSPs are disabled"
+timestamp=2026-07-17T19:36:19.012Z level=INFO run=be8afbfb message="all formatters are disabled"
+timestamp=2026-07-17T19:36:19.012Z level=INFO run=be8afbfb message=init
+timestamp=2026-07-17T19:36:19.112Z level=INFO run=be8afbfb message=created id=ses_08e6b9857ffefW72gwVqnkAKRg slug=stellar-lagoon version=opencode/pre-sync-20260717-fork+abaefc467b projectID=global directory=/tmp/omo-qa-sandbox.iJhEmP/home/proj path=tmp/omo-qa-sandbox.iJhEmP/home/proj workspaceID=undefined parentID=undefined title="New session - 2026-07-17T19:36:19.112Z" agent=undefined model=undefined metadata=undefined permission="[{\"permission\":\"question\",\"pattern\":\"*\",\"action\":\"deny\"},{\"permission\":\"plan_enter\",\"pattern\":\"*\",\"action\":\"deny\"},{\"permission\":\"plan_exit\",\"pattern\":\"*\",\"action\":\"deny\"}]" cost=0 tokens.input=0 tokens.output=0 tokens.reasoning=0 tokens.cache.read=0 tokens.cache.write=0 time.created=1784316979112 time.updated=1784316979112
+timestamp=2026-07-17T19:36:19.186Z level=INFO run=be8afbfb message="event connected"
+timestamp=2026-07-17T19:36:19.247Z level=INFO run=be8afbfb message="fetching index" url=http://127.0.0.1:45453/index.json
+timestamp=2026-07-17T19:36:19.319Z level=INFO run=be8afbfb message=init count=3
+timestamp=2026-07-17T19:36:22.482Z level=INFO run=be8afbfb message=loop session.id=ses_08e6b9857ffefW72gwVqnkAKRg step=0
+timestamp=2026-07-17T19:36:22.510Z level=INFO run=be8afbfb message="shell tool using shell" shell=/usr/bin/zsh
+timestamp=2026-07-17T19:36:22.551Z level=WARN run=be8afbfb message="server unavailable" key=codegraph type=local status=failed
+timestamp=2026-07-17T19:36:22.571Z level=INFO run=be8afbfb message=stream providerID=openai modelID=gpt-5.4-nano session.id=ses_08e6b9857ffefW72gwVqnkAKRg small=true agent=title mode=primary
+timestamp=2026-07-17T19:36:22.593Z level=INFO run=be8afbfb message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openai llm.model=gpt-5.4-nano
+timestamp=2026-07-17T19:36:23.950Z level=INFO run=be8afbfb message="watcher backend" directory=/tmp/omo-qa-sandbox.iJhEmP/home/proj platform=linux backend=inotify
+timestamp=2026-07-17T19:36:24.012Z level=INFO run=be8afbfb message="project copy refresh started" projectID=global
+timestamp=2026-07-17T19:36:24.015Z level=INFO run=be8afbfb message="project copy refresh done" projectID=global updated=[] removed=[]
+timestamp=2026-07-17T19:36:24.027Z level=INFO run=be8afbfb message="booting location services" directory=/tmp/omo-qa-sandbox.iJhEmP/home/proj workspaceID=undefined
+timestamp=2026-07-17T19:36:27.511Z level=INFO run=be8afbfb message=process session.id=ses_08e6b9857ffefW72gwVqnkAKRg messageID=msg_f719474d6001WzECxObkxv3Jpk
+timestamp=2026-07-17T19:36:27.521Z level=INFO run=be8afbfb message=stream providerID=openai modelID=gpt-fake session.id=ses_08e6b9857ffefW72gwVqnkAKRg small=false agent="Sisyphus - ultraworker" mode=primary
+timestamp=2026-07-17T19:36:27.524Z level=INFO run=be8afbfb message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openai llm.model=gpt-fake
+timestamp=2026-07-17T19:36:27.588Z level=INFO run=be8afbfb message=created id=ses_08e6b773bffedGLKFkOryTeeK3 slug=glowing-orchid version=opencode/pre-sync-20260717-fork+abaefc467b projectID=global directory=/tmp/omo-qa-sandbox.iJhEmP/home/proj path=tmp/omo-qa-sandbox.iJhEmP/home/proj workspaceID=undefined parentID=ses_08e6b9857ffefW72gwVqnkAKRg title="split probe child (@explore subagent)" agent=undefined model.id=gpt-fake model.providerID=openai metadata=undefined permission="[{\"permission\":\"question\",\"pattern\":\"*\",\"action\":\"deny\"}]" cost=0 tokens.input=0 tokens.output=0 tokens.reasoning=0 tokens.cache.read=0 tokens.cache.write=0 time.created=1784316987588 time.updated=1784316987588
+timestamp=2026-07-17T19:36:27.606Z level=INFO run=be8afbfb message=loop session.id=ses_08e6b773bffedGLKFkOryTeeK3 step=0
+timestamp=2026-07-17T19:36:27.635Z level=INFO run=be8afbfb message=process session.id=ses_08e6b773bffedGLKFkOryTeeK3 messageID=msg_f719488d70013HXbF6hLaR1Ewk
+timestamp=2026-07-17T19:36:27.635Z level=INFO run=be8afbfb message=stream providerID=openai modelID=gpt-fake session.id=ses_08e6b773bffedGLKFkOryTeeK3 small=false agent=explore mode=subagent
+timestamp=2026-07-17T19:36:27.637Z level=INFO run=be8afbfb message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openai llm.model=gpt-fake
+timestamp=2026-07-17T19:36:27.654Z level=INFO run=be8afbfb message=loop session.id=ses_08e6b773bffedGLKFkOryTeeK3 step=1
+timestamp=2026-07-17T19:36:27.655Z level=INFO run=be8afbfb message="exiting loop" session.id=ses_08e6b773bffedGLKFkOryTeeK3
+timestamp=2026-07-17T19:36:27.725Z level=INFO run=be8afbfb message=loop session.id=ses_08e6b9857ffefW72gwVqnkAKRg step=1
+timestamp=2026-07-17T19:36:27.755Z level=INFO run=be8afbfb message=process session.id=ses_08e6b9857ffefW72gwVqnkAKRg messageID=msg_f7194894d001EC4OlavlsfzDoi
+timestamp=2026-07-17T19:36:27.756Z level=INFO run=be8afbfb message=stream providerID=openai modelID=gpt-fake session.id=ses_08e6b9857ffefW72gwVqnkAKRg small=false agent="Sisyphus - ultraworker" mode=primary
+timestamp=2026-07-17T19:36:27.757Z level=INFO run=be8afbfb message="llm runtime selected" llm.runtime=ai-sdk llm.provider=openai llm.model=gpt-fake
+timestamp=2026-07-17T19:36:27.825Z level=INFO run=be8afbfb message=evaluated permission=bash pattern="sleep 1" action.permission=bash action.action=allow action.pattern=*
+timestamp=2026-07-17T19:36:30.599Z level=INFO run=be8afbfb message=cancel session.id=ses_08e6b773bffedGLKFkOryTeeK3

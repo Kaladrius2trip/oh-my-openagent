@@ -1,0 +1,18 @@
+{
+  "runExitCode": 0,
+  "normalTaskToolSeen": true,
+  "childCompletionSeen": true,
+  "taskBoundLaunchSeen": true,
+  "taskBoundNotifySeen": true,
+  "taskBoundWakeQueueSeen": true,
+  "perRunPluginLog": true,
+  "isolatedHome": true,
+  "realSessionCountUnchanged": true,
+  "backgroundTaskID": "bg_70dc5e35",
+  "childSessionID": "ses_08e6b773bffedGLKFkOryTeeK3",
+  "parentSessionID": "ses_08e6b9857ffefW72gwVqnkAKRg",
+  "sandboxSessionCount": 2,
+  "realDatabase": "/root/.local/share/opencode/opencode.db",
+  "realSessionCountBefore": "1128",
+  "realSessionCountAfter": "1128"
+}

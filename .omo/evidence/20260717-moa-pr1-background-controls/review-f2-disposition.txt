@@ -1,0 +1,18 @@
+Finding 2 disposition: technically accurate probe, invalid PR1 scope conclusion
+
+Verified behavior:
+- Legacy spawner.ts startTask does not forward every policy to task-prompt-body.
+- Its resume/tmux/toast behavior does not implement the PR1 controls.
+
+Production reachability proof:
+- packages/omo-opencode/src/features/background-agent/index.ts exports BackgroundManager and types, not spawner createTask/startTask/resumeTask.
+- Repository import search finds createTask/startTask/resumeTask imported only by spawner.test.ts.
+- manager.ts imports only buildFallbackBody, FALLBACK_AGENT, and isAgentNotFoundError from ./spawner. It never calls the legacy exported launch/resume functions.
+
+Plan proof:
+- Authoritative plan line 42 lists the PR1 files. It includes manager.ts, spawner/task-record.ts, and spawner/task-prompt-body.ts, but excludes spawner.ts.
+- Plan line 51 identifies exactly two hardcoded tool-policy sites: manager.ts and spawner/task-prompt-body.ts.
+- T1.4 line 144 again specifies manager.ts and spawner/task-prompt-body.ts as the two consumers of the one resolver.
+
+Conclusion:
+The review probe characterizes dead/test-only legacy code, not a live or planned PR1 launch path. The planned second prompt-construction site is fixed and tested. Per the user's instruction for dead out-of-plan code, no speculative spawner.ts modification or regression test was added.
