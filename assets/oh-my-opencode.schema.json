@@ -6285,6 +6285,296 @@
       },
       "additionalProperties": false
     },
+    "moa": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": false,
+          "type": "boolean"
+        },
+        "default_preset": {
+          "default": "architecture-balanced",
+          "type": "string"
+        },
+        "default_prompt_pack": {
+          "default": "omo-hermes-derived-v1",
+          "type": "string"
+        },
+        "max_advisors_per_run": {
+          "default": 8,
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "prompt_packs": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "advisor_base": {
+                "type": "string",
+                "pattern": "^(builtin:.+|file:\\/\\/.+)$"
+              },
+              "advisor_modes": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "enum": [
+                    "analysis",
+                    "research",
+                    "planning",
+                    "review",
+                    "evidence-search"
+                  ]
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "pattern": "^(builtin:.+|file:\\/\\/.+)$"
+                },
+                "required": [
+                  "analysis",
+                  "research",
+                  "planning",
+                  "review",
+                  "evidence-search"
+                ]
+              },
+              "aggregator_base": {
+                "type": "string",
+                "pattern": "^(builtin:.+|file:\\/\\/.+)$"
+              },
+              "task_envelope": {
+                "type": "string",
+                "pattern": "^(builtin:.+|file:\\/\\/.+)$"
+              },
+              "advisor_output_contract": {
+                "type": "string",
+                "pattern": "^(builtin:.+|file:\\/\\/.+)$"
+              },
+              "aggregator_output_contract": {
+                "type": "string",
+                "pattern": "^(builtin:.+|file:\\/\\/.+)$"
+              }
+            },
+            "required": [
+              "advisor_base",
+              "advisor_modes",
+              "aggregator_base",
+              "task_envelope",
+              "advisor_output_contract",
+              "aggregator_output_contract"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "presets": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "description": {
+                "type": "string"
+              },
+              "prompt_pack": {
+                "type": "string"
+              },
+              "execution_policy": {
+                "type": "string",
+                "const": "consultation_only"
+              },
+              "advisors": {
+                "minItems": 1,
+                "maxItems": 8,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "general",
+                        "architect",
+                        "validator",
+                        "researcher",
+                        "challenger",
+                        "skeptic",
+                        "security-reviewer"
+                      ]
+                    },
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "analysis",
+                        "research",
+                        "planning",
+                        "review",
+                        "evidence-search"
+                      ]
+                    },
+                    "category": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subagent_type": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "prompt_append": {
+                      "type": "string"
+                    },
+                    "maxTokens": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "tool_policy": {
+                      "type": "string",
+                      "const": "none"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "aggregator": {
+                "type": "object",
+                "properties": {
+                  "category": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "subagent_type": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "prompt_append": {
+                    "type": "string"
+                  },
+                  "maxTokens": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "additionalProperties": false
+              },
+              "context": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "task_only",
+                      "recent_text",
+                      "recent_state"
+                    ]
+                  },
+                  "max_messages": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "max_tokens": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "tool_result_preview_chars": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "additionalProperties": false
+              },
+              "diversity": {
+                "type": "object",
+                "properties": {
+                  "min_distinct_providers": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "min_distinct_models": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "prefer_aggregator_provider_distinct": {
+                    "type": "boolean"
+                  },
+                  "on_configured_violation": {
+                    "type": "string",
+                    "enum": [
+                      "fail",
+                      "degrade",
+                      "warn"
+                    ]
+                  },
+                  "on_effective_violation": {
+                    "type": "string",
+                    "enum": [
+                      "fail",
+                      "degrade",
+                      "warn"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              },
+              "min_successful_advisors": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "advisor_timeout_ms": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "aggregator_timeout_ms": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "include_failures_in_aggregation": {
+                "type": "boolean"
+              },
+              "return_advisor_outputs": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "advisors",
+              "aggregator"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "enabled",
+        "default_preset",
+        "default_prompt_pack",
+        "max_advisors_per_run"
+      ],
+      "additionalProperties": false
+    },
     "notification": {
       "type": "object",
       "properties": {

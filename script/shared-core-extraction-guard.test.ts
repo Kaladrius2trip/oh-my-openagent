@@ -17,6 +17,7 @@ const corePackages = [
   "packages/hashline-core",
   "packages/tmux-core",
   "packages/team-core",
+  "packages/moa-core",
   "packages/openclaw-core",
   "packages/boulder-state",
   "packages/telemetry-core",
