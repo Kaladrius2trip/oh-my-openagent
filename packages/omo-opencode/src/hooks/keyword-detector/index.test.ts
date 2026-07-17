@@ -1305,3 +1305,171 @@ describe("keyword-detector disabled_keywords config", () => {
     expect(text).toBe("investigate this issue")
   })
 })
+
+describe("keyword-detector moa mode", () => {
+  let logCalls: Array<{ msg: string; data?: unknown }>
+  let logSpy: ReturnType<typeof spyOn>
+  let getMainSessionSpy: ReturnType<typeof spyOn>
+
+  beforeEach(() => {
+    _resetForTesting()
+    logCalls = []
+    logSpy = spyOn(sharedModule, "log").mockImplementation((msg: string, data?: unknown) => {
+      logCalls.push({ msg, data })
+    })
+  })
+
+  afterEach(() => {
+    logSpy?.mockRestore()
+    getMainSessionSpy?.mockRestore()
+    _resetForTesting()
+  })
+
+  function createMockPluginInput() {
+    return unsafeTestValue<PluginInput>({
+      client: {
+        tui: {
+          showToast: async () => {},
+        },
+      },
+    })
+  }
+
+  test("should inject moa consult message when moa is enabled and user types 'moa'", async () => {
+    // given - main session with moa enabled
+    const collector = new ContextCollector()
+    const sessionID = "moa-enabled-session"
+    getMainSessionSpy = spyOn(sessionState, "getMainSessionID").mockReturnValue(sessionID)
+    const hook = createKeywordDetectorHook(
+      createMockPluginInput(),
+      collector,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    )
+    const output = {
+      message: {} as Record<string, unknown>,
+      parts: [{ type: "text", text: "moa refactor the parser module" }],
+    }
+
+    // when - keyword detection runs
+    await hook["chat.message"]({ sessionID }, output)
+
+    // then - moa-mode message is prepended and points the agent at the moa_consult tool
+    const text = expectTextPartText(output.parts)
+    expect(text).toContain("[moa-mode]")
+    expect(text).toContain("moa_consult")
+    expect(text).toContain("refactor the parser module")
+  })
+
+  test("should NOT inject moa message when moa is disabled", async () => {
+    // given - main session with moa disabled
+    const collector = new ContextCollector()
+    const sessionID = "moa-disabled-session"
+    getMainSessionSpy = spyOn(sessionState, "getMainSessionID").mockReturnValue(sessionID)
+    const hook = createKeywordDetectorHook(
+      createMockPluginInput(),
+      collector,
+      undefined,
+      undefined,
+      undefined,
+      false,
+    )
+    const output = {
+      message: {} as Record<string, unknown>,
+      parts: [{ type: "text", text: "moa refactor the parser module" }],
+    }
+
+    // when - the moa keyword would normally trigger
+    await hook["chat.message"]({ sessionID }, output)
+
+    // then - the text is left unchanged because the feature is disabled
+    const text = expectTextPartText(output.parts)
+    expect(text).toBe("moa refactor the parser module")
+    expect(text).not.toContain("[moa-mode]")
+  })
+
+  test("should NOT inject moa message when disabled_keywords includes 'moa' even if enabled", async () => {
+    // given - moa enabled but present in disabled_keywords
+    const sessionID = "moa-denylist-session"
+    getMainSessionSpy = spyOn(sessionState, "getMainSessionID").mockReturnValue(sessionID)
+    const hook = createKeywordDetectorHook(
+      createMockPluginInput(),
+      undefined,
+      undefined,
+      { disabled_keywords: ["moa"] },
+      undefined,
+      true,
+    )
+    const output = {
+      message: {} as Record<string, unknown>,
+      parts: [{ type: "text", text: "moa refactor the parser module" }],
+    }
+
+    // when - the moa keyword is submitted
+    await hook["chat.message"]({ sessionID }, output)
+
+    // then - the denylist suppresses injection even though moa is enabled
+    const text = expectTextPartText(output.parts)
+    expect(text).toBe("moa refactor the parser module")
+    expect(text).not.toContain("[moa-mode]")
+  })
+
+  test("should NOT trigger moa when 'moa' appears only inside a code block", async () => {
+    // given - moa enabled, keyword only present within fenced code
+    const collector = new ContextCollector()
+    const sessionID = "moa-codeblock-session"
+    getMainSessionSpy = spyOn(sessionState, "getMainSessionID").mockReturnValue(sessionID)
+    const hook = createKeywordDetectorHook(
+      createMockPluginInput(),
+      collector,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    )
+    const codeText = "```\nmoa\n```"
+    const output = {
+      message: {} as Record<string, unknown>,
+      parts: [{ type: "text", text: codeText }],
+    }
+
+    // when - keyword detection runs
+    await hook["chat.message"]({ sessionID }, output)
+
+    // then - fenced code is not treated as an invocation
+    const text = expectTextPartText(output.parts)
+    expect(text).toBe(codeText)
+    expect(text).not.toContain("[moa-mode]")
+  })
+
+  test("should inject moa message only once across repeated transforms", async () => {
+    // given - moa enabled and the same message transformed twice
+    const collector = new ContextCollector()
+    const sessionID = "moa-idempotent-session"
+    getMainSessionSpy = spyOn(sessionState, "getMainSessionID").mockReturnValue(sessionID)
+    const hook = createKeywordDetectorHook(
+      createMockPluginInput(),
+      collector,
+      undefined,
+      undefined,
+      undefined,
+      true,
+    )
+    const output = {
+      message: {} as Record<string, unknown>,
+      parts: [{ type: "text", text: "moa refactor the parser module" }],
+    }
+
+    // when - keyword detection sees the same output twice
+    await hook["chat.message"]({ sessionID }, output)
+    await hook["chat.message"]({ sessionID }, output)
+
+    // then - the moa-mode marker is present exactly once
+    const text = expectTextPartText(output.parts)
+    const markerMatches = text.split("[moa-mode]").length - 1
+    expect(markerMatches).toBe(1)
+    expect(text).toContain("refactor the parser module")
+  })
+})
