@@ -90,6 +90,24 @@ describe("durable continuation policy gates", () => {
     expect(isContinuationForbidden(allowedSessionID)).toBe(false)
   })
 
+  test("given forbidden metadata when its session is deleted then the policy is removed", () => {
+    const manager = new BackgroundManager({
+      pluginContext: unsafeTestValue<PluginInput>({
+        client: { session: {} },
+        directory: tmpdir(),
+      }),
+    })
+    setPolicy(forbiddenSessionID, "forbid")
+
+    manager.handleEvent({
+      type: "session.deleted",
+      properties: { info: { id: forbiddenSessionID } },
+    })
+
+    expect(isContinuationForbidden(forbiddenSessionID)).toBe(false)
+    manager.shutdown()
+  })
+
   test("given delegate continuations when executed then forbidden skips resume and allowed proceeds", async () => {
     let resumeCalls = 0
     const manager = {
