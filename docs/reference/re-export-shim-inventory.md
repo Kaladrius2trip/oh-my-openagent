@@ -10,7 +10,7 @@ Generated command:
 git ls-files packages/omo-opencode/src packages/omo-codex/src | grep '\.ts$' | sort | xargs awk 'FNR==1 && /^export (\*|\{).*from ["'"'"']@oh-my-opencode\// { print FILENAME }'
 ```
 
-Snapshot date: 2026-06-13. Total shim exports found: 317.
+Snapshot date: 2026-06-13. Total shim exports found: 318.
 
 ## Aggregate By Target Package
 
@@ -22,6 +22,7 @@ Snapshot date: 2026-06-13. Total shim exports found: 317.
 | `@oh-my-opencode/delegate-core` | 1 |
 | `@oh-my-opencode/hashline-core` | 6 |
 | `@oh-my-opencode/mcp-client-core` | 21 |
+| `@oh-my-opencode/moa-core` | 1 |
 | `@oh-my-opencode/model-core` | 7 |
 | `@oh-my-opencode/omo-codex` | 41 |
 | `@oh-my-opencode/omo-senpi` | 1 |
@@ -81,6 +82,7 @@ Snapshot date: 2026-06-13. Total shim exports found: 317.
 | `packages/omo-opencode/src/cli/install-senpi/index.ts` | `@oh-my-opencode/omo-senpi` |
 | `packages/omo-opencode/src/cli/provider-model-id-transform.ts` | `@oh-my-opencode/model-core` |
 | `packages/omo-opencode/src/config/schema/git-env-prefix.ts` | `@oh-my-opencode/skills-loader-core` |
+| `packages/omo-opencode/src/config/schema/moa.ts` | `@oh-my-opencode/moa-core` |
 | `packages/omo-opencode/src/config/schema/team-mode.ts` | `@oh-my-opencode/team-core` |
 | `packages/omo-opencode/src/features/boulder-state/format-duration.ts` | `@oh-my-opencode/utils` |
 | `packages/omo-opencode/src/features/boulder-state/top-level-task.ts` | `@oh-my-opencode/boulder-state` |

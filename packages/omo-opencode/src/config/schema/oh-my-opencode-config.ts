@@ -19,6 +19,7 @@ import { NotificationConfigSchema } from "./notification"
 import { OpenClawConfigSchema } from "./openclaw"
 import { ModelCapabilitiesConfigSchema } from "./model-capabilities"
 import { GoalConfigSchema } from "./goal"
+import { MoAConfigSchema } from "./moa"
 import { MonitorConfigSchema } from "./monitor"
 import { RuntimeFallbackConfigSchema } from "./runtime-fallback"
 import { TeamModeConfigSchema } from "./team-mode"
@@ -80,6 +81,8 @@ export const OhMyOpenCodeConfigSchema = z.object({
    */
   runtime_fallback: z.union([z.boolean(), RuntimeFallbackConfigSchema]).optional(),
   background_task: BackgroundTaskConfigSchema.optional(),
+  /** Mixture of Advisors consultation support (disabled by default) */
+  moa: MoAConfigSchema.optional(),
   notification: NotificationConfigSchema.optional(),
   model_capabilities: ModelCapabilitiesConfigSchema.optional(),
   openclaw: OpenClawConfigSchema.optional(),
