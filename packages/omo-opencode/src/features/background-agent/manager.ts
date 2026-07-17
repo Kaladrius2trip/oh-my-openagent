@@ -115,6 +115,7 @@ import {
   toBackgroundTaskSnapshots,
   toBackgroundTaskSnapshotsIncludingInternal,
 } from "./task-snapshot"
+import { filterVisibleTasks } from "./task-visibility"
 import {
   archiveBackgroundTask,
   forgetBackgroundTask,
@@ -1078,26 +1079,27 @@ The fallback retry session is now created and can be inspected directly.
     return toBackgroundTaskSnapshotsIncludingInternal(this.tasks.values())
   }
 
-  getTasksByParentSession(sessionID: string): BackgroundTask[] {
+  getTasksByParentSession(
+    sessionID: string,
+    options: { includeInternal?: boolean } = {},
+  ): BackgroundTask[] {
     const taskIDs = this.tasksByParentSession.get(sessionID)
+    const tasks: BackgroundTask[] = []
     if (!taskIDs) {
-      const result: BackgroundTask[] = []
       for (const task of this.tasks.values()) {
         if (task.parentSessionId === sessionID) {
-          result.push(task)
+          tasks.push(task)
         }
       }
-      return result
-    }
-
-    const tasks: BackgroundTask[] = []
-    for (const taskID of taskIDs) {
-      const task = this.tasks.get(taskID)
-      if (task) {
-        tasks.push(task)
+    } else {
+      for (const taskID of taskIDs) {
+        const task = this.tasks.get(taskID)
+        if (task) {
+          tasks.push(task)
+        }
       }
     }
-    return tasks
+    return options.includeInternal ? tasks : filterVisibleTasks(tasks)
   }
 
   /**
@@ -1156,7 +1158,7 @@ The fallback retry session is now created and can be inspected directly.
 
   getAllDescendantTasks(sessionID: string): BackgroundTask[] {
     const result: BackgroundTask[] = []
-    const directChildren = this.getTasksByParentSession(sessionID)
+    const directChildren = this.getTasksByParentSession(sessionID, { includeInternal: true })
 
     for (const child of directChildren) {
       result.push(child)
