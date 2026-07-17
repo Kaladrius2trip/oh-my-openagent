@@ -29,6 +29,8 @@
 | Rules-injector cross-module comparison | [docs/reference/rules-injection-cross-module-comparison.md](reference/rules-injection-cross-module-comparison.md) |
 | Codex telemetry internals | [docs/reference/codex-telemetry.md](reference/codex-telemetry.md) |
 | Monitor tool reference | [docs/reference/monitor.md](reference/monitor.md) |
+| Mixture of Advisors reference | [docs/reference/moa.md](reference/moa.md) |
+| MoA prompt and override reference | [docs/reference/moa-prompts.md](reference/moa-prompts.md) |
 | Web-terminal visual QA helper | [docs/reference/web-terminal-visual-qa.md](reference/web-terminal-visual-qa.md) |
 | Sample configs | [docs/examples/](examples) (default, coding-focused, planning-focused) |
 | Privacy & ToS | [docs/legal/](legal) |

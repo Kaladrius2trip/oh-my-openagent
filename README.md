@@ -220,6 +220,7 @@ Even with only the following subscriptions, `ultrawork` works well (this project
 |   🛠️   | **LSP integration**                                      | Both     | Diagnostics, navigation, symbols, workspace rename. IDE precision for agents. Same LSP MCP server in both editions.                                                                                              |
 |   🔎   | **AST-Grep**                                             | Ultimate | Pattern-aware code search and rewriting across 25 languages.                                                                                                                                                     |
 |   🧠   | **Background Agents**                                    | Ultimate | Fire 5+ specialists in parallel. Context stays lean. Results when ready.                                                                                                                                         |
+|       | **Mixture of Advisors** (opt-in)                         | Ultimate | Run tool-free advisor panels plus one aggregator for consultation-only decisions. Disabled by default. [Docs](docs/reference/moa.md) |
 |   📚   | **Built-in MCPs** (web/docs/code search)                 | Ultimate | Exa (web search), Context7 (official docs), Grep.app (GitHub search). Always on.                                                                                                                                 |
 |   🔁   | **Ralph Loop / `/ulw-loop`**                             | Ultimate | Self-referential loop. Doesn't stop until 100% done.                                                                                                                                                             |
 |   ✅   | **Todo Enforcer**                                        | Ultimate | Agent goes idle? System yanks it back. Your task gets done, period.                                                                                                                                              |
@@ -427,6 +428,7 @@ See full [Features Documentation](docs/reference/features.md).
 **Quick Overview:**
 - **Agents**: Sisyphus (the main agent), Prometheus (planner), Oracle (architecture/debugging), Librarian (docs/code search), Explore (fast codebase grep), Multimodal Looker
 - **Background Agents**: Run multiple agents in parallel like a real dev team
+- **Mixture of Advisors**: Opt-in `moa_consult` and `/moa` consultation with tool-free advisors, diversity checks, and parent-only implementation authority
 - **LSP & AST Tools**: Refactoring, rename, diagnostics, AST-aware code search
 - **Hash-anchored Edit Tool**: `LINE#ID` references validate content before applying every change. Surgical edits, zero stale-line errors
 - **Context Injection**: Auto-inject AGENTS.md, README.md, conditional rules
@@ -453,6 +455,7 @@ See [Configuration Documentation](docs/reference/configuration.md).
 - **Built-in Skills**: `playwright` (browser automation), `git-master` (atomic commits)
 - **Sisyphus Agent**: Main orchestrator with Prometheus (Planner) and Metis (Plan Consultant)
 - **Background Tasks**: Configure concurrency limits per provider/model
+- **Mixture of Advisors**: Disabled by default under `moa.enabled`; configure presets, prompt packs, context bounds, diversity and timeouts
 - **Categories**: Domain-specific task delegation (`visual`, `business-logic`, custom)
 - **Hooks**: 54+ lifecycle hooks (61 with Team Mode), all configurable via `disabled_hooks`
 - **MCPs**: Built-in websearch (Exa), context7 (docs), grep_app (GitHub search) — runtime-injected, not shown in `opencode mcp list`

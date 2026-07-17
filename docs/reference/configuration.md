@@ -15,6 +15,7 @@ Complete reference for Oh My OpenCode plugin configuration. During the rename tr
   - [Model Resolution](#model-resolution)
 - [Task System](#task-system)
   - [Background Tasks](#background-tasks)
+  - [Mixture of Advisors](#mixture-of-advisors)
   - [Sisyphus Agent](#sisyphus-agent)
   - [Sisyphus Tasks](#sisyphus-tasks)
 - [Features](#features)
@@ -425,6 +426,32 @@ Control parallel agent execution and concurrency limits.
 | `modelConcurrency`    | -        | Per-model limits (key = `provider/model`). Overrides provider limits. |
 
 Priority: `modelConcurrency` > `providerConcurrency` > `defaultConcurrency`
+
+### Mixture of Advisors
+
+MoA is disabled by default. Enable it to register `moa_consult` and `/moa`:
+
+```jsonc
+{
+  "moa": {
+    "enabled": true,
+    "default_preset": "architecture-balanced",
+    "default_prompt_pack": "omo-hermes-derived-v1",
+    "max_advisors_per_run": 8
+  }
+}
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `enabled` | `false` | Enable MoA manager, tool and command. |
+| `default_preset` | `architecture-balanced` | Preset used when no preset is supplied. |
+| `default_prompt_pack` | `omo-hermes-derived-v1` | Prompt pack used unless preset overrides it. |
+| `max_advisors_per_run` | `8` | Advisor cap, from 1 through 8. |
+| `presets` | none | Custom preset definitions. |
+| `prompt_packs` | none | Custom prompt-pack definitions. |
+
+See [Mixture of Advisors](moa.md) for preset catalog, security model and result contract. See [MoA Prompt Reference](moa-prompts.md) for composition and override policy.
 
 ### Sisyphus Agent
 
