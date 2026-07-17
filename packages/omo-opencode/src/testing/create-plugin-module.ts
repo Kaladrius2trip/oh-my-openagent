@@ -240,6 +240,7 @@ export function createPluginModule(overrides: Partial<PluginModuleDeps> = {}): P
 
     const dispose = createPluginDispose({
       backgroundManager: managers.backgroundManager,
+      ...(managers.moaManager !== undefined ? { moaManager: managers.moaManager } : {}),
       skillMcpManager: managers.skillMcpManager,
       disposeHooks: hooks.disposeHooks,
     })
