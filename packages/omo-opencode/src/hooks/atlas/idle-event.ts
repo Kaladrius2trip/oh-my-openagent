@@ -3,6 +3,7 @@ import {
   normalizeSessionId,
   resolveBoulderPlanPath,
 } from "../../features/boulder-state"
+import { isContinuationForbidden } from "../../features/background-agent/continuation-policy"
 import { log } from "../../shared/logger"
 import { shouldPromptAfterSessionIdle } from "../shared/session-idle-settle"
 import { HOOK_NAME } from "./hook-name"
@@ -30,6 +31,10 @@ export async function handleAtlasSessionIdle(input: {
   sessionID: string
 }): Promise<void> {
   const { ctx, options, getState, sessionID } = input
+  if (isContinuationForbidden(sessionID)) {
+    log(`[${HOOK_NAME}] Skipped: continuation forbidden for session`, { sessionID })
+    return
+  }
   const normalizedSessionID = normalizeSessionId(sessionID)
   const sessionState = getState(sessionID)
 

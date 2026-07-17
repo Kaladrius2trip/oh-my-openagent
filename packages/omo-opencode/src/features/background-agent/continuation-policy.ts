@@ -20,6 +20,10 @@ export function getContinuationSessionMetadata(
   return metadata ? { ...metadata } : undefined
 }
 
+export function isContinuationForbidden(sessionID: string): boolean {
+  return continuationSessionMetadata.get(sessionID)?.continuationPolicy === "forbid"
+}
+
 export function clearContinuationSessionMetadataForTesting(): void {
   continuationSessionMetadata.clear()
 }

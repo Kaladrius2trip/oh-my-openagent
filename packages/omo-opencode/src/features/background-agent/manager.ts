@@ -54,7 +54,10 @@ import {
   resolvePromptContextFromSessionMessages,
 } from "./compaction-aware-message-resolver"
 import { ConcurrencyManager } from "./concurrency"
-import { setContinuationSessionMetadata } from "./continuation-policy"
+import {
+  isContinuationForbidden,
+  setContinuationSessionMetadata,
+} from "./continuation-policy"
 import { resolveCapabilityProfile } from "./capability-profile"
 import {
   POLLING_INTERVAL_MS,
@@ -1310,6 +1313,9 @@ The fallback retry session is now created and can be inspected directly.
   }
 
   async resume(input: ResumeInput): Promise<BackgroundTask> {
+    if (isContinuationForbidden(input.sessionId)) {
+      throw new Error(`Task continuation is forbidden for session: ${input.sessionId}`)
+    }
     const existingTask = this.findBySession(input.sessionId)
     if (!existingTask) {
       throw new Error(`Task not found for session: ${input.sessionId}`)

@@ -16,6 +16,7 @@ import type { DelegateTaskArgs, ToolContextWithMetadata } from "../../tools/dele
 import {
   clearContinuationSessionMetadataForTesting,
   getContinuationSessionMetadata,
+  isContinuationForbidden,
   setContinuationSessionMetadata,
 } from "./continuation-policy"
 import { BackgroundManager } from "./manager"
@@ -47,9 +48,8 @@ describe("durable continuation policy gates", () => {
     setPolicy(allowedSessionID, "allow")
 
     expect(getContinuationSessionMetadata(forbiddenSessionID)).toEqual({ continuationPolicy: "forbid" })
-    const policyModule = await import("./continuation-policy")
-    expect(policyModule.isContinuationForbidden(forbiddenSessionID)).toBe(true)
-    expect(policyModule.isContinuationForbidden(allowedSessionID)).toBe(false)
+    expect(isContinuationForbidden(forbiddenSessionID)).toBe(true)
+    expect(isContinuationForbidden(allowedSessionID)).toBe(false)
   })
 
   test("given delegate continuations when executed then forbidden skips resume and allowed proceeds", async () => {

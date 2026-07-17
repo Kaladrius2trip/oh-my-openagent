@@ -1,5 +1,6 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import { normalizeSessionId } from "../../features/boulder-state"
+import { isContinuationForbidden } from "../../features/background-agent/continuation-policy"
 import { getSessionAgent } from "../../features/claude-code-session-state"
 import { getAgentConfigKey } from "../../shared/agent-display-names"
 import { isSessionInBoulderLineage } from "./boulder-session-lineage"
@@ -12,6 +13,9 @@ export async function canContinueTrackedBoulderSession(input: {
   boulderSessionIDs: string[]
   requiredAgent?: string
 }): Promise<boolean> {
+  if (isContinuationForbidden(input.sessionID)) {
+    return false
+  }
   const normalizedSessionID = normalizeSessionId(input.sessionID)
   if (input.sessionOrigin === "direct") {
     return true
