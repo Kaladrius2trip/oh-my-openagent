@@ -2703,14 +2703,17 @@ The task was re-queued on a fallback model after a retryable failure.
     let remainingCount = 0
     if (pendingSet) {
       pendingSet.delete(task.id)
-      remainingCount = pendingSet.size
+      remainingCount = Array.from(pendingSet).filter((taskID) => {
+        const pendingTask = this.tasks.get(taskID)
+        return pendingTask !== undefined && this.shouldPublishTaskSignals(pendingTask)
+      }).length
       allComplete = remainingCount === 0
       if (allComplete) {
         this.pendingByParent.delete(task.parentSessionId)
       }
     } else {
       remainingCount = Array.from(this.tasks.values())
-        .filter(t => t.parentSessionId === task.parentSessionId && t.id !== task.id && (t.status === "running" || t.status === "pending"))
+        .filter(t => t.parentSessionId === task.parentSessionId && t.id !== task.id && (t.status === "running" || t.status === "pending") && this.shouldPublishTaskSignals(t))
         .length
       allComplete = remainingCount === 0
     }
