@@ -16,7 +16,7 @@ import { executeBackgroundContinuation } from "../../tools/delegate-task/backgro
 import type { ExecutorContext, ParentContext } from "../../tools/delegate-task/executor-types"
 import type { DelegateTaskArgs, ToolContextWithMetadata } from "../../tools/delegate-task/types"
 import {
-  clearContinuationSessionMetadataForTesting,
+  clearContinuationSessionMetadata,
   getContinuationSessionMetadata,
   isContinuationForbidden,
   setContinuationSessionMetadata,
@@ -28,7 +28,8 @@ const forbiddenSessionID = "session-forbidden"
 const allowedSessionID = "session-allowed"
 
 afterEach(() => {
-  clearContinuationSessionMetadataForTesting()
+  clearContinuationSessionMetadata(forbiddenSessionID)
+  clearContinuationSessionMetadata(allowedSessionID)
 })
 
 function setPolicy(sessionID: string, continuationPolicy: "allow" | "forbid"): void {

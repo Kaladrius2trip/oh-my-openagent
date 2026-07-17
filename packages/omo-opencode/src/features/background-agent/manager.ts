@@ -55,6 +55,7 @@ import {
 } from "./compaction-aware-message-resolver"
 import { ConcurrencyManager } from "./concurrency"
 import {
+  clearContinuationSessionMetadata,
   isContinuationForbidden,
   setContinuationSessionMetadata,
 } from "./continuation-policy"
@@ -1888,6 +1889,7 @@ The fallback retry session is now created and can be inspected directly.
     if (event.type === "session.deleted") {
       const sessionID = resolveSessionEventID(props)
       if (!sessionID) return
+      clearContinuationSessionMetadata(sessionID)
       this.clearSessionOutputObserved(sessionID)
       this.clearSessionTodoObservation(sessionID)
 

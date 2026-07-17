@@ -3,7 +3,7 @@ import { tmpdir } from "node:os"
 import type { PluginInput } from "@opencode-ai/plugin"
 import { unsafeTestValue } from "../../../../../test-support/unsafe-test-value"
 import {
-  clearContinuationSessionMetadataForTesting,
+  clearContinuationSessionMetadata,
   getContinuationSessionMetadata,
 } from "./continuation-policy"
 import { BackgroundManager } from "./manager"
@@ -30,7 +30,7 @@ afterEach(() => {
   while (managers.length > 0) {
     managers.pop()?.shutdown()
   }
-  clearContinuationSessionMetadataForTesting()
+  clearContinuationSessionMetadata("child-policy-session")
 })
 
 function createLaunchInput(overrides: Partial<LaunchInput> = {}): LaunchInput {
