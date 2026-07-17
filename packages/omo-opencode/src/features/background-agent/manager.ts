@@ -55,6 +55,7 @@ import {
   resolvePromptContextFromSessionMessages,
 } from "./compaction-aware-message-resolver"
 import { ConcurrencyManager } from "./concurrency"
+import { setContinuationSessionMetadata } from "./continuation-policy"
 import {
   POLLING_INTERVAL_MS,
   type QueueItem,
@@ -602,6 +603,12 @@ export class BackgroundManager {
         parentModel: input.parentModel,
         parentAgent: input.parentAgent,
         parentTools: input.parentTools,
+        visibility: input.visibility,
+        notificationPolicy: input.notificationPolicy,
+        continuationPolicy: input.continuationPolicy,
+        toolPolicy: input.toolPolicy,
+        capabilityProfile: input.capabilityProfile,
+        orchestration: input.orchestration,
         model: input.model,
         fallbackChain: input.fallbackChain,
         skillContent: input.skillContent,
@@ -786,6 +793,9 @@ export class BackgroundManager {
     }
 
     const sessionID = createResult.data.id
+    setContinuationSessionMetadata(sessionID, {
+      continuationPolicy: input.continuationPolicy ?? "allow",
+    })
 
     if (task.status === "cancelled") {
       clearDelegatedChildSessionBootstrap(sessionID)

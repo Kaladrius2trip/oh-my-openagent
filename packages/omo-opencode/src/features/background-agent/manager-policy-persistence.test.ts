@@ -2,6 +2,10 @@ import { afterEach, describe, expect, test } from "bun:test"
 import { tmpdir } from "node:os"
 import type { PluginInput } from "@opencode-ai/plugin"
 import { unsafeTestValue } from "../../../../../test-support/unsafe-test-value"
+import {
+  clearContinuationSessionMetadataForTesting,
+  getContinuationSessionMetadata,
+} from "./continuation-policy"
 import { BackgroundManager } from "./manager"
 import { buildTaskRecord } from "./spawner/task-record"
 import type { BackgroundTaskPolicyFields, LaunchInput } from "./types"
@@ -26,6 +30,7 @@ afterEach(() => {
   while (managers.length > 0) {
     managers.pop()?.shutdown()
   }
+  clearContinuationSessionMetadataForTesting()
 })
 
 function createLaunchInput(overrides: Partial<LaunchInput> = {}): LaunchInput {
@@ -88,8 +93,7 @@ describe("background task policy persistence", () => {
         ...controls,
         parentSessionId: "parent-session",
       })
-      const policyModule = await import("./continuation-policy")
-      expect(policyModule.getContinuationSessionMetadata(sessionID)).toEqual({
+      expect(getContinuationSessionMetadata(sessionID)).toEqual({
         continuationPolicy: "forbid",
       })
     })
