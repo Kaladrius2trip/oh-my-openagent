@@ -1,0 +1,12 @@
+Command:
+bun run script/moa-eval/run-eval.ts --sandbox
+
+Observed:
+- Presets: 7.
+- Fixtures: 3.
+- Evaluations: 21.
+- completed: 14.
+- degraded: 7.
+- Contract-valid synthesis: 21 of 21.
+- Every entry: consultation_only, toolsExposed=0, mutationsPerformed=0, implementationAuthority=parent.
+- Every entry recorded latency plus input and output token estimates.

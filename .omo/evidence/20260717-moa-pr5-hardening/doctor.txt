@@ -1,0 +1,11 @@
+Command:
+bun test packages/omo-opencode/src/cli/doctor/checks/moa.test.ts
+
+Observed:
+4 pass, 0 fail, 8 assertions.
+
+Cases:
+- disabled config -> skip
+- provider-distinct fallback chains -> pass with 2 providers and 2 models
+- shared OpenAI fallback -> warn naming openai
+- missing default preset -> fail

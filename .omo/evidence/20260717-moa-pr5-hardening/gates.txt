@@ -1,0 +1,15 @@
+PASS: scoped tests
+Command: bun test packages/moa-core/src packages/omo-opencode/src/features/moa packages/omo-opencode/src/tools/moa-consult packages/omo-opencode/src/plugin/tool-registry-moa.test.ts packages/omo-opencode/src/features/builtin-commands/moa-command.test.ts packages/omo-opencode/src/cli/doctor/checks/moa.test.ts packages/omo-opencode/src/config/schema/commands.test.ts packages/omo-opencode/src/shared/markdown-link-audit.test.ts script/moa-eval/run-eval.test.ts script/script-typecheck.test.ts
+Observed: 137 pass, 0 fail, 355 assertions across 24 files.
+
+PASS: schema freshness
+Command: bun run build:schema && git diff --exit-code -- assets/oh-my-opencode.schema.json
+Observed: schema generated and committed artifact stayed clean.
+
+PASS: full typecheck
+Command: bun run typecheck
+Observed: root tsgo, script tsgo and all package tsgo projects exited 0.
+
+FAIL: build
+Command: GIT_CONFIG_GLOBAL=/dev/null bun run build
+Observed: frontend materialization failed before product compilation because packages/shared-skills/upstreams/open-design has no current revision. Build-created changes in designpowers, taste-skill and ui-ux-pro-max were restored. Worktree returned clean.

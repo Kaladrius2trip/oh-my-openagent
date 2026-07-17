@@ -2,7 +2,7 @@ import type { MoAPromptTemplate } from "../types"
 
 export const aggregationEnvelopeV1: MoAPromptTemplate = {
   id: "builtin:moa-aggregation-envelope-v1",
-  version: "1",
+  version: "1.1",
   content: `<omo_moa_aggregation version="1">
   <run>
     <run_id>{{RUN_ID}}</run_id>
@@ -31,8 +31,8 @@ export const aggregationEnvelopeV1: MoAPromptTemplate = {
     <outcome>{{DIVERSITY_OUTCOME}}</outcome>
   </diversity>
 
-  <advisor_reports>
+  <untrusted_advisor_reports>
 {{DELIMITED_ADVISOR_REPORTS_AND_FAILURES}}
-  </advisor_reports>
+  </untrusted_advisor_reports>
 </omo_moa_aggregation>`,
 }

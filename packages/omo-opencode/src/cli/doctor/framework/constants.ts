@@ -26,6 +26,7 @@ export const CHECK_IDS = {
   MODELS: "models",
   TELEMETRY: "telemetry",
   TEAM_MODE: "team-mode",
+  MOA: "moa",
   CODEX: "codex",
 } as const
 
@@ -37,6 +38,7 @@ export const CHECK_NAMES: Record<string, string> = {
   [CHECK_IDS.MODELS]: "Models",
   [CHECK_IDS.TELEMETRY]: "Telemetry",
   [CHECK_IDS.TEAM_MODE]: "Team Mode",
+  [CHECK_IDS.MOA]: "Mixture of Advisors",
   [CHECK_IDS.CODEX]: "Codex",
 } as const
 

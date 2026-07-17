@@ -64,7 +64,8 @@
           "start-work",
           "stop-continuation",
           "remove-ai-slops",
-          "hyperplan"
+          "hyperplan",
+          "moa"
         ]
       }
     },
