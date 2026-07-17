@@ -87,7 +87,7 @@ import {
 import { ParentWakeNotifier, type ParentWakePromptContext } from "./parent-wake-notifier"
 import type { PendingParentWake } from "./parent-wake-dedupe"
 import { registerManagerForCleanup, unregisterManagerForCleanup } from "./process-cleanup"
-import { removeTaskToastTracking } from "./remove-task-toast-tracking"
+import { removeTaskToastTracking as removeTrackedTaskToast } from "./remove-task-toast-tracking"
 import {
   MIN_SESSION_GONE_POLLS,
   verifySessionExists as verifySessionStillExists,
@@ -537,7 +537,7 @@ export class BackgroundManager {
     task.concurrencyGroup = snapshot.concurrencyGroup
     this.updateTaskParent(task, snapshot.parentSessionId)
 
-    removeTaskToastTracking(task.id)
+    this.removeTaskToast(task)
     if (task.status !== "running" && task.status !== "pending") {
       this.scheduleTaskRemoval(task.id)
     }
@@ -645,7 +645,7 @@ export class BackgroundManager {
       log("[background-agent] Task queued:", { taskId: task.id, key, queueLength: queue.length })
 
       const toastManager = getTaskToastManager()
-      if (toastManager) {
+      if (toastManager && this.shouldPublishTaskSignals(task)) {
         toastManager.addTask({
           id: task.id,
           description: input.description,
@@ -726,7 +726,7 @@ export class BackgroundManager {
             this.concurrencyManager.release(key)
           }
 
-          removeTaskToastTracking(item.task.id)
+          this.removeTaskToast(item.task)
 
           // Abort the orphaned session if one was created before the error
           if (item.task.sessionId) {
@@ -737,8 +737,7 @@ export class BackgroundManager {
           // Update continuation marker for CLI run mode
           this.updateBackgroundTaskMarker(item.task.parentSessionId)
 
-          this.markForNotification(item.task)
-          this.enqueueNotificationForParent(item.task.parentSessionId, () => this.notifyParentSession(item.task)).catch(err => {
+          this.publishTaskNotification(item.task).catch(err => {
             log("[background-agent] Failed to notify on startTask error:", err)
           })
         }
@@ -847,7 +846,7 @@ export class BackgroundManager {
     task.concurrencyKey = concurrencyKey
     task.concurrencyGroup = concurrencyKey
 
-    if (task.retryNotification) {
+    if (task.retryNotification && this.shouldPublishTaskSignals(task)) {
       const attemptNumber = boundAttempt.attemptNumber
       const retrySessionUrl = buildLocalSessionUrl(parentDirectory, sessionID)
       const previousAttempt = getPreviousAttempt(task, boundAttempt.attemptId)
@@ -881,8 +880,8 @@ The fallback retry session is now created and can be inspected directly.
         false,
         PENDING_PARENT_WAKE_DEBOUNCE_MS,
       )
-      task.retryNotification = undefined
     }
+    task.retryNotification = undefined
 
     this.taskHistory.record(input.parentSessionId, { id: task.id, sessionID, agent: input.agent, description: input.description, status: "running", category: input.category, startedAt: task.startedAt })
     this.startPolling()
@@ -923,7 +922,7 @@ The fallback retry session is now created and can be inspected directly.
     })
 
     const toastManager = getTaskToastManager()
-    if (toastManager) {
+    if (toastManager && this.shouldPublishTaskSignals(task)) {
       toastManager.updateTask(task.id, "running")
     }
 
@@ -1029,15 +1028,14 @@ The fallback retry session is now created and can be inspected directly.
           existingTask.concurrencyKey = undefined
         }
 
-        removeTaskToastTracking(existingTask.id)
+        this.removeTaskToast(existingTask)
 
         // Abort the session to prevent infinite polling hang
         // Awaited to prevent dangling promise during subagent teardown (Bun/WebKit SIGABRT)
         clearDelegatedChildSessionBootstrap(sessionID)
         await this.abortSessionWithLogging(sessionID, "launch error cleanup")
 
-        this.markForNotification(existingTask)
-        this.enqueueNotificationForParent(existingTask.parentSessionId, () => this.notifyParentSession(existingTask)).catch(err => {
+        this.publishTaskNotification(existingTask).catch(err => {
           log("[background-agent] Failed to notify on error:", err)
         })
       }
@@ -1381,7 +1379,7 @@ The fallback retry session is now created and can be inspected directly.
     }
 
     const toastManager = getTaskToastManager()
-    if (toastManager) {
+    if (toastManager && this.shouldPublishTaskSignals(existingTask)) {
       toastManager.addTask({
         id: existingTask.id,
         description: existingTask.description,
@@ -1494,7 +1492,7 @@ The fallback retry session is now created and can be inspected directly.
         existingTask.concurrencyKey = undefined
       }
 
-      removeTaskToastTracking(existingTask.id)
+      this.removeTaskToast(existingTask)
 
       // Abort the session to prevent infinite polling hang
       // Awaited to prevent dangling promise during subagent teardown (Bun/WebKit SIGABRT)
@@ -1503,8 +1501,7 @@ The fallback retry session is now created and can be inspected directly.
         await this.abortSessionWithLogging(existingTask.sessionId, "resume error cleanup")
       }
 
-      this.markForNotification(existingTask)
-      this.enqueueNotificationForParent(existingTask.parentSessionId, () => this.notifyParentSession(existingTask)).catch(err => {
+      this.publishTaskNotification(existingTask).catch(err => {
         log("[background-agent] Failed to notify on resume error:", err)
       })
     })
@@ -1981,7 +1978,9 @@ The fallback retry session is now created and can be inspected directly.
     // parent wake is not queued until after the awaited session abort below. The
     // notification is fire-and-forget here, so the reservation is released when that
     // promise settles (see the `.finally` on the enqueue call).
-    const notificationParentSessionID = task.parentSessionId
+    const notificationParentSessionID = this.shouldPublishTaskSignals(task)
+      ? task.parentSessionId
+      : undefined
     if (notificationParentSessionID) {
       this.parentWakeNotifier.reserveNotificationPreparation(notificationParentSessionID)
     }
@@ -2033,7 +2032,7 @@ The fallback retry session is now created and can be inspected directly.
 
     this.cleanupPendingByParent(task)
     this.clearNotificationsForTask(task.id)
-    removeTaskToastTracking(task.id)
+    this.removeTaskToast(task)
     this.scheduleTaskRemoval(task.id)
 
     if (task.sessionId) {
@@ -2043,8 +2042,7 @@ The fallback retry session is now created and can be inspected directly.
     }
 
     this.updateBackgroundTaskMarker(task.parentSessionId)
-    this.markForNotification(task)
-    this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task)).catch(err => {
+    this.publishTaskNotification(task).catch(err => {
       log("[background-agent] Failed to notify on async prompt failure:", { taskId: task.id, error: err })
     }).finally(releaseNotificationPreparation)
   }
@@ -2147,7 +2145,7 @@ The fallback retry session is now created and can be inspected directly.
     this.cleanupPendingByParent(task)
     this.clearNotificationsForTask(task.id)
     const toastManager = getTaskToastManager()
-    if (toastManager) {
+    if (toastManager && this.shouldPublishTaskSignals(task)) {
       toastManager.removeTask(task.id)
     }
     this.scheduleTaskRemoval(task.id)
@@ -2161,8 +2159,7 @@ The fallback retry session is now created and can be inspected directly.
       this.updateBackgroundTaskMarker(task.parentSessionId)
     }
 
-    this.markForNotification(task)
-    this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task)).catch(err => {
+    this.publishTaskNotification(task).catch(err => {
       log("[background-agent] Error in notifyParentSession for errored task:", { taskId: task.id, error: err })
     })
   }
@@ -2202,7 +2199,7 @@ The task was re-queued on a fallback model after a retryable failure.
       },
     })
     const retried = await result
-    if (retried && retryingNotification) {
+    if (retried && retryingNotification && this.shouldPublishTaskSignals(task)) {
       const parentPromptContext = await this.resolveParentWakePromptContext(task)
       this.queuePendingParentWake(
         task.parentSessionId,
@@ -2222,9 +2219,38 @@ The task was re-queued on a fallback model after a retryable failure.
   }
 
   markForNotification(task: BackgroundTask): void {
+    if (!this.shouldPublishTaskSignals(task)) {
+      return
+    }
     const queue = this.notifications.get(task.parentSessionId) ?? []
     queue.push(task)
     this.notifications.set(task.parentSessionId, queue)
+  }
+
+  private shouldPublishTaskSignals(task: BackgroundTask): boolean {
+    return task.notificationPolicy !== "manual"
+  }
+
+  private removeTaskToast(task: BackgroundTask): void {
+    if (this.shouldPublishTaskSignals(task)) {
+      removeTrackedTaskToast(task.id)
+    }
+  }
+
+  private async publishTaskNotification(task: BackgroundTask): Promise<void> {
+    if (!this.shouldPublishTaskSignals(task)) {
+      this.cleanupPendingByParent(task)
+      if (task.status !== "running" && task.status !== "pending") {
+        this.scheduleTaskRemoval(task.id)
+      }
+      return
+    }
+
+    this.markForNotification(task)
+    await this.enqueueNotificationForParent(
+      task.parentSessionId,
+      () => this.notifyParentSession(task),
+    )
   }
 
   getPendingNotifications(sessionID: string): BackgroundTask[] {
@@ -2459,7 +2485,7 @@ The task was re-queued on a fallback model after a retryable failure.
       this.idleDeferralTimers.delete(task.id)
     }
 
-    removeTaskToastTracking(task.id)
+    this.removeTaskToast(task)
 
     // Update continuation marker for CLI run mode
     if (task.parentSessionId) {
@@ -2473,10 +2499,8 @@ The task was re-queued on a fallback model after a retryable failure.
       return true
     }
 
-    this.markForNotification(task)
-
     try {
-      await this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task))
+      await this.publishTaskNotification(task)
       log(`[background-agent] Task cancelled via ${source}:`, task.id)
     } catch (err) {
       log("[background-agent] Error in notifyParentSession for cancelled task:", { taskId: task.id, error: err })
@@ -2556,7 +2580,9 @@ The task was re-queued on a fallback model after a retryable failure.
     // "no active children and no pending wake" during that window and settle on a
     // stale, pre-result turn. The reservation is released in `finally`, by which
     // point the wake has been queued (or notification has otherwise concluded).
-    const notificationParentSessionID = task.parentSessionId
+    const notificationParentSessionID = this.shouldPublishTaskSignals(task)
+      ? task.parentSessionId
+      : undefined
     if (notificationParentSessionID) {
       this.parentWakeNotifier.reserveNotificationPreparation(notificationParentSessionID)
     }
@@ -2574,15 +2600,13 @@ The task was re-queued on a fallback model after a retryable failure.
         this.unregisterRootDescendant(task.rootSessionId)
       }
 
-      removeTaskToastTracking(task.id)
+      this.removeTaskToast(task)
 
       // Release concurrency BEFORE any async operations to prevent slot leaks
       if (task.concurrencyKey) {
         this.concurrencyManager.release(task.concurrencyKey)
         task.concurrencyKey = undefined
       }
-
-      this.markForNotification(task)
 
       const idleTimer = this.idleDeferralTimers.get(task.id)
       if (idleTimer) {
@@ -2613,7 +2637,7 @@ The task was re-queued on a fallback model after a retryable failure.
       }
 
       try {
-        await this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task))
+        await this.publishTaskNotification(task)
         log(`[background-agent] Task completed via ${source}:`, task.id)
       } catch (err) {
         log("[background-agent] Error in notifyParentSession:", { taskId: task.id, error: err })
@@ -2630,6 +2654,13 @@ The task was re-queued on a fallback model after a retryable failure.
   }
 
   private async notifyParentSession(task: BackgroundTask): Promise<void> {
+    if (!this.shouldPublishTaskSignals(task)) {
+      this.cleanupPendingByParent(task)
+      if (task.status !== "running" && task.status !== "pending") {
+        this.scheduleTaskRemoval(task.id)
+      }
+      return
+    }
     const duration = formatDuration(task.startedAt ?? new Date(), task.completedAt)
 
     log("[background-agent] notifyParentSession called for task:", task.id)
@@ -2908,7 +2939,7 @@ The task was re-queued on a fallback model after a retryable failure.
           this.concurrencyManager.release(task.concurrencyKey)
           task.concurrencyKey = undefined
         }
-        removeTaskToastTracking(task.id)
+        this.removeTaskToast(task)
         const existingTimer = this.completionTimers.get(taskId)
         if (existingTimer) {
           clearTimeout(existingTimer)
@@ -2937,8 +2968,7 @@ The task was re-queued on a fallback model after a retryable failure.
         if (task.parentSessionId) {
           this.updateBackgroundTaskMarker(task.parentSessionId)
         }
-        this.markForNotification(task)
-        this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task)).catch(err => {
+        this.publishTaskNotification(task).catch(err => {
           log("[background-agent] Error in notifyParentSession for stale-pruned task:", { taskId: task.id, error: err })
         })
       },
@@ -2954,7 +2984,8 @@ The task was re-queued on a fallback model after a retryable failure.
       directory: this.directory,
       config: this.config,
       concurrencyManager: this.concurrencyManager,
-      notifyParentSession: (task) => this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task)),
+      notifyParentSession: (task) => this.publishTaskNotification(task),
+      onTaskInterrupted: (task) => this.removeTaskToast(task),
       sessionStatuses: allStatuses,
     })
   }
@@ -2993,7 +3024,7 @@ The task was re-queued on a fallback model after a retryable failure.
 
     this.cleanupPendingByParent(task)
     this.clearNotificationsForTask(task.id)
-    removeTaskToastTracking(task.id)
+    this.removeTaskToast(task)
     this.scheduleTaskRemoval(task.id)
     if (task.sessionId) {
       clearDelegatedChildSessionBootstrap(task.sessionId)
@@ -3005,8 +3036,7 @@ The task was re-queued on a fallback model after a retryable failure.
       this.updateBackgroundTaskMarker(task.parentSessionId)
     }
 
-    this.markForNotification(task)
-    this.enqueueNotificationForParent(task.parentSessionId, () => this.notifyParentSession(task)).catch(err => {
+    this.publishTaskNotification(task).catch(err => {
       log("[background-agent] Error in notifyParentSession for crashed task:", { taskId: task.id, error: err })
     })
   }
