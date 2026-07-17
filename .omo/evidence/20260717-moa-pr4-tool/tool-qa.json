@@ -1,0 +1,72 @@
+{
+  "toolResult": {
+    "runId": "qa-tool-run",
+    "preset": "qa",
+    "status": "completed",
+    "synthesis": "## Decision\nQA content for Decision.\n\n## Why this decision\nQA content for Why this decision.\n\n## Proposed technical approach\nQA content for Proposed technical approach.\n\n## Implementation ownership\nQA content for Implementation ownership.\n\n## Parent action plan\nQA content for Parent action plan.\n\n## Risks and mitigations\nQA content for Risks and mitigations.\n\n## Rejected alternatives\nQA content for Rejected alternatives.\n\n## Material disagreements\nQA content for Material disagreements.\n\n## Test and acceptance strategy\nQA content for Test and acceptance strategy.\n\n## Diversity and reliability note\nQA content for Diversity and reliability note.\n\n## Remaining uncertainty\nQA content for Remaining uncertainty.\n\n## Confidence\nQA content for Confidence.",
+    "execution": {
+      "policy": "consultation_only",
+      "toolsExposed": 0,
+      "mutationsPerformed": 0,
+      "implementationAuthority": "parent"
+    },
+    "advisorSummary": {
+      "requested": 2,
+      "successful": 2,
+      "failed": 0,
+      "timedOut": 0
+    },
+    "diversity": {
+      "configuredProviders": 2,
+      "effectiveProviders": 2,
+      "configuredModels": 2,
+      "effectiveModels": 2,
+      "outcome": "satisfied"
+    },
+    "warnings": []
+  },
+  "output": "## Decision\nQA content for Decision.\n\n## Why this decision\nQA content for Why this decision.\n\n## Proposed technical approach\nQA content for Proposed technical approach.\n\n## Implementation ownership\nQA content for Implementation ownership.\n\n## Parent action plan\nQA content for Parent action plan.\n\n## Risks and mitigations\nQA content for Risks and mitigations.\n\n## Rejected alternatives\nQA content for Rejected alternatives.\n\n## Material disagreements\nQA content for Material disagreements.\n\n## Test and acceptance strategy\nQA content for Test and acceptance strategy.\n\n## Diversity and reliability note\nQA content for Diversity and reliability note.\n\n## Remaining uncertainty\nQA content for Remaining uncertainty.\n\n## Confidence\nQA content for Confidence.",
+  "assertions": {
+    "enabledRegistersTool": true,
+    "disabledOmitsTool": true,
+    "enabledNoManagerOmitsTool": true,
+    "enabledRegistersCommand": true,
+    "commandDispatchesTool": true,
+    "disabledOmitsCommand": true,
+    "resultIsStructured": true,
+    "statusCompleted": true,
+    "toolsExposedZero": true,
+    "mutationsZero": true,
+    "policyConsultationOnly": true,
+    "implementationAuthorityParent": true,
+    "presetResolvedToDefault": true,
+    "decisionBundleValid": true,
+    "twoAdvisorsOneAggregator": true,
+    "everyLaunchToolPolicyNone": true,
+    "everyLaunchInternal": true,
+    "zeroFileWrites": true
+  },
+  "failedAssertions": [],
+  "enabledToolKeys": [
+    "moa_consult"
+  ],
+  "disabledToolKeys": [],
+  "enabledNoManagerToolKeys": [],
+  "commandEnabled": true,
+  "commandDisabled": false,
+  "launchRoles": [
+    "advisor",
+    "advisor",
+    "aggregator"
+  ],
+  "decisionBundleCheck": {
+    "valid": true,
+    "missing": [],
+    "extra": []
+  },
+  "sandbox": {
+    "path": "/tmp/moa-pr4-tool-KNnLKJ",
+    "filesBefore": [],
+    "filesAfter": []
+  }
+}

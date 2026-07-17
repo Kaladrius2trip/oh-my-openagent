@@ -1,0 +1,3 @@
+driver_exit=0
+sandbox_removed=true
+xdg_home_isolated=/tmp/moa-pr4-xdg.cL0a62
