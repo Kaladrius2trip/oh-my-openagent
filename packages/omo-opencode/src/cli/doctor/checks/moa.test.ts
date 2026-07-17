@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 
 import { CONFIG_BASENAME } from "../../../shared/plugin-identity"
-import { getAllCheckDefinitions } from "./index"
+import { checkMoA } from "./moa"
 
 const ORIGINAL_CWD = process.cwd()
 let sandbox = ""
@@ -16,9 +16,7 @@ async function writeConfig(config: object): Promise<void> {
 }
 
 function getMoACheck() {
-  const definition = getAllCheckDefinitions().find((candidate) => candidate.id === "moa")
-  if (definition === undefined) throw new Error("MoA doctor check is not registered")
-  return definition.check
+  return checkMoA
 }
 
 function enabledConfig(fallbackModels: readonly [string, string]) {
