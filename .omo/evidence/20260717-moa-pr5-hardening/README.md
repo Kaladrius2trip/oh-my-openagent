@@ -19,6 +19,7 @@
 - Sandbox sentinel content and directory listing were byte-identical after consultation. Active fake-session count returned to zero.
 - Forced final-model collapse ended `degraded` with one effective provider and model. Aggregator still launched once.
 - Eval produced 21 contract-valid entries: 14 `completed`, 7 `degraded`, zero exposed tools and zero mutations.
+- Scoped tests, schema freshness and full typecheck passed. Build reached frontend materialization, then failed because `packages/shared-skills/upstreams/open-design` has no checked-out revision. Build-created submodule changes were restored.
 
 ## Why this is enough
 
@@ -58,7 +59,7 @@ No provider prompts, credentials, environment dumps or raw private logs were cap
 | AC-024 | Consultation result and evidence contain no prompt/output telemetry. Live telemetry capture not run. |
 | AC-025 | `moa.test.ts` covers default preset, structural policy, category model and diversity diagnostics. Prompt override reachability remains covered by `placeholder-engine.test.ts`. |
 | AC-026 | `moa-command.test.ts`. |
-| AC-027 | Required schema, typecheck, build and scoped-test gates recorded in this bundle. |
+| AC-027 | Scoped tests, generated schema and full typecheck passed. Build is blocked by missing `open-design` submodule revision. Partial coverage. |
 | AC-028 | `zero-writes-e2e.test.ts`, manager cancel and shutdown tests. |
 | AC-029 | `docs/reference/moa.md`. |
 | AC-030 | `prompt-pack.test.ts` advisor composition order. |
@@ -91,3 +92,4 @@ No provider prompts, credentials, environment dumps or raw private logs were cap
 
 - AC-044 live three-provider routing was not run. Deterministic prompt and capability tests cover provider-independent enforcement.
 - Session unchanged proof uses manager-owned fake session handles, not a live OpenCode database. This avoids forbidden external AI CLI execution while proving no orphaned handles in repository tests.
+- Required build did not pass. Failure occurred in pre-existing frontend submodule materialization before product compilation. See `gates.txt`.
