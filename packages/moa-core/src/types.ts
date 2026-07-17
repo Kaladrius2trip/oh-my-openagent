@@ -16,16 +16,19 @@ export type MoAToolPolicy = "none"
 
 export type MoAExecutionPolicy = "consultation_only"
 
-export type MoAAdvisorMode = "analysis" | "research" | "planning" | "review" | "evidence-search"
+export const MOA_ADVISOR_MODES = ["analysis", "research", "planning", "review", "evidence-search"] as const
+export type MoAAdvisorMode = (typeof MOA_ADVISOR_MODES)[number]
 
-export type MoAAdvisorRole =
-  | "general"
-  | "architect"
-  | "validator"
-  | "researcher"
-  | "challenger"
-  | "skeptic"
-  | "security-reviewer"
+export const MOA_ADVISOR_ROLES = [
+  "general",
+  "architect",
+  "validator",
+  "researcher",
+  "challenger",
+  "skeptic",
+  "security-reviewer",
+] as const
+export type MoAAdvisorRole = (typeof MOA_ADVISOR_ROLES)[number]
 
 export type MoAPromptTemplateRef = `builtin:${string}` | `file://${string}`
 
