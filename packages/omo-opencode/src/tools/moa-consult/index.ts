@@ -1,0 +1,1 @@
+export { createMoaConsultTool } from "./tool"
