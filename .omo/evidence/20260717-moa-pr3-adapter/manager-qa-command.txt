@@ -1,0 +1,1 @@
+command=bun run .omo/evidence/20260717-moa-pr3-adapter/run-manager-qa.ts

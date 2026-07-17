@@ -1,0 +1,161 @@
+{
+  "run": {
+    "runId": "qa-run",
+    "status": "completed",
+    "advisorResults": [
+      {
+        "handle": {
+          "taskId": "bg_348e49a2",
+          "role": "advisor",
+          "slot": "architect"
+        },
+        "status": "completed",
+        "output": "QA report from architect",
+        "finalModel": {
+          "providerID": "anthropic",
+          "modelID": "claude-opus-4-7"
+        },
+        "fallbackCount": 0
+      },
+      {
+        "handle": {
+          "taskId": "bg_efcafa5a",
+          "role": "advisor",
+          "slot": "challenger"
+        },
+        "status": "completed",
+        "output": "QA report from challenger",
+        "finalModel": {
+          "providerID": "openai",
+          "modelID": "gpt-5.5"
+        },
+        "fallbackCount": 0
+      }
+    ],
+    "synthesis": "QA synthesis from one aggregator",
+    "configuredDiversity": {
+      "counts": {
+        "providers": 2,
+        "models": 2
+      },
+      "meetsProviders": true,
+      "meetsModels": true,
+      "satisfied": true,
+      "policy": "fail",
+      "outcome": "satisfied"
+    },
+    "effectiveDiversity": {
+      "counts": {
+        "providers": 2,
+        "models": 2
+      },
+      "meetsProviders": true,
+      "meetsModels": true,
+      "satisfied": true,
+      "policy": "fail",
+      "outcome": "satisfied"
+    }
+  },
+  "assertions": {
+    "completedRun": true,
+    "oneSynthesis": true,
+    "twoAdvisors": true,
+    "oneAggregator": true,
+    "allChildrenInternal": true,
+    "allChildrenManual": true,
+    "allChildrenToolless": true,
+    "allChildrenForbidContinuation": true,
+    "allChildrenSuppressTmux": true,
+    "allChildrenConsultationOnly": true,
+    "allChildrenTerminal": true,
+    "parentLineagePreserved": true,
+    "zeroParentPromptCalls": true,
+    "zeroPublicRows": true,
+    "zeroSidebarRows": true,
+    "zeroSignals": true
+  },
+  "failedAssertions": [],
+  "taskCount": 3,
+  "childSessionIDs": [
+    "child-moa-1",
+    "child-moa-2",
+    "child-moa-3"
+  ],
+  "promptSessionIDs": [
+    "child-moa-1",
+    "child-moa-2",
+    "child-moa-3"
+  ],
+  "signals": {
+    "notify": 0,
+    "toast": 0,
+    "wake": 0,
+    "tmux": 0
+  },
+  "visibility": {
+    "publicSnapshotRows": 0,
+    "sidebarRows": 0,
+    "internalSnapshotRows": 3
+  },
+  "tasks": [
+    {
+      "id": "bg_348e49a2",
+      "sessionId": "child-moa-1",
+      "status": "completed",
+      "parentSessionId": "parent-moa-qa",
+      "controls": {
+        "visibility": "internal",
+        "notificationPolicy": "manual",
+        "suppressTmuxSpawn": true,
+        "toolPolicy": "none",
+        "capabilityProfile": "moa-consultation-only",
+        "continuationPolicy": "forbid"
+      },
+      "orchestration": {
+        "kind": "moa",
+        "runId": "qa-run",
+        "role": "advisor",
+        "slot": "architect"
+      }
+    },
+    {
+      "id": "bg_efcafa5a",
+      "sessionId": "child-moa-2",
+      "status": "completed",
+      "parentSessionId": "parent-moa-qa",
+      "controls": {
+        "visibility": "internal",
+        "notificationPolicy": "manual",
+        "suppressTmuxSpawn": true,
+        "toolPolicy": "none",
+        "capabilityProfile": "moa-consultation-only",
+        "continuationPolicy": "forbid"
+      },
+      "orchestration": {
+        "kind": "moa",
+        "runId": "qa-run",
+        "role": "advisor",
+        "slot": "challenger"
+      }
+    },
+    {
+      "id": "bg_3f4dbc90",
+      "sessionId": "child-moa-3",
+      "status": "completed",
+      "parentSessionId": "parent-moa-qa",
+      "controls": {
+        "visibility": "internal",
+        "notificationPolicy": "manual",
+        "suppressTmuxSpawn": true,
+        "toolPolicy": "none",
+        "capabilityProfile": "moa-consultation-only",
+        "continuationPolicy": "forbid"
+      },
+      "orchestration": {
+        "kind": "moa",
+        "runId": "qa-run",
+        "role": "aggregator"
+      }
+    }
+  ]
+}

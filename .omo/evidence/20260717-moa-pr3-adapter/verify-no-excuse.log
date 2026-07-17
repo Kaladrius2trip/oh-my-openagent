@@ -1,0 +1,6 @@
+/root/workspace/oh-my-openagent-moa-pr3/packages/omo-opencode/src/plugin-dispose.ts:29:9: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr3/packages/omo-opencode/src/plugin-dispose.ts:34:9: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr3/packages/omo-opencode/src/plugin-dispose.ts:39:9: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+/root/workspace/oh-my-openagent-moa-pr3/packages/omo-opencode/src/plugin-dispose.ts:44:9: [catch-without-narrowing] `catch` without `instanceof` narrowing or re-throw — narrow the error type or re-throw
+
+4 violation(s) in 15 file(s).

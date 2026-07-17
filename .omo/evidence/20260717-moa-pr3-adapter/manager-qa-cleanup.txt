@@ -1,0 +1,2 @@
+sandbox_removed=true
+driver_exit=0

@@ -1,0 +1,9 @@
+packages/omo-opencode/src/features/moa/moa-manager.ts: total=260 nonblank_noncomment=240
+packages/omo-opencode/src/features/moa/moa-execution-adapter.ts: total=196 nonblank_noncomment=187
+packages/omo-opencode/src/features/moa/target-resolution.ts: total=230 nonblank_noncomment=215
+packages/omo-opencode/src/features/moa/diversity-prediction.ts: total=61 nonblank_noncomment=55
+packages/omo-opencode/src/features/moa/config-normalization.ts: total=102 nonblank_noncomment=93
+packages/omo-opencode/src/features/moa/index.ts: total=5 nonblank_noncomment=5
+packages/omo-opencode/src/create-managers.ts: total=257 nonblank_noncomment=224
+packages/omo-opencode/src/plugin-dispose.ts: total=51 nonblank_noncomment=46
+packages/omo-opencode/src/testing/create-plugin-module.ts: total=268 nonblank_noncomment=243

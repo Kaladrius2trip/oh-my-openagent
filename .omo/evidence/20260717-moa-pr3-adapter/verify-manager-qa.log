@@ -1,0 +1,4 @@
+[qa-sandbox] isolated env ready under /tmp/omo-qa-sandbox.56X4eG
+[qa-sandbox]   XDG_CONFIG_HOME=/tmp/omo-qa-sandbox.56X4eG/config
+[qa-sandbox]   CODEX_HOME=/tmp/omo-qa-sandbox.56X4eG/codex
+[qa-sandbox] host ~/.config/opencode and ~/.codex are untouched. Clean up: rm -rf "/tmp/omo-qa-sandbox.56X4eG"
