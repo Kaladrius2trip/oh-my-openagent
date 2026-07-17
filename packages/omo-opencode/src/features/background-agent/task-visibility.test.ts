@@ -6,6 +6,7 @@ import type { PluginInput } from "@opencode-ai/plugin"
 import { unsafeTestValue } from "../../../../../test-support/unsafe-test-value"
 import { buildTuiRuntimeSnapshot } from "../tui-sidebar/snapshot-builder"
 import { BackgroundManager } from "./manager"
+import { filterVisibleTasks } from "./task-visibility"
 import type { BackgroundTask } from "./types"
 
 const managers: BackgroundManager[] = []
@@ -54,7 +55,7 @@ async function waitFor(predicate: () => boolean): Promise<void> {
 }
 
 describe("background task visibility", () => {
-  test("given normal default and internal tasks when snapshots are read then only explicit internal access includes all", async () => {
+  test("given normal default and internal tasks when snapshots are read then only explicit internal access includes all", () => {
     const tasks = [
       createTask("normal", "normal"),
       createTask("default"),
@@ -66,7 +67,6 @@ describe("background task visibility", () => {
     expect(visibleTitles).toEqual(["normal", "default"])
     const allTitles = manager.getTasksSnapshotIncludingInternal().map((task) => task.title)
     expect(allTitles).toEqual(["normal", "default", "internal"])
-    const { filterVisibleTasks } = await import("./task-visibility")
     expect(filterVisibleTasks(tasks).map((task) => task.id)).toEqual(["normal", "default"])
   })
 

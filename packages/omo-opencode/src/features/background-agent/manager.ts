@@ -111,7 +111,10 @@ import {
 } from "./subagent-spawn-limits"
 import { TaskHistory } from "./task-history"
 import { checkAndInterruptStaleTasks, pruneStaleTasksAndNotifications, type SessionStatusMap } from "./task-poller"
-import { toBackgroundTaskSnapshots } from "./task-snapshot"
+import {
+  toBackgroundTaskSnapshots,
+  toBackgroundTaskSnapshotsIncludingInternal,
+} from "./task-snapshot"
 import {
   archiveBackgroundTask,
   forgetBackgroundTask,
@@ -1049,7 +1052,7 @@ The fallback retry session is now created and can be inspected directly.
       parentID: input.parentSessionId,
     })
 
-    if (!input.suppressTmuxSpawn && this.onSubagentSessionCreated && this.tmuxEnabled && isInsideTmux()) {
+    if (task.visibility !== "internal" && !input.suppressTmuxSpawn && this.onSubagentSessionCreated && this.tmuxEnabled && isInsideTmux()) {
       log("[background-agent] Invoking tmux callback (fire-and-forget)", { sessionID })
       void this.onSubagentSessionCreated({
         sessionID,
@@ -1070,6 +1073,10 @@ The fallback retry session is now created and can be inspected directly.
   }
 
   getTasksSnapshot(): BackgroundTaskSnapshot[] { return toBackgroundTaskSnapshots(this.tasks.values()) }
+
+  getTasksSnapshotIncludingInternal(): BackgroundTaskSnapshot[] {
+    return toBackgroundTaskSnapshotsIncludingInternal(this.tasks.values())
+  }
 
   getTasksByParentSession(sessionID: string): BackgroundTask[] {
     const taskIDs = this.tasksByParentSession.get(sessionID)
