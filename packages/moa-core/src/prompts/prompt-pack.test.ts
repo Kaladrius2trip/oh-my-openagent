@@ -15,7 +15,7 @@ import {
 // pin the trusted advisor and aggregator contract text. Editing any base/mode/role/
 // contract template body changes the hash and forces a template version bump.
 const ADVISOR_ANALYSIS_ARCHITECT_SYSTEM_HASH = "57cb165c0b5dda9836087c36f8c78e9c4d3d989cca9021117eaf8a2630eddcd1"
-const AGGREGATOR_SYSTEM_HASH = "176b654ee3c297adac84f5604b96486158898e58e6ad3abed53e588f87c06c16"
+const AGGREGATOR_SYSTEM_HASH = "ece5bc2555eee853c8c37c51bd339ddfeeac2913c4a97b6ed79cc4df71a71cff"
 
 const CONTEXT = { mode: "task_only", truncated: false, text: "task-only context body" } as const
 

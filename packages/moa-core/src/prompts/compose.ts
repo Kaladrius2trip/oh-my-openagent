@@ -118,8 +118,22 @@ function renderAdvisorReport(entry: AdvisorReportEntry): string {
   const body =
     entry.status === "completed" && entry.output !== undefined
       ? escapeEnvelopeValue(entry.output)
-      : `advisor did not produce a report (error category: ${escapeEnvelopeValue(entry.errorCategory ?? "unknown")})`
+      : `advisor did not produce a report\n<diagnostic>${escapeEnvelopeValue(sanitizeErrorText(entry.errorCategory ?? "unknown"))}</diagnostic>`
   return `<advisor_report ${attributes}>\n${body}\n</advisor_report>`
+}
+
+function sanitizeErrorText(value: string): string {
+  const withoutStack = value
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*at\s/.test(line))
+    .join(" ")
+  const sanitized = withoutStack
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi, "[uuid]")
+    .replace(/(?:\/[A-Za-z0-9._-]+){2,}(?::\d+(?::\d+)?)?/g, "[path]")
+    .replace(/\b[A-Za-z]:\\(?:[^\\\s]+\\)*[^\\\s]+/g, "[path]")
+    .replace(/\s+/g, " ")
+    .trim()
+  return sanitized.length <= 200 ? sanitized : `${sanitized.slice(0, 197)}...`
 }
 
 export function composeAggregatorPrompt(pack: ResolvedPromptPack, input: ComposeAggregatorPromptInput): ComposedPrompt {
