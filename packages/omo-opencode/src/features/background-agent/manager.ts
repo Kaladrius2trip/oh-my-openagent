@@ -10,7 +10,6 @@ import { isSessionActive as isOpenCodeSessionActive } from "../../hooks/shared/s
 import { resolveDispatchClient } from "../../shared/live-server-route"
 import {
   createInternalAgentTextPart,
-  getAgentToolRestrictions,
   hasInternalInitiatorMarker,
   isAmbiguousPostDispatchPromptFailure,
   log,
@@ -56,6 +55,7 @@ import {
 } from "./compaction-aware-message-resolver"
 import { ConcurrencyManager } from "./concurrency"
 import { setContinuationSessionMetadata } from "./continuation-policy"
+import { resolveCapabilityProfile } from "./capability-profile"
 import {
   POLLING_INTERVAL_MS,
   type QueueItem,
@@ -899,22 +899,13 @@ The fallback retry session is now created and can be inspected directly.
       applySessionPromptParams(sessionID, input.model)
     }
 
-    const userDenied: Record<string, boolean> = {}
-    if (input.userPermission) {
-      for (const [tool, value] of Object.entries(input.userPermission)) {
-        if (value === "deny") userDenied[tool] = false
-      }
-    }
-
-    const launchTools = {
-      task: false,
-      call_omo_agent: true,
-      question: false,
-      ...userDenied,
-      ...getAgentToolRestrictions(input.agent, {
-        includeTeamToolDenylist: input.teamRunId === undefined,
-      }),
-    }
+    const launchTools = resolveCapabilityProfile({
+      agent: input.agent,
+      includeTeamToolDenylist: input.teamRunId === undefined,
+      userPermission: input.userPermission,
+      toolPolicy: input.toolPolicy,
+      capabilityProfile: input.capabilityProfile,
+    })
     setSessionTools(sessionID, launchTools)
 
     log("[background-agent] Launching task:", { taskId: task.id, sessionID, agent: input.agent })
@@ -962,10 +953,17 @@ The fallback retry session is now created and can be inspected directly.
           taskId: task.id,
         })
         try {
-          const fallbackBody = buildFallbackBody(promptBody, FALLBACK_AGENT, {
+          const fallbackBodyWithDefaults = buildFallbackBody(promptBody, FALLBACK_AGENT, {
             includeTeamToolDenylist: input.teamRunId === undefined,
           })
-          const fallbackTools = fallbackBody.tools as Record<string, boolean>
+          const fallbackTools = resolveCapabilityProfile({
+            agent: FALLBACK_AGENT,
+            includeTeamToolDenylist: input.teamRunId === undefined,
+            userPermission: input.userPermission,
+            toolPolicy: input.toolPolicy,
+            capabilityProfile: input.capabilityProfile,
+          })
+          const fallbackBody = { ...fallbackBodyWithDefaults, tools: fallbackTools }
           setSessionTools(sessionID, fallbackTools)
           updateSessionAgent(sessionID, FALLBACK_AGENT)
           registerDelegatedChildSessionBootstrap({
@@ -1423,14 +1421,13 @@ The fallback retry session is now created and can be inspected directly.
           ...(resumeModel ? { model: resumeModel } : {}),
           ...(resumeVariant ? { variant: resumeVariant } : {}),
           tools: (() => {
-            const tools = {
-              task: false,
-              call_omo_agent: true,
-              question: false,
-              ...getAgentToolRestrictions(existingTask.agent, {
-                includeTeamToolDenylist: existingTask.teamRunId === undefined,
-              }),
-            }
+            const tools = resolveCapabilityProfile({
+              agent: existingTask.agent,
+              includeTeamToolDenylist: existingTask.teamRunId === undefined,
+              userPermission: existingTask.userPermission,
+              toolPolicy: existingTask.toolPolicy,
+              capabilityProfile: existingTask.capabilityProfile,
+            })
             setSessionTools(existingTask.sessionId!, tools)
             return tools
           })(),
