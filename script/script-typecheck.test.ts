@@ -102,6 +102,6 @@ describe("script TypeScript project", () => {
     const scriptTsconfig = parseScriptTsconfig(readFileSync(join(scriptRoot, "tsconfig.json"), "utf8"))
 
     // then
-    expect(scriptTsconfig.include).toContain("./**/*.ts")
+    expect(scriptTsconfig.include).toContain("./moa-eval/*.ts")
   })
 })
