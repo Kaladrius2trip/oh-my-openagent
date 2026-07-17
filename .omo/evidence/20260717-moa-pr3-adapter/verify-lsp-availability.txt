@@ -1,0 +1,6 @@
+tool=lsp_diagnostics
+result=unavailable
+error=LSP file path must be inside request cwd
+worktree=/root/workspace/oh-my-openagent-moa-pr3
+request_cwd=/root/workspace/agents-sandbox
+fallback=bun run typecheck

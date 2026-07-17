@@ -1,0 +1,69 @@
+$ bun run script/build.ts
+build:materialize
+$ node packages/omo-codex/plugin/scripts/materialize-shared-upstreams.mjs --strict
+Cloning into '/root/workspace/oh-my-openagent-moa-pr3/packages/shared-skills/upstreams/designpowers'...
+sign_and_send_pubkey: signing failed for RSA "RSA 4096" from agent: communication with agent failed
+ssh_askpass: exec(/usr/lib/ssh/ssh-askpass): No such file or directory
+git@github.com: Permission denied (publickey).
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+fatal: clone of 'https://github.com/Owl-Listener/designpowers' into submodule path '/root/workspace/oh-my-openagent-moa-pr3/packages/shared-skills/upstreams/designpowers' failed
+Failed to clone 'packages/shared-skills/upstreams/designpowers'. Retry scheduled
+Cloning into '/root/workspace/oh-my-openagent-moa-pr3/packages/shared-skills/upstreams/open-design'...
+sign_and_send_pubkey: signing failed for RSA "RSA 4096" from agent: communication with agent failed
+ssh_askpass: exec(/usr/lib/ssh/ssh-askpass): No such file or directory
+git@github.com: Permission denied (publickey).
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+fatal: clone of 'https://github.com/nexu-io/open-design' into submodule path '/root/workspace/oh-my-openagent-moa-pr3/packages/shared-skills/upstreams/open-design' failed
+Failed to clone 'packages/shared-skills/upstreams/open-design'. Retry scheduled
+Cloning into '/root/workspace/oh-my-openagent-moa-pr3/packages/shared-skills/upstreams/taste-skill'...
+sign_and_send_pubkey: signing failed for RSA "RSA 4096" from agent: communication with agent failed
+ssh_askpass: exec(/usr/lib/ssh/ssh-askpass): No such file or directory
+git@github.com: Permission denied (publickey).
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+fatal: clone of 'https://github.com/Leonxlnx/taste-skill' into submodule path '/root/workspace/oh-my-openagent-moa-pr3/packages/shared-skills/upstreams/taste-skill' failed
+Failed to clone 'packages/shared-skills/upstreams/taste-skill'. Retry scheduled
+Cloning into '/root/workspace/oh-my-openagent-moa-pr3/packages/shared-skills/upstreams/ui-ux-pro-max'...
+sign_and_send_pubkey: signing failed for RSA "RSA 4096" from agent: communication with agent failed
+ssh_askpass: exec(/usr/lib/ssh/ssh-askpass): No such file or directory
+git@github.com: Permission denied (publickey).
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+fatal: clone of 'https://github.com/nextlevelbuilder/ui-ux-pro-max-skill' into submodule path '/root/workspace/oh-my-openagent-moa-pr3/packages/shared-skills/upstreams/ui-ux-pro-max' failed
+Failed to clone 'packages/shared-skills/upstreams/ui-ux-pro-max'. Retry scheduled
+Cloning into '/root/workspace/oh-my-openagent-moa-pr3/packages/shared-skills/upstreams/designpowers'...
+sign_and_send_pubkey: signing failed for RSA "RSA 4096" from agent: communication with agent failed
+ssh_askpass: exec(/usr/lib/ssh/ssh-askpass): No such file or directory
+git@github.com: Permission denied (publickey).
+fatal: Could not read from remote repository.
+
+Please make sure you have the correct access rights
+and the repository exists.
+fatal: clone of 'https://github.com/Owl-Listener/designpowers' into submodule path '/root/workspace/oh-my-openagent-moa-pr3/packages/shared-skills/upstreams/designpowers' failed
+Failed to clone 'packages/shared-skills/upstreams/designpowers' a second time, aborting
+file:///root/workspace/oh-my-openagent-moa-pr3/packages/omo-codex/plugin/scripts/materialize-shared-upstreams.mjs:28
+		if (strict) throw new Error(message);
+		                  ^
+
+Error: [materialize-shared-upstreams] git submodule init failed: Command failed: git submodule update --init --recursive packages/shared-skills/upstreams/open-design packages/shared-skills/upstreams/taste-skill packages/shared-skills/upstreams/ui-ux-pro-max packages/shared-skills/upstreams/designpowers
+    at initSubmodules (file:///root/workspace/oh-my-openagent-moa-pr3/packages/omo-codex/plugin/scripts/materialize-shared-upstreams.mjs:28:21)
+    at materializeSharedUpstreams (file:///root/workspace/oh-my-openagent-moa-pr3/packages/omo-codex/plugin/scripts/materialize-shared-upstreams.mjs:35:2)
+    at file:///root/workspace/oh-my-openagent-moa-pr3/packages/omo-codex/plugin/scripts/materialize-shared-upstreams.mjs:48:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.21.1
+error: script "build:materialize-frontend" exited with code 1
+build: FAILED: build:materialize failed with exit code 1
+error: script "build" exited with code 1

@@ -13,6 +13,13 @@ import { TuiStateMirror } from "./features/tui-sidebar/mirror-manager"
 import { createModelFallbackControllerAccessor } from "./hooks/model-fallback"
 import { initTaskToastManager } from "./features/task-toast-manager"
 import { TmuxSessionManager } from "./features/tmux-subagent"
+import {
+  createMoAExecutionAdapter,
+  createMoAManager,
+  createMoATargetResolver,
+  normalizeMoAConfig,
+  type MoAManager,
+} from "./features/moa"
 import * as openclawRuntimeDispatch from "./openclaw/runtime-dispatch"
 import { registerManagerForCleanup } from "./features/background-agent/process-cleanup"
 import { createConfigHandler } from "./plugin-handlers"
@@ -31,6 +38,7 @@ type CreateManagersDeps = {
   cleanupSessionTeamRunsFn: typeof cleanupSessionTeamRuns
   createConfigHandlerFn: typeof createConfigHandler
   markServerRunningInProcessFn: typeof markServerRunningInProcess
+  createMoAManagerFn: typeof createMoAManager
 }
 
 const defaultCreateManagersDeps: CreateManagersDeps = {
@@ -44,6 +52,7 @@ const defaultCreateManagersDeps: CreateManagersDeps = {
   cleanupSessionTeamRunsFn: cleanupSessionTeamRuns,
   createConfigHandlerFn: createConfigHandler,
   markServerRunningInProcessFn: markServerRunningInProcess,
+  createMoAManagerFn: createMoAManager,
 }
 
 export type Managers = {
@@ -54,6 +63,7 @@ export type Managers = {
   modelFallbackControllerAccessor: ModelFallbackControllerAccessor
   tuiStateMirror?: TuiStateMirror
   monitorManager?: MonitorManager
+  moaManager?: MoAManager
 }
 
 export function createManagers(args: {
@@ -191,6 +201,30 @@ export function createManagers(args: {
     modelFallbackControllerAccessor,
   })
 
+  let moaManager: MoAManager | undefined
+  if (pluginConfig.moa?.enabled === true) {
+    const resolveTarget = createMoATargetResolver({
+      executorContext: {
+        manager: backgroundManager,
+        client: ctx.client,
+        directory: ctx.directory,
+        userCategories: pluginConfig.categories,
+        agentOverrides: pluginConfig.agents,
+        sisyphusAgentConfig: pluginConfig.sisyphus_agent,
+        modelFallbackControllerAccessor,
+      },
+    })
+    moaManager = deps.createMoAManagerFn({
+      config: normalizeMoAConfig(pluginConfig.moa),
+      createAdapter: (parent) => createMoAExecutionAdapter({
+        backgroundManager,
+        parent,
+        resolveTarget,
+      }),
+    })
+    deps.registerManagerForCleanupFn(moaManager)
+  }
+
   if (pluginConfig.tui?.sidebar?.enabled !== false) {
     tuiStateMirror = new deps.TuiStateMirrorClass({
       client: ctx.client,
@@ -216,6 +250,7 @@ export function createManagers(args: {
     skillMcpManager,
     configHandler,
     modelFallbackControllerAccessor,
+    ...(moaManager !== undefined ? { moaManager } : {}),
     tuiStateMirror,
     monitorManager,
   }
