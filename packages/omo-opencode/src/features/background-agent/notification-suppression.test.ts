@@ -18,6 +18,7 @@ type SignalCounters = {
 
 type ManagerControl = {
   readonly tasks: Map<string, BackgroundTask>
+  readonly pendingByParent: Map<string, Set<string>>
   tryCompleteTask: (task: BackgroundTask, source: string) => Promise<boolean>
   handleSessionErrorEvent: (input: {
     task: BackgroundTask
@@ -32,7 +33,13 @@ type ManagerControl = {
   ) => Promise<boolean>
   processKey: (key: string) => Promise<void>
   notifyParentSession: (task: BackgroundTask) => Promise<void>
-  queuePendingParentWake: () => void
+  isSessionActive: (sessionID: string) => Promise<boolean>
+  queuePendingParentWake: (
+    sessionID: string,
+    notification: string,
+    promptContext: unknown,
+    shouldReply: boolean,
+  ) => void
 }
 
 const managers: BackgroundManager[] = []
@@ -148,6 +155,25 @@ describe("background task notification suppression", () => {
     const counters = await runTerminalAndRetrySignals()
 
     expect(counters).toEqual({ notify: 3, toast: 6, wake: 4 })
+  })
+
+  test("given a normal completion beside internal work when notifying then internal work does not delay all-complete", async () => {
+    const manager = createManager()
+    const control = unsafeTestValue<ManagerControl>(manager)
+    const normalTask = { ...createTask("normal-sibling"), status: "completed" } satisfies BackgroundTask
+    const internalTask = createTask("internal-sibling", "manual")
+    control.tasks.set(normalTask.id, normalTask)
+    control.tasks.set(internalTask.id, internalTask)
+    control.pendingByParent.set(normalTask.parentSessionId, new Set([normalTask.id, internalTask.id]))
+    control.isSessionActive = async () => true
+    let shouldReply = false
+    control.queuePendingParentWake = (_sessionID, _notification, _promptContext, reply) => {
+      shouldReply = reply
+    }
+
+    await control.notifyParentSession(normalTask)
+
+    expect(shouldReply).toBe(true)
   })
 
   test("given manual and normal launches when started then only normal launch toasts are tracked", async () => {

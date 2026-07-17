@@ -1,0 +1,15 @@
+Command: bun test packages/omo-opencode/src/features/background-agent/notification-suppression.test.ts
+Exit code: 1
+
+bun test v1.3.14 (0d9b296a)
+
+(fail) background task notification suppression > given a normal completion beside internal work when notifying then internal work does not delay all-complete
+Expected: true
+Received: false
+
+4 pass
+1 fail
+7 expect() calls
+Ran 5 tests across 1 file.
+
+Failure classification: expected behavioral red. A manual/internal sibling is included in the parent-facing pending count, so a completed normal task does not publish the all-complete transition.
