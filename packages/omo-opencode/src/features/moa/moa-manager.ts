@@ -214,6 +214,9 @@ export function createMoAManager(options: {
       })
       active.handles.push(aggregator)
       const aggregate = await active.adapter.waitForChild(aggregator, preset.aggregator_timeout_ms ?? 150_000, active.controller.signal)
+      if (aggregate.status === "timed_out") {
+        await active.adapter.cancelChild(aggregator, "aggregator deadline exceeded")
+      }
       const terminal = computeTerminalStatus({
         cancelled: active.controller.signal.aborted, advisorThresholdMet: true,
         allAdvisorsSucceeded: successful === preset.advisors.length, effectiveDiversity: effective.outcome,
@@ -227,6 +230,7 @@ export function createMoAManager(options: {
       })
     } catch (error) {
       if (isTerminalStatus(active.status)) return result(active, advisorResults)
+      await Promise.all(active.handles.map((handle) => active.adapter.cancelChild(handle, "MoA run failed")))
       if (error instanceof Error) {
         transition(active, "failed")
         return result(active, advisorResults, { error: error.message })
