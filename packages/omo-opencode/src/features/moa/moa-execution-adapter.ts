@@ -12,6 +12,9 @@ import type { BackgroundTask, BackgroundTaskOutputResult, LaunchInput } from "..
 import { log as defaultLog } from "../../shared"
 import { MoAChildSessionObserver, type MoASessionObserver } from "./moa-session-observer"
 
+// ponytail: fixed safety ceiling; add per-preset budgets only when distinct workloads require them.
+const MOA_RESEARCH_MAX_TOOL_CALLS = 12
+
 export interface MoABackgroundManager {
   launch(input: LaunchInput): Promise<Pick<BackgroundTask, "id" | "sessionId">>
   getTask(taskId: string): Partial<BackgroundTask> & Pick<BackgroundTask, "id" | "status"> | undefined
@@ -223,6 +226,7 @@ export function createMoAExecutionAdapter(options: {
     resolveTarget: options.resolveTarget,
     launchChild: async (input: MoAChildLaunchInput): Promise<MoAChildHandle> => {
       assertConsultationOnlyLaunch(input)
+      const isResearchAdvisor = input.role === "advisor" && input.toolPolicy === "read_only"
       const temperature = input.temperature ?? input.target.model.temperature
       const description = `MoA ${input.role}: ${input.orchestration.slot ?? "synthesis"}`
       const observer = options.sessionObserver === undefined
@@ -250,8 +254,9 @@ export function createMoAExecutionAdapter(options: {
           // Suppress the regular INTERACTIVE subagent pane. Observe-only MoA
           // projection is an independent capability installed by this callback.
           suppressTmuxSpawn: true,
-          toolPolicy: "none",
-          capabilityProfile: "moa-consultation-only",
+          toolPolicy: isResearchAdvisor ? "default" : "none",
+          capabilityProfile: input.capabilityProfile,
+          ...(isResearchAdvisor ? { maxToolCalls: MOA_RESEARCH_MAX_TOOL_CALLS } : {}),
           continuationPolicy: "forbid",
           orchestration: input.orchestration,
           ...(observer !== undefined

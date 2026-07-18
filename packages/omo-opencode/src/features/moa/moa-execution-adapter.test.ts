@@ -134,6 +134,36 @@ describe("createMoAExecutionAdapter", () => {
     ])
   })
 
+  test("#given a read-only advisor #when adapter launches #then it enables the research profile with a fixed tool budget", async () => {
+    const launches: LaunchInput[] = []
+    const adapter = createMoAExecutionAdapter({
+      backgroundManager: {
+        launch: async (input) => {
+          launches.push(input)
+          return { id: "bg-1" }
+        },
+        getTask: () => undefined,
+        getTaskLastActivityAt: () => undefined,
+        readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
+        cancelTask: async () => true,
+      },
+      parent: { sessionID: "parent-session", messageID: "parent-message" },
+      resolveTarget: async () => target,
+    })
+
+    await adapter.launchChild({
+      ...childInput("advisor", "researcher"),
+      toolPolicy: "read_only",
+      capabilityProfile: "moa-research",
+    })
+
+    expect(launches[0]).toMatchObject({
+      toolPolicy: "default",
+      capabilityProfile: "moa-research",
+      maxToolCalls: 12,
+    })
+  })
+
   test("#given a completed fallback task #when adapter waits #then result reports output and final settled model", async () => {
     // given
     const adapter = createMoAExecutionAdapter({
