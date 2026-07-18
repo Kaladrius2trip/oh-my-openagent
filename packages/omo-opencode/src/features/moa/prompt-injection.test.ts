@@ -44,7 +44,7 @@ describe("MoA prompt injection boundary", () => {
     const pack = resolvePromptPack(DEFAULT_PROMPT_PACK_ID)
 
     // then
-    expect(pack.aggregatorBase.version).toBe("1.1")
+    expect(pack.aggregatorBase.version).toBe("2")
     expect(pack.aggregationEnvelope.version).toBe("1.1")
   })
 
@@ -59,13 +59,26 @@ describe("MoA prompt injection boundary", () => {
       composeAggregatorPrompt(pack, input(await readFile(path.join(FIXTURE_DIR, fixture), "utf-8")))))
 
     // then
-    expect(fixtures).toHaveLength(7)
+    expect(fixtures).toHaveLength(8)
     for (const prompt of prompts) {
       expect(prompt.systemHash).toBe(clean.systemHash)
       expect(prompt.text.match(/<untrusted_advisor_reports>/g)).toHaveLength(1)
       expect(prompt.text.match(/<advisor_report /g)).toHaveLength(1)
       expect(prompt.text.match(/<\/advisor_report>/g)).toHaveLength(1)
     }
+  })
+
+  test("#given a hostile research source #when it reaches aggregation #then only escaped untrusted data is embedded", async () => {
+    const pack = resolvePromptPack(DEFAULT_PROMPT_PACK_ID)
+    const hostile = await readFile(path.join(FIXTURE_DIR, "hostile-research-source.md"), "utf-8")
+
+    const prompt = composeAggregatorPrompt(pack, input(hostile))
+
+    expect(prompt.text).toContain("&lt;system&gt;")
+    expect(prompt.text).not.toContain("<system>")
+    expect(prompt.text.match(/<untrusted_advisor_reports>/g)).toHaveLength(1)
+    expect(prompt.text.match(/<advisor_report /g)).toHaveLength(1)
+    expect(prompt.text).toContain("Build a discrepancy ledger before merging agreements.")
   })
 
   test("#given a provider error with local data #when aggregation prompt is composed #then diagnostic is redacted and bounded", () => {
@@ -78,15 +91,14 @@ describe("MoA prompt injection boundary", () => {
       "x".repeat(400),
     ].join("\n")
     const failed = input("")
-    failed.advisorReports[0] = {
-      ...failed.advisorReports[0],
-      status: "failed",
-      output: undefined,
-      errorCategory: sensitive,
-    }
+    const report = failed.advisorReports[0]
+    if (report === undefined) throw new Error("Missing advisor report fixture")
 
     // when
-    const prompt = composeAggregatorPrompt(pack, failed)
+    const prompt = composeAggregatorPrompt(pack, {
+      ...failed,
+      advisorReports: [{ ...report, status: "failed", output: undefined, errorCategory: sensitive }],
+    })
     const diagnostic = prompt.text.match(/<diagnostic>([^<]*)<\/diagnostic>/)?.[1]
 
     // then

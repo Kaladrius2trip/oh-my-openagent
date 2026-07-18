@@ -436,7 +436,7 @@ MoA is disabled by default. Enable it to register `moa_consult` and `/moa`:
   "moa": {
     "enabled": true,
     "default_preset": "architecture-balanced",
-    "default_prompt_pack": "omo-hermes-derived-v1",
+    "default_prompt_pack": "omo-hermes-derived-v2",
     "max_advisors_per_run": 8
   }
 }
@@ -446,7 +446,7 @@ MoA is disabled by default. Enable it to register `moa_consult` and `/moa`:
 | --- | --- | --- |
 | `enabled` | `false` | Enable MoA manager, tool and command. |
 | `default_preset` | `architecture-balanced` | Preset used when no preset is supplied. |
-| `default_prompt_pack` | `omo-hermes-derived-v1` | Prompt pack used unless preset overrides it. |
+| `default_prompt_pack` | `omo-hermes-derived-v2` | Tool-policy-aware prompt pack used unless preset overrides it. |
 | `max_advisors_per_run` | `8` | Advisor cap, from 1 through 8. |
 | `presets` | none | Custom preset definitions. |
 | `prompt_packs` | none | Custom prompt-pack definitions. |
@@ -465,7 +465,7 @@ Custom presets can set `temperature` from `0` through `2` on every `advisors[]` 
             "name": "architect",
             "category": "moa-architect",
             "temperature": 0.8,
-            "tool_policy": "none"
+            "tool_policy": "read_only"
           }
         ],
         "aggregator": {
@@ -479,6 +479,10 @@ Custom presets can set `temperature` from `0` through `2` on every `advisors[]` 
 ```
 
 Temperature precedence: slot temperature > resolved category temperature > provider default. Slot temperature also overrides every runtime fallback. Doctor warns only when a statically resolved primary model is known not to support temperature; runtime compatibility strips unsupported temperature settings.
+
+Advisor `tool_policy` defaults to `"none"`. Set it to `"read_only"` only when that advisor needs evidence absent from supplied context. Read-only advisors receive `read`, `grep` and `glob`, capped at 12 tool calls per child. Existing user and agent denials still win. They receive no shell, write, edit, network, MCP, delegation or background-task tools. Aggregators always remain tool-free.
+
+Read-only tool results become model context for that advisor and may be sent to its configured provider. Do not enable `read_only` for repositories or paths whose contents the selected provider may not receive. Keep credentials outside readable project files and use existing user or agent denials to narrow access.
 
 See [Mixture of Advisors](moa.md) for preset catalog, security model and result contract. See [MoA Prompt Reference](moa-prompts.md) for composition and override policy.
 

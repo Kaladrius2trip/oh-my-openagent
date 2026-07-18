@@ -4,12 +4,12 @@ import type { MoAPresetConfig } from "../types"
 export const codeReviewPreset: MoAPresetConfig = {
   enabled: true,
   description: "Deep code review and regression analysis.",
-  prompt_pack: "omo-hermes-derived-v1",
+  prompt_pack: "omo-hermes-derived-v2",
   execution_policy: "consultation_only",
   advisors: [
-    { name: "researcher", role: "researcher", mode: "research", category: "moa-researcher", tool_policy: "none" },
-    { name: "validator", role: "validator", mode: "review", category: "moa-validator", tool_policy: "none" },
-    { name: "architect", role: "architect", mode: "review", category: "moa-architect", tool_policy: "none" },
+    { name: "researcher", role: "researcher", mode: "research", category: "moa-researcher", tool_policy: "read_only" },
+    { name: "validator", role: "validator", mode: "review", category: "moa-validator", tool_policy: "read_only" },
+    { name: "architect", role: "architect", mode: "review", category: "moa-architect", tool_policy: "read_only" },
   ],
   aggregator: { category: "moa-aggregator", maxTokens: 4600 },
   context: { mode: "recent_text", max_messages: 18, max_tokens: 28000, tool_result_preview_chars: 5000 },

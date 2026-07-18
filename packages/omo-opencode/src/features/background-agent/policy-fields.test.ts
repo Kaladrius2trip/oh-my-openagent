@@ -53,6 +53,7 @@ describe("background task policy fields", () => {
         continuationPolicy: "forbid",
         toolPolicy: "none",
         capabilityProfile: "moa-consultation-only",
+        maxToolCalls: 12,
         orchestration: {
           kind: "moa",
           runId: "run-1",

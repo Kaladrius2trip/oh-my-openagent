@@ -78,7 +78,7 @@ describe("createMoaConsultTool", () => {
     // When the tool runs with only a prompt
     const result = await moaTool.execute({ prompt: "Should we split module X?" }, context)
 
-    // Then it returns the consultation bundle with zero tools exposed and parent authority
+    // Then it returns the research-first consultation bundle with parent authority
     if (typeof result === "string") throw new Error(`expected a structured result, got: ${result}`)
     const bundle = result.metadata
     expect(bundle?.runId).toBe("run-1")
@@ -87,7 +87,14 @@ describe("createMoaConsultTool", () => {
     expect(bundle?.synthesis).toBe("## Decision\nProceed with the split.")
     expect(bundle?.execution).toEqual({
       policy: "consultation_only",
-      toolsExposed: 0,
+      toolsExposed: 3,
+      advisorPolicies: [
+        { name: "architect", policy: "read_only" },
+        { name: "validator", policy: "read_only" },
+        { name: "challenger", policy: "read_only" },
+      ],
+      advisorToolsExposed: ["read", "grep", "glob"],
+      aggregatorToolsExposed: [],
       mutationsPerformed: 0,
       implementationAuthority: "parent",
     })
@@ -114,6 +121,30 @@ describe("createMoaConsultTool", () => {
 
     // Then the manager receives that preset
     expect(requests[0]?.preset).toBe("security-critical")
+  })
+
+  test("reports the bounded read-only tool surface for a research-enabled preset", async () => {
+    const { manager } = createFakeManager()
+    const moaTool = createMoaConsultTool(manager, {
+      ...config,
+      default_preset: "research-enabled",
+      presets: {
+        "research-enabled": {
+          advisors: [{ name: "researcher", category: "moa-researcher", tool_policy: "read_only" }],
+          aggregator: { category: "moa-aggregator" },
+        },
+      },
+    })
+
+    const result = await moaTool.execute({ prompt: "research" }, context)
+
+    if (typeof result === "string") throw new Error(`expected a structured result, got: ${result}`)
+    expect(result.metadata?.execution).toMatchObject({
+      toolsExposed: 3,
+      advisorPolicies: [{ name: "researcher", policy: "read_only" }],
+      advisorToolsExposed: ["read", "grep", "glob"],
+      aggregatorToolsExposed: [],
+    })
   })
 
   test("rejects an unknown preset without starting a run", async () => {

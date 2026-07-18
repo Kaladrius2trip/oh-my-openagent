@@ -16,4 +16,4 @@ export const omoHermesDerivedV1Pack: MoAPromptPackConfig = {
   aggregator_output_contract: "builtin:moa-decision-bundle-v1",
 }
 
-export const DEFAULT_PROMPT_PACK_ID = "omo-hermes-derived-v1"
+export const OMO_HERMES_DERIVED_V1_PACK_ID = "omo-hermes-derived-v1"

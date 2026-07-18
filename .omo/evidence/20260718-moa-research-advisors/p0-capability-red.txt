@@ -1,0 +1,101 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/omo-opencode/src/features/background-agent/capability-profile.test.ts:
+24 |         includeTeamToolDenylist: true,
+25 |         capabilityProfile: "moa-consultation-only",
+26 |         userPermission: { read: "allow", bash: "allow" },
+27 |       })
+28 | 
+29 |       expect(promptBody.tools).toEqual({ "*": false })
+                                    ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "*": false,
+- }
++ {}
+
+- Expected  - 3
++ Received  + 1
+
+      at <anonymous> (/root/workspace/oh-my-openagent-pr15/packages/omo-opencode/src/features/background-agent/capability-profile.test.ts:29:32)
+(fail) background task capability profiles > given the MoA consultation-only profile > when prompt tools are resolved then a wildcard deny removes the fork default registry [2.62ms]
+37 |         includeTeamToolDenylist: true,
+38 |         capabilityProfile: "moa-consultation-only",
+39 |         userPermission: { forced: "allow" },
+40 |       })
+41 | 
+42 |       expect(tools).toEqual({ "*": false })
+                         ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "*": false,
+- }
++ {}
+
+- Expected  - 3
++ Received  + 1
+
+      at <anonymous> (/root/workspace/oh-my-openagent-pr15/packages/omo-opencode/src/features/background-agent/capability-profile.test.ts:42:21)
+(fail) background task capability profiles > given the MoA consultation-only profile > when permissive restrictions are injected then no capability can be added [0.20ms]
+53 |         prompt: "Review the proposal",
+54 |         includeTeamToolDenylist: false,
+55 |         toolPolicy: "none",
+56 |       })
+57 | 
+58 |       expect(promptBody.tools).toEqual({ "*": false })
+                                    ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "*": false,
+- }
++ {}
+
+- Expected  - 3
++ Received  + 1
+
+      at <anonymous> (/root/workspace/oh-my-openagent-pr15/packages/omo-opencode/src/features/background-agent/capability-profile.test.ts:58:32)
+(fail) background task capability profiles > given toolPolicy none without a named profile > when tools are resolved then the wildcard denies the fork default registry [0.12ms]
+66 |         agent: "general",
+67 |         includeTeamToolDenylist: false,
+68 |       }
+69 |       Reflect.set(input, "capabilityProfile", "unknown-profile")
+70 | 
+71 |       expect(() => createCapabilityProfileResolver()(input)).toThrow(/Unknown capability profile/)
+                                                                  ^
+error: expect(received).toThrow(expected)
+
+Expected pattern: /Unknown capability profile/
+
+Received function did not throw
+Received value: {
+  task: false,
+  call_omo_agent: true,
+  question: false,
+}
+
+      at <anonymous> (/root/workspace/oh-my-openagent-pr15/packages/omo-opencode/src/features/background-agent/capability-profile.test.ts:71:62)
+(fail) background task capability profiles > given an invalid capability profile > when tools are resolved then launch fails closed [0.67ms]
+77 |       expect(() => createCapabilityProfileResolver()({
+78 |         agent: "general",
+79 |         includeTeamToolDenylist: false,
+80 |         toolPolicy: "default",
+81 |         capabilityProfile: "moa-consultation-only",
+82 |       })).toThrow(/Conflicting capability profile/)
+               ^
+error: expect(received).toThrow(expected)
+
+Expected pattern: /Conflicting capability profile/
+
+Received function did not throw
+Received value: {}
+
+      at <anonymous> (/root/workspace/oh-my-openagent-pr15/packages/omo-opencode/src/features/background-agent/capability-profile.test.ts:82:11)
+(fail) background task capability profiles > given an explicitly conflicting tool policy and capability profile > when tools are resolved then launch fails closed [0.19ms]
+
+ 1 pass
+ 5 fail
+ 6 expect() calls
+Ran 6 tests across 1 file. [208.00ms]

@@ -167,6 +167,45 @@ describe("BackgroundManager circuit breaker", () => {
     })
   })
 
+  describe("#given a task-specific absolute cap below the global cap", () => {
+    test("#when task tool calls reach its cap #then the task override cancels it", async () => {
+      const manager = createManager({
+        maxToolCalls: 20,
+        circuitBreaker: {
+          consecutiveThreshold: 95,
+        },
+      })
+      const task: BackgroundTask = {
+        id: "task-specific-cap",
+        sessionId: "session-specific-cap",
+        parentSessionId: "parent-1",
+        parentMessageId: "msg-1",
+        description: "Research advisor",
+        prompt: "research",
+        agent: "oracle",
+        status: "running",
+        maxToolCalls: 2,
+        startedAt: new Date(Date.now() - 60_000),
+        progress: {
+          toolCalls: 0,
+          lastUpdate: new Date(Date.now() - 60_000),
+        },
+      }
+      getTaskMap(manager).set(task.id, task)
+
+      for (const toolName of ["read", "grep"]) {
+        manager.handleEvent({
+          type: "message.part.updated",
+          properties: { sessionID: task.sessionId, type: "tool", tool: toolName },
+        })
+      }
+      await flushAsyncWork()
+
+      expect(task.status).toBe("cancelled")
+      expect(task.error).toContain("maximum tool call limit (2)")
+    })
+  })
+
   describe("#given the same running tool part emits multiple updates", () => {
     test("#when duplicate running updates arrive #then it only counts the tool once", async () => {
       const manager = createManager({

@@ -43,6 +43,7 @@ function createBackgroundTask(): BackgroundTask {
     continuationPolicy: "forbid",
     toolPolicy: "none",
     capabilityProfile: "moa-consultation-only",
+    maxToolCalls: 12,
     orchestration: {
       kind: "moa",
       runId: "run-retry",
@@ -97,6 +98,7 @@ describe("fallback retry launch input", () => {
         continuationPolicy: "forbid",
         toolPolicy: "none",
         capabilityProfile: "moa-consultation-only",
+        maxToolCalls: 12,
         orchestration: {
           kind: "moa",
           runId: "run-retry",

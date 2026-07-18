@@ -2,7 +2,9 @@ import type {
   MoAConfig,
   MoAPresetConfig,
   MoATarget,
+  MoAToolExposure,
 } from "@oh-my-opencode/moa-core"
+import { describeMoAToolExposure } from "@oh-my-opencode/moa-core"
 import type { ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
 import { MoAConfigSchema } from "@oh-my-opencode/moa-core/config"
 import { evaluateConfiguredDiversity, type MoADiversityCheck } from "@oh-my-opencode/moa-core/diversity"
@@ -43,6 +45,7 @@ export type MoAConfigEvaluation = {
   readonly targets: readonly ResolvedMoATarget[]
   readonly configuredDiversity?: MoADiversityCheck
   readonly fallbackPrediction?: MoADiversityCheck
+  readonly toolExposure?: MoAToolExposure
   readonly errors: readonly MoAValidationIssue[]
   readonly warnings: readonly MoAValidationIssue[]
 }
@@ -218,6 +221,7 @@ export function evaluateMoAConfig(candidate: RawMoAConfig, dependencies: MoAEval
     targets,
     configuredDiversity,
     fallbackPrediction,
+    toolExposure: describeMoAToolExposure(preset),
     errors,
     warnings,
   }

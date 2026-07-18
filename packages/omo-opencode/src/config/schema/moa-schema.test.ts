@@ -10,7 +10,7 @@ describe("MoAConfigSchema", () => {
       expect(result.enabled).toBe(false)
       expect(result.tmux_visualization).toBe(false)
       expect(result.default_preset).toBe("architecture-balanced")
-      expect(result.default_prompt_pack).toBe("omo-hermes-derived-v1")
+    expect(result.default_prompt_pack).toBe("omo-hermes-derived-v2")
       expect(result.max_advisors_per_run).toBe(8)
     })
   })

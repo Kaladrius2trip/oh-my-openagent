@@ -50,9 +50,38 @@ describe("BUILTIN_PRESETS", () => {
       }
     }
   })
+
+  test("#given built-in research tiers #when policies are inspected #then deep presets are read-only and fast presets stay tool-free", () => {
+    const researchPresets = [
+      "architecture-balanced",
+      "hermes-like-frontier",
+      "code-review",
+      "planning-rigorous",
+      "security-critical",
+    ]
+    const toolFreePresets = ["decision-fast", "budget"]
+
+    for (const name of researchPresets) {
+      expect(BUILTIN_PRESETS[name]?.advisors.map((advisor) => advisor.tool_policy)).toEqual(
+        BUILTIN_PRESETS[name]?.advisors.map(() => "read_only"),
+      )
+    }
+    for (const name of toolFreePresets) {
+      expect(BUILTIN_PRESETS[name]?.advisors.map((advisor) => advisor.tool_policy)).toEqual(
+        BUILTIN_PRESETS[name]?.advisors.map(() => "none"),
+      )
+    }
+  })
 })
 
 describe("validatePreset", () => {
+  test("#given a read-only advisor #when validated #then the preset remains valid", () => {
+    const preset = baseValidPreset()
+    preset.advisors[0] = { ...preset.advisors[0], tool_policy: "read_only" } as MoAPresetConfig["advisors"][number]
+
+    expect(validatePreset(preset)).toEqual([])
+  })
+
   test("#given a preset with zero advisors #when validated #then it reports no_advisors", () => {
     const preset = { ...baseValidPreset(), advisors: [], min_successful_advisors: undefined }
 

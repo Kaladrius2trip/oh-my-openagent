@@ -29,6 +29,10 @@ export function buildFallbackBody(
   fallbackAgent: string,
   options: { includeTeamToolDenylist?: boolean } = {},
 ): TaskPromptBody {
+  if (originalBody.tools["*"] === false) {
+    return { ...originalBody, agent: fallbackAgent }
+  }
+
   return {
     ...originalBody,
     agent: fallbackAgent,

@@ -1,4 +1,5 @@
 import type { MoARunStatus } from "../types"
+import type { MoAToolExposure } from "../tool-exposure"
 
 export interface MoAContractSection {
   heading: string
@@ -133,9 +134,8 @@ export interface MoAConsultToolResult {
   preset: string
   status: MoARunStatus
   synthesis?: string
-  execution: {
+  execution: MoAToolExposure & {
     policy: "consultation_only"
-    toolsExposed: 0
     mutationsPerformed: 0
     implementationAuthority: "parent"
   }

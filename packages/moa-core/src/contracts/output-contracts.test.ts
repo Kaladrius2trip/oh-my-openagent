@@ -86,7 +86,7 @@ describe("decision bundle contract", () => {
 })
 
 describe("MoAConsultToolResult", () => {
-  test("#given a consultation result #when constructed #then execution is a consultation-only zero-tool bundle", () => {
+  test("#given a read-only consultation result #when constructed #then execution reports its bounded tool surface", () => {
     const result: MoAConsultToolResult = {
       runId: "run-1",
       preset: "architecture-balanced",
@@ -94,7 +94,10 @@ describe("MoAConsultToolResult", () => {
       synthesis: "decision bundle text",
       execution: {
         policy: "consultation_only",
-        toolsExposed: 0,
+        toolsExposed: 3,
+        advisorPolicies: [{ name: "researcher", policy: "read_only" }],
+        advisorToolsExposed: ["read", "grep", "glob"],
+        aggregatorToolsExposed: [],
         mutationsPerformed: 0,
         implementationAuthority: "parent",
       },
@@ -109,7 +112,9 @@ describe("MoAConsultToolResult", () => {
       warnings: [],
     }
 
-    expect(result.execution.toolsExposed).toBe(0)
+    expect(result.execution.toolsExposed).toBe(3)
+    expect(result.execution.advisorToolsExposed).toEqual(["read", "grep", "glob"])
+    expect(result.execution.aggregatorToolsExposed).toEqual([])
     expect(result.execution.implementationAuthority).toBe("parent")
   })
 })

@@ -1,0 +1,31 @@
+base=f9aabc8d075d5274850ba03ac8b6d5dd2bd7e6dc
+branch=feat/moa-pr15-research-advisors
+worktree=/root/workspace/oh-my-openagent-pr15
+
+setup:
+  bun install --ignore-scripts
+  first invocation created no node_modules and installed 6 cached packages
+  diagnostic invocation: bun install --ignore-scripts --verbose
+  observed: 1054 packages installed and workspace links created
+
+baseline command:
+  bun test packages/moa-core packages/omo-opencode/src/features/moa packages/omo-opencode/src/features/background-agent
+
+baseline result:
+  919 pass
+  0 fail
+  2328 expect() calls
+  92 files
+  exit 0
+
+running fork source:
+  /root/workspace/opencode-improvements/opencode/packages/opencode/src/session/prompt.ts:1060-1067
+  only entries in input.tools become permission rules; an empty map leaves session permissions unchanged
+  /root/workspace/opencode-improvements/opencode/packages/opencode/src/session/llm/request.ts:208-214
+  registry tools survive unless user tools disable them or merged permission rules deny them
+  /root/workspace/opencode-improvements/opencode/packages/opencode/src/permission/index.ts:204-213
+  wildcard deny matches every permission; MCP resource tool names canonicalize to permission read
+
+divergence:
+  Oracle citation used /mnt/e/LinuxProjects/opencode-fork.
+  Active source inspected at /root/workspace/opencode-improvements/opencode confirms the same empty-map exposure and MCP read canonicalization described by Oracle.

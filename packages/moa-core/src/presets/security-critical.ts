@@ -4,7 +4,7 @@ import type { MoAPresetConfig } from "../types"
 export const securityCriticalPreset: MoAPresetConfig = {
   enabled: true,
   description: "Security-critical review of trust boundaries, secrets and abuse cases.",
-  prompt_pack: "omo-hermes-derived-v1",
+  prompt_pack: "omo-hermes-derived-v2",
   execution_policy: "consultation_only",
   advisors: [
     {
@@ -12,12 +12,12 @@ export const securityCriticalPreset: MoAPresetConfig = {
       role: "security-reviewer",
       mode: "review",
       category: "moa-security-reviewer",
-      tool_policy: "none",
+      tool_policy: "read_only",
     },
-    { name: "researcher", role: "researcher", mode: "research", category: "moa-researcher", tool_policy: "none" },
-    { name: "validator", role: "validator", mode: "review", category: "moa-validator", tool_policy: "none" },
-    { name: "challenger", role: "challenger", mode: "research", category: "moa-challenger", tool_policy: "none" },
-    { name: "skeptic", role: "skeptic", mode: "evidence-search", category: "moa-skeptic", tool_policy: "none" },
+    { name: "researcher", role: "researcher", mode: "research", category: "moa-researcher", tool_policy: "read_only" },
+    { name: "validator", role: "validator", mode: "review", category: "moa-validator", tool_policy: "read_only" },
+    { name: "challenger", role: "challenger", mode: "research", category: "moa-challenger", tool_policy: "read_only" },
+    { name: "skeptic", role: "skeptic", mode: "evidence-search", category: "moa-skeptic", tool_policy: "read_only" },
   ],
   aggregator: { category: "moa-aggregator-frontier", maxTokens: 4800 },
   context: { mode: "task_only", max_messages: 12, max_tokens: 26000, tool_result_preview_chars: 4000 },

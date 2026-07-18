@@ -14,6 +14,7 @@ export type BackgroundTaskVisibility = "normal" | "internal"
 export type BackgroundTaskNotificationPolicy = "auto" | "manual"
 export type BackgroundTaskContinuationPolicy = "allow" | "forbid"
 export type BackgroundTaskToolPolicy = "default" | "none"
+export type BackgroundTaskCapabilityProfile = "moa-consultation-only" | "moa-research"
 export type BackgroundTaskUserPermission = Record<string, "ask" | "allow" | "deny">
 
 export interface BackgroundTaskOrchestration {
@@ -28,7 +29,8 @@ export interface BackgroundTaskPolicyFields {
   readonly notificationPolicy?: BackgroundTaskNotificationPolicy
   readonly continuationPolicy?: BackgroundTaskContinuationPolicy
   readonly toolPolicy?: BackgroundTaskToolPolicy
-  readonly capabilityProfile?: string
+  readonly capabilityProfile?: BackgroundTaskCapabilityProfile
+  readonly maxToolCalls?: number
   readonly orchestration?: BackgroundTaskOrchestration
 }
 
@@ -37,7 +39,8 @@ export interface ResolvedBackgroundTaskPolicies {
   readonly notificationPolicy: BackgroundTaskNotificationPolicy
   readonly continuationPolicy: BackgroundTaskContinuationPolicy
   readonly toolPolicy: BackgroundTaskToolPolicy
-  readonly capabilityProfile?: string
+  readonly capabilityProfile?: BackgroundTaskCapabilityProfile
+  readonly maxToolCalls?: number
   readonly orchestration?: BackgroundTaskOrchestration
 }
 
@@ -52,6 +55,7 @@ export function resolveBackgroundTaskPolicies(
     ...(fields.capabilityProfile !== undefined
       ? { capabilityProfile: fields.capabilityProfile }
       : {}),
+    ...(fields.maxToolCalls !== undefined ? { maxToolCalls: fields.maxToolCalls } : {}),
     ...(fields.orchestration !== undefined
       ? { orchestration: fields.orchestration }
       : {}),

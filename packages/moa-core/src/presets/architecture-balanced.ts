@@ -4,12 +4,12 @@ import type { MoAPresetConfig } from "../types"
 export const architectureBalancedPreset: MoAPresetConfig = {
   enabled: true,
   description: "Three-provider architecture consultation.",
-  prompt_pack: "omo-hermes-derived-v1",
+  prompt_pack: "omo-hermes-derived-v2",
   execution_policy: "consultation_only",
   advisors: [
-    { name: "architect", role: "architect", mode: "analysis", category: "moa-architect", tool_policy: "none" },
-    { name: "validator", role: "validator", mode: "analysis", category: "moa-validator", tool_policy: "none" },
-    { name: "challenger", role: "challenger", mode: "analysis", category: "moa-challenger", tool_policy: "none" },
+    { name: "architect", role: "architect", mode: "analysis", category: "moa-architect", tool_policy: "read_only" },
+    { name: "validator", role: "validator", mode: "analysis", category: "moa-validator", tool_policy: "read_only" },
+    { name: "challenger", role: "challenger", mode: "analysis", category: "moa-challenger", tool_policy: "read_only" },
   ],
   aggregator: { category: "moa-aggregator", maxTokens: 4400 },
   context: { mode: "task_only", max_messages: 12, max_tokens: 22000, tool_result_preview_chars: 4000 },

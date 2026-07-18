@@ -1,12 +1,18 @@
 import type { MoAAdvisorMode, MoAAdvisorRole, MoAPromptPackConfig, MoAPromptTemplateRef } from "../types"
 import { consultAggregatorV1 } from "./base/consult-aggregator-v1"
+import { consultAggregatorV2 } from "./base/consult-aggregator-v2"
 import { referenceAdvisorV1 } from "./base/reference-advisor-v1"
+import { referenceAdvisorV2 } from "./base/reference-advisor-v2"
 import { advisorReportV1 } from "./contracts/advisor-report-v1"
+import { advisorReportV2 } from "./contracts/advisor-report-v2"
 import { decisionBundleV1 } from "./contracts/decision-bundle-v1"
 import { aggregationEnvelopeV1 } from "./envelopes/aggregation-envelope-v1"
 import { taskEnvelopeV1 } from "./envelopes/task-envelope-v1"
 import { MODE_TEMPLATES_V1 } from "./modes/modes-v1"
-import { DEFAULT_PROMPT_PACK_ID, omoHermesDerivedV1Pack } from "./packs/omo-hermes-derived-v1"
+import { MODE_TEMPLATES_V2 } from "./modes/modes-v2"
+import { OMO_HERMES_DERIVED_V1_PACK_ID, omoHermesDerivedV1Pack } from "./packs/omo-hermes-derived-v1"
+import { DEFAULT_PROMPT_PACK_ID, omoHermesDerivedV2Pack } from "./packs/omo-hermes-derived-v2"
+import { TOOL_POLICY_TEMPLATES_V1 } from "./policies/tool-policy-v1"
 import { ROLE_TEMPLATES_V1 } from "./roles/roles-v1"
 import type { MoAPromptTemplate } from "./types"
 
@@ -14,13 +20,18 @@ export { DEFAULT_PROMPT_PACK_ID }
 
 const BUILTIN_TEMPLATE_LIST: readonly MoAPromptTemplate[] = [
   referenceAdvisorV1,
+  referenceAdvisorV2,
   consultAggregatorV1,
+  consultAggregatorV2,
   taskEnvelopeV1,
   aggregationEnvelopeV1,
   advisorReportV1,
+  advisorReportV2,
   decisionBundleV1,
   ...Object.values(MODE_TEMPLATES_V1),
+  ...MODE_TEMPLATES_V2,
   ...Object.values(ROLE_TEMPLATES_V1),
+  ...Object.values(TOOL_POLICY_TEMPLATES_V1),
 ]
 
 export const BUILTIN_TEMPLATES: Record<string, MoAPromptTemplate> = Object.fromEntries(
@@ -28,7 +39,8 @@ export const BUILTIN_TEMPLATES: Record<string, MoAPromptTemplate> = Object.fromE
 )
 
 export const BUILTIN_PROMPT_PACKS: Record<string, MoAPromptPackConfig> = {
-  [DEFAULT_PROMPT_PACK_ID]: omoHermesDerivedV1Pack,
+  [OMO_HERMES_DERIVED_V1_PACK_ID]: omoHermesDerivedV1Pack,
+  [DEFAULT_PROMPT_PACK_ID]: omoHermesDerivedV2Pack,
 }
 
 export type PromptFileReader = (filePath: string) => string

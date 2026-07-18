@@ -41,12 +41,11 @@ describe("loadBuiltinCommands - moa gating", () => {
     expect(commands.moa).toBeUndefined()
   })
 
-  test("the /moa template instructs parsing an inline --preset flag into the tool preset argument", () => {
-    // Given moa enabled
+  test("the /moa template uses the research-first default without teaching inline preset flags", () => {
     const commands = loadBuiltinCommands(undefined, { moaEnabled: true })
-    // Then the template teaches the model to extract --preset and pass it as the tool preset
     const template = commands.moa?.template ?? ""
-    expect(template).toContain("--preset")
-    expect(template).toContain("preset argument")
+    expect(template).toContain("research-first")
+    expect(template).toContain("prompt only")
+    expect(template).not.toContain("--preset")
   })
 })

@@ -12,7 +12,7 @@ export type MoARunStatus =
   | "timed_out"
   | "cancelled"
 
-export type MoAToolPolicy = "none"
+export type MoAToolPolicy = "none" | "read_only"
 
 export type MoAExecutionPolicy = "consultation_only"
 

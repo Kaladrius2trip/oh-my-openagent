@@ -18,6 +18,7 @@ const controls = {
   continuationPolicy: "forbid",
   toolPolicy: "none",
   capabilityProfile: "moa-consultation-only",
+  maxToolCalls: 12,
   orchestration: {
     kind: "moa",
     runId: "run-policy",
