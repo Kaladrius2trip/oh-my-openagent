@@ -91,7 +91,7 @@ export async function spawnTmuxPane(
 
 	let result = await runTmuxCommand(tmux, args)
 	let retryCount = 0
-	while (result.exitCode !== 0 || !result.output) {
+	while (result.exitCode !== 0) {
 		const detail = result.stderr.trim() || "tmux split-window returned no pane id"
 		const retryLimit = getPaneSpawnRetryLimit(detail)
 		if (retryCount >= retryLimit) {
@@ -109,6 +109,11 @@ export async function spawnTmuxPane(
 		retryCount += 1
 		await deps.delay(250)
 		result = await runTmuxCommand(tmux, args)
+	}
+	if (!result.output) {
+		const stderr = "tmux split-window returned no pane id"
+		log("[spawnTmuxPane] split-window succeeded without pane id", { stderr })
+		return { kind: "transient", stderr }
 	}
 	const paneId = result.output
 

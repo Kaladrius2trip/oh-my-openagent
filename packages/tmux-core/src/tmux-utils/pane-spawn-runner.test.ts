@@ -143,6 +143,26 @@ describe("spawnTmuxPane runner integration", () => {
 		expect(delayMock).not.toHaveBeenCalled()
 	})
 
+	it("#given split-window succeeds without pane id #when spawnTmuxPane runs #then returns transient failure without retrying the non-idempotent split", async () => {
+		// given
+		const spawnTmuxPane = await loadSpawnTmuxPane()
+		runTmuxCommandMock.mockResolvedValue({
+			success: true,
+			output: "",
+			stdout: "",
+			stderr: "",
+			exitCode: 0,
+		})
+
+		// when
+		const result = await spawnTmuxPane("session-1", "worker", enabledTmuxConfig, "http://127.0.0.1:1234", "/tmp", "%0", "-h", createDeps())
+
+		// then
+		expect(result).toEqual({ kind: "transient", stderr: "tmux split-window returned no pane id" })
+		expect(runTmuxCommandMock).toHaveBeenCalledTimes(1)
+		expect(delayMock).not.toHaveBeenCalled()
+	})
+
 	it("#given split-window target disappeared #when spawnTmuxPane runs #then returns terminal stderr without retry", async () => {
 		// given
 		const spawnTmuxPane = await loadSpawnTmuxPane()
