@@ -91,15 +91,14 @@ describe("MoA prompt injection boundary", () => {
       "x".repeat(400),
     ].join("\n")
     const failed = input("")
-    failed.advisorReports[0] = {
-      ...failed.advisorReports[0],
-      status: "failed",
-      output: undefined,
-      errorCategory: sensitive,
-    }
+    const report = failed.advisorReports[0]
+    if (report === undefined) throw new Error("Missing advisor report fixture")
 
     // when
-    const prompt = composeAggregatorPrompt(pack, failed)
+    const prompt = composeAggregatorPrompt(pack, {
+      ...failed,
+      advisorReports: [{ ...report, status: "failed", output: undefined, errorCategory: sensitive }],
+    })
     const diagnostic = prompt.text.match(/<diagnostic>([^<]*)<\/diagnostic>/)?.[1]
 
     // then
