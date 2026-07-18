@@ -88,6 +88,13 @@ describe("createMoaConsultTool", () => {
     expect(bundle?.execution).toEqual({
       policy: "consultation_only",
       toolsExposed: 0,
+      advisorPolicies: [
+        { name: "architect", policy: "none" },
+        { name: "validator", policy: "none" },
+        { name: "challenger", policy: "none" },
+      ],
+      advisorToolsExposed: [],
+      aggregatorToolsExposed: [],
       mutationsPerformed: 0,
       implementationAuthority: "parent",
     })
@@ -132,7 +139,12 @@ describe("createMoaConsultTool", () => {
     const result = await moaTool.execute({ prompt: "research" }, context)
 
     if (typeof result === "string") throw new Error(`expected a structured result, got: ${result}`)
-    expect(result.metadata?.execution.toolsExposed).toBe(3)
+    expect(result.metadata?.execution).toMatchObject({
+      toolsExposed: 3,
+      advisorPolicies: [{ name: "researcher", policy: "read_only" }],
+      advisorToolsExposed: ["read", "grep", "glob"],
+      aggregatorToolsExposed: [],
+    })
   })
 
   test("rejects an unknown preset without starting a run", async () => {

@@ -1,13 +1,11 @@
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
-import { BUILTIN_PRESETS, DEFAULT_PRESET_NAME, type MoAConfig, type MoAConsultToolResult } from "@oh-my-opencode/moa-core"
+import { BUILTIN_PRESETS, DEFAULT_PRESET_NAME, describeMoAToolExposure, type MoAConfig, type MoAConsultToolResult } from "@oh-my-opencode/moa-core"
 
 import type { MoAManager, MoARunResult } from "../../features/moa"
 
 const MOA_CONSULT_DESCRIPTION = `Consult a Mixture of Advisors (MoA) panel for a decision.
 Fans the prompt out to several advisor models plus one aggregator, then returns a synthesized decision bundle.
 Advisors are tool-free by default; presets may grant bounded read, grep and glob research. Consultation remains read-only, and the calling parent keeps all implementation authority.`
-
-const MOA_RESEARCH_TOOL_COUNT = 3 as const
 
 function knownPresetNames(config: MoAConfig): readonly string[] {
   return [...new Set([...Object.keys(BUILTIN_PRESETS), ...Object.keys(config.presets ?? {})])]
@@ -23,16 +21,11 @@ function collectWarnings(result: MoARunResult): string[] {
   )
 }
 
-function configuredToolCount(config: MoAConfig, preset: string): 0 | 3 {
-  const resolvedPreset = config.presets?.[preset] ?? BUILTIN_PRESETS[preset]
-  return resolvedPreset?.advisors.some((advisor) => advisor.tool_policy === "read_only") === true
-    ? MOA_RESEARCH_TOOL_COUNT
-    : 0
-}
-
 function toConsultResult(config: MoAConfig, preset: string, result: MoARunResult): MoAConsultToolResult {
   const configured = result.configuredDiversity
   const effective = result.effectiveDiversity ?? configured
+  const resolvedPreset = config.presets?.[preset] ?? BUILTIN_PRESETS[preset]
+  if (resolvedPreset === undefined) throw new Error(`Unknown MoA preset: ${preset}`)
   return {
     runId: result.runId,
     preset,
@@ -40,7 +33,7 @@ function toConsultResult(config: MoAConfig, preset: string, result: MoARunResult
     ...(result.synthesis !== undefined ? { synthesis: result.synthesis } : {}),
     execution: {
       policy: "consultation_only",
-      toolsExposed: configuredToolCount(config, preset),
+      ...describeMoAToolExposure(resolvedPreset),
       mutationsPerformed: 0,
       implementationAuthority: "parent",
     },
