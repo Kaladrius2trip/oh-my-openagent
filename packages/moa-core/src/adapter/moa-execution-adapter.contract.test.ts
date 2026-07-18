@@ -37,6 +37,22 @@ function consultationLaunch(target: ResolvedMoATarget, runId: string): MoAChildL
   }
 }
 
+function researchLaunch(target: ResolvedMoATarget, runId: string): MoAChildLaunchInput {
+  return {
+    ...consultationLaunch(target, runId),
+    toolPolicy: "read_only",
+    capabilityProfile: "moa-research",
+  }
+}
+
+function aggregatorLaunch(target: ResolvedMoATarget, runId: string): MoAChildLaunchInput {
+  return {
+    ...consultationLaunch(target, runId),
+    role: "aggregator",
+    orchestration: { kind: "moa", runId, role: "aggregator" },
+  }
+}
+
 function createFakeAdapter(): MoAExecutionAdapter & {
   launches: MoAChildLaunchInput[]
   waits: MoAChildWaitTimeouts[]
@@ -100,24 +116,56 @@ describe("MoAExecutionAdapter port", () => {
     expect(adapter.cancellations).toEqual(["task-1"])
   })
 
-  test("#given a launched advisor #when inspected #then it carries all six consultation controls", () => {
+  test("#given both advisor tiers #when asserted #then each valid policy-profile pair is accepted", () => {
     const adapter = createFakeAdapter()
-    const input = consultationLaunch(resolved("moa-architect", "openai", "gpt-5.5"), "run-1")
+    const target = resolved("moa-architect", "openai", "gpt-5.5")
+    const toolFree = consultationLaunch(target, "run-1")
+    const research = researchLaunch(target, "run-1")
 
-    expect(() => assertConsultationOnlyLaunch(input)).not.toThrow()
-    expect(input.visibility).toBe("internal")
-    expect(input.notificationPolicy).toBe("manual")
-    expect(input.suppressTmuxSpawn).toBe(true)
-    expect(input.toolPolicy).toBe("none")
-    expect(input.capabilityProfile).toBe("moa-consultation-only")
-    expect(input.continuationPolicy).toBe("forbid")
+    expect(() => assertConsultationOnlyLaunch(toolFree)).not.toThrow()
+    expect(() => assertConsultationOnlyLaunch(research)).not.toThrow()
+    expect(research.toolPolicy).toBe("read_only")
+    expect(research.capabilityProfile).toBe("moa-research")
     void adapter
   })
 
-  test("#given a launch input missing a control #when asserted #then it throws", () => {
-    const tampered = consultationLaunch(resolved("moa-architect", "openai", "gpt-5.5"), "run-1")
-    Reflect.set(tampered, "continuationPolicy", "allow")
+  test("#given a research aggregator #when asserted #then it is rejected", () => {
+    const input = aggregatorLaunch(resolved("moa-aggregator", "openai", "gpt-5.5"), "run-1")
+    Reflect.set(input, "toolPolicy", "read_only")
+    Reflect.set(input, "capabilityProfile", "moa-research")
 
-    expect(() => assertConsultationOnlyLaunch(tampered)).toThrow()
+    expect(() => assertConsultationOnlyLaunch(input)).toThrow(/aggregator/i)
+  })
+
+  test.each([
+    ["none", "moa-research"],
+    ["read_only", "moa-consultation-only"],
+  ] as const)("#given advisor pair %s and %s #when asserted #then it is rejected", (toolPolicy, capabilityProfile) => {
+    const input = consultationLaunch(resolved("moa-architect", "openai", "gpt-5.5"), "run-1")
+    Reflect.set(input, "toolPolicy", toolPolicy)
+    Reflect.set(input, "capabilityProfile", capabilityProfile)
+
+    expect(() => assertConsultationOnlyLaunch(input)).toThrow(/policy-profile pair/i)
+  })
+
+  test("#given an unknown capability profile #when asserted #then it is rejected explicitly", () => {
+    const input = consultationLaunch(resolved("moa-architect", "openai", "gpt-5.5"), "run-1")
+    Reflect.set(input, "capabilityProfile", "unknown-profile")
+
+    expect(() => assertConsultationOnlyLaunch(input)).toThrow(/Unknown capability profile/)
+  })
+
+  test("#given role deviation from orchestration #when asserted #then it is rejected", () => {
+    const input = consultationLaunch(resolved("moa-architect", "openai", "gpt-5.5"), "run-1")
+    Reflect.set(input.orchestration, "role", "aggregator")
+
+    expect(() => assertConsultationOnlyLaunch(input)).toThrow(/role must match orchestration role/i)
+  })
+
+  test("#given a launch input missing a pinned control #when asserted #then it throws", () => {
+    const input = consultationLaunch(resolved("moa-architect", "openai", "gpt-5.5"), "run-1")
+    Reflect.set(input, "continuationPolicy", "allow")
+
+    expect(() => assertConsultationOnlyLaunch(input)).toThrow()
   })
 })
