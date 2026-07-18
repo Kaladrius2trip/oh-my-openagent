@@ -1,7 +1,12 @@
 /// <reference types="bun-types" />
 
 import { describe, expect, test } from "bun:test"
-import type { MoAChildLaunchInput, ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
+import type {
+  MoAAdvisorChildLaunchInput,
+  MoAAggregatorChildLaunchInput,
+  MoAChildLaunchInput,
+  ResolvedMoATarget,
+} from "@oh-my-opencode/moa-core/adapter"
 import type { BackgroundTask, BackgroundTaskStatus, LaunchInput } from "../background-agent"
 
 import { createMoAExecutionAdapter } from "./moa-execution-adapter"
@@ -14,9 +19,10 @@ const target: ResolvedMoATarget = {
   fallbackChain: [{ providerID: "openai", modelID: "gpt-5.5", reasoningEffort: "high" }],
 }
 
+function childInput(role: "advisor", slot?: string): MoAAdvisorChildLaunchInput
+function childInput(role: "aggregator"): MoAAggregatorChildLaunchInput
 function childInput(role: "advisor" | "aggregator", slot?: string): MoAChildLaunchInput {
-  return {
-    role,
+  const base = {
     target,
     prompt: `${role} prompt`,
     visibility: "internal",
@@ -25,13 +31,15 @@ function childInput(role: "advisor" | "aggregator", slot?: string): MoAChildLaun
     toolPolicy: "none",
     capabilityProfile: "moa-consultation-only",
     continuationPolicy: "forbid",
-    orchestration: {
-      kind: "moa",
-      runId: "run-1",
+  } as const
+  if (role === "advisor") {
+    return {
+      ...base,
       role,
-      ...(slot !== undefined ? { slot } : {}),
-    },
+      orchestration: { kind: "moa", runId: "run-1", role, ...(slot !== undefined ? { slot } : {}) },
+    }
   }
+  return { ...base, role, orchestration: { kind: "moa", runId: "run-1", role } }
 }
 
 function task(taskId: string, status: BackgroundTaskStatus): Partial<BackgroundTask> & Pick<BackgroundTask, "id" | "status"> {

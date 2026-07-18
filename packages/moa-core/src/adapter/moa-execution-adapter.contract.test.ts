@@ -8,6 +8,8 @@ import {
   type MoAChildLaunchInput,
   type MoAChildResult,
   type MoAChildWaitTimeouts,
+  type MoAAdvisorChildLaunchInput,
+  type MoAAggregatorChildLaunchInput,
   type MoAExecutionAdapter,
   type ResolvedMoATarget,
 } from "./moa-execution-adapter"
@@ -22,7 +24,7 @@ function resolved(category: string, providerID: string, modelID: string): Resolv
   }
 }
 
-function consultationLaunch(target: ResolvedMoATarget, runId: string): MoAChildLaunchInput {
+function consultationLaunch(target: ResolvedMoATarget, runId: string): MoAAdvisorChildLaunchInput {
   return {
     role: "advisor",
     target,
@@ -37,7 +39,7 @@ function consultationLaunch(target: ResolvedMoATarget, runId: string): MoAChildL
   }
 }
 
-function researchLaunch(target: ResolvedMoATarget, runId: string): MoAChildLaunchInput {
+function researchLaunch(target: ResolvedMoATarget, runId: string): MoAAdvisorChildLaunchInput {
   return {
     ...consultationLaunch(target, runId),
     toolPolicy: "read_only",
@@ -45,10 +47,17 @@ function researchLaunch(target: ResolvedMoATarget, runId: string): MoAChildLaunc
   }
 }
 
-function aggregatorLaunch(target: ResolvedMoATarget, runId: string): MoAChildLaunchInput {
+function aggregatorLaunch(target: ResolvedMoATarget, runId: string): MoAAggregatorChildLaunchInput {
   return {
-    ...consultationLaunch(target, runId),
     role: "aggregator",
+    target,
+    prompt: "aggregator prompt",
+    visibility: "internal",
+    notificationPolicy: "manual",
+    suppressTmuxSpawn: true,
+    toolPolicy: "none",
+    capabilityProfile: "moa-consultation-only",
+    continuationPolicy: "forbid",
     orchestration: { kind: "moa", runId, role: "aggregator" },
   }
 }
