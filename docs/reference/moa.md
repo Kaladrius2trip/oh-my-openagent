@@ -59,6 +59,8 @@ Omit `preset` to use `default_preset`.
 
 Preset fields control advisors, aggregator, context bounds, diversity thresholds, success threshold and timeouts. Every preset accepts only `execution_policy: "consultation_only"`. Every advisor accepts only `tool_policy: "none"` and one mode from `analysis`, `research`, `planning`, `review` or `evidence-search`.
 
+Preset `advisor_timeout_ms` and `aggregator_timeout_ms` values are base timeouts: each is the first liveness checkpoint, not an unconditional kill deadline. `idle_window_ms` defaults to `60000` and extends a wait by one liveness-grace window when recent child stream activity exists. `max_wall_ms` is the absolute cap for both advisor and aggregator waits; when omitted, runtime uses four times the relevant base timeout.
+
 ### Per-role temperature
 
 Set `temperature` from `0` through `2` on each advisor or aggregator slot:
