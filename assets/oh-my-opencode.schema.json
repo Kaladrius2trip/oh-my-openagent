@@ -6436,6 +6436,11 @@
                     "prompt_append": {
                       "type": "string"
                     },
+                    "temperature": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 2
+                    },
                     "maxTokens": {
                       "type": "integer",
                       "exclusiveMinimum": 0,
@@ -6465,6 +6470,11 @@
                   },
                   "prompt_append": {
                     "type": "string"
+                  },
+                  "temperature": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
                   },
                   "maxTokens": {
                     "type": "integer",
