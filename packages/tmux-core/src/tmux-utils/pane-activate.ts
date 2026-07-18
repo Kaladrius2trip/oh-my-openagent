@@ -49,3 +49,60 @@ export async function activateTmuxPane(
   deps.log("[activateTmuxPane] SUCCESS", { paneId, sessionId })
   return true
 }
+
+export async function activateReadOnlyTmuxPane(
+  paneId: string,
+  sessionId: string,
+  serverUrl: string,
+  directory: string,
+  deps: ActivateTmuxPaneDeps = {
+    isInsideTmux,
+    getTmuxPath: async () => null,
+    runTmuxCommand,
+    log: () => undefined,
+  },
+): Promise<boolean> {
+  if (!deps.isInsideTmux()) {
+    deps.log("[activateReadOnlyTmuxPane] SKIP: not inside tmux", { paneId, sessionId })
+    return false
+  }
+
+  const tmux = await deps.getTmuxPath()
+  if (!tmux) {
+    deps.log("[activateReadOnlyTmuxPane] SKIP: tmux not found", { paneId, sessionId })
+    return false
+  }
+
+  const disableResult = await deps.runTmuxCommand(tmux, ["select-pane", "-d", "-t", paneId])
+  if (disableResult.exitCode !== 0) {
+    deps.log("[activateReadOnlyTmuxPane] FAILED: pane input remains enabled", {
+      paneId,
+      sessionId,
+      exitCode: disableResult.exitCode,
+      stderr: disableResult.stderr.trim(),
+    })
+    return false
+  }
+
+  const opencodeCmd = buildTmuxAttachCommand(serverUrl, sessionId, directory)
+  const result = await deps.runTmuxCommand(tmux, [
+    "respawn-pane",
+    "-k",
+    ...buildPaneAuthEnvironmentArgs(),
+    "-t",
+    paneId,
+    opencodeCmd,
+  ])
+  if (result.exitCode !== 0) {
+    deps.log("[activateReadOnlyTmuxPane] FAILED", {
+      paneId,
+      sessionId,
+      exitCode: result.exitCode,
+      stderr: result.stderr.trim(),
+    })
+    return false
+  }
+
+  deps.log("[activateReadOnlyTmuxPane] SUCCESS", { paneId, sessionId })
+  return true
+}
