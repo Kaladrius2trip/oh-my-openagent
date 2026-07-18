@@ -36,15 +36,15 @@ Omit `preset` to use `default_preset`.
 
 ## Built-in presets
 
-| Preset | Intended use |
-| --- | --- |
-| `architecture-balanced` | General architecture and migration decisions. Default. |
-| `hermes-like-frontier` | Two frontier references with a frontier aggregator. |
-| `code-review` | Deep review of contracts, regressions and failure modes. |
-| `planning-rigorous` | Adversarial planning before parent execution. |
-| `security-critical` | Trust boundaries, secrets, sandboxing and abuse cases. |
-| `decision-fast` | Consequential choices with bounded latency. |
-| `budget` | Lower-cost broad second opinion. |
+| Preset | Research tier | Intended use |
+| --- | --- | --- |
+| `architecture-balanced` | `read_only` | General architecture and migration decisions. Default. |
+| `hermes-like-frontier` | `read_only` | Two frontier references with a frontier aggregator. |
+| `code-review` | `read_only` | Deep review of contracts, regressions and failure modes. |
+| `planning-rigorous` | `read_only` | Adversarial planning before parent execution. |
+| `security-critical` | `read_only` | Trust boundaries, secrets, sandboxing and abuse cases. |
+| `decision-fast` | `none` | Consequential choices with bounded latency. |
+| `budget` | `none` | Lower-cost broad second opinion. |
 
 ## Configuration
 
@@ -76,6 +76,8 @@ Set `tool_policy: "read_only"` on individual advisors that need evidence absent 
 ```
 
 Prompt pack v2 tells advisors to research only when context lacks evidence and to stop when a claim is supported or falsified. Use `"none"` when supplied context is sufficient.
+
+Provider disclosure: every read-only tool result becomes context for that advisor model and may be transmitted to its configured provider. Do not use research presets for files the selected providers may not receive. Keep credentials outside readable project files; prompt rules require redaction but do not replace filesystem access policy.
 
 ### Per-role temperature
 
@@ -132,6 +134,7 @@ Fallback collapse can change a successful consultation from `completed` to `degr
 
 - Tool-free advisors and all aggregators receive zero tools through runtime capability enforcement.
 - Read-only advisors receive only `read`, `grep` and `glob`, capped at 12 calls. Existing denials can narrow this set.
+- Read-only evidence may be sent to each advisor's configured model provider.
 - Internal sessions cannot notify, wake, resume or appear as normal background tasks.
 - Parent system prompt, hidden messages and raw tool transcripts are excluded from default context.
 - Advisor reports are escaped and placed inside an explicit untrusted XML boundary.
