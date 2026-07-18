@@ -1,0 +1,111 @@
+bun test v1.3.14 (0d9b296a)
+
+packages/omo-opencode/src/features/background-agent/spawner-policy-preservation.test.ts:
+65 |       onTaskError: mock(() => {}),
+66 |     })
+67 |     await waitForPrompt(promptCalls)
+68 | 
+69 |     // then
+70 |     expect(promptCalls[0]?.body.tools).toEqual({ "*": false })
+                                            ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "*": false,
++   "call_omo_agent": false,
++   "edit": false,
++   "question": false,
++   "task": false,
++   "team_approve_shutdown": false,
++   "team_create": false,
++   "team_delete": false,
++   "team_list": false,
++   "team_reject_shutdown": false,
++   "team_send_message": false,
++   "team_shutdown_request": false,
++   "team_status": false,
++   "team_task_create": false,
++   "team_task_get": false,
++   "team_task_list": false,
++   "team_task_update": false,
++   "write": false,
+  }
+
+- Expected  - 1
++ Received  + 17
+
+      at <anonymous> (/root/workspace/oh-my-openagent-pr15/packages/omo-opencode/src/features/background-agent/spawner-policy-preservation.test.ts:70:40)
+(fail) background-agent spawner capability policy > given a tool-free launch when dispatched then wildcard denial reaches the child prompt [3.18ms]
+ 99 |       onTaskError: mock(() => {}),
+100 |     })
+101 |     await waitForPrompt(promptCalls)
+102 | 
+103 |     // then
+104 |     expect(promptCalls[0]?.body.tools).toEqual({ "*": false })
+                                             ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "*": false,
++   "call_omo_agent": false,
++   "edit": false,
++   "question": false,
++   "task": false,
++   "team_approve_shutdown": false,
++   "team_create": false,
++   "team_delete": false,
++   "team_list": false,
++   "team_reject_shutdown": false,
++   "team_send_message": false,
++   "team_shutdown_request": false,
++   "team_status": false,
++   "team_task_create": false,
++   "team_task_get": false,
++   "team_task_list": false,
++   "team_task_update": false,
++   "write": false,
+  }
+
+- Expected  - 1
++ Received  + 17
+
+      at <anonymous> (/root/workspace/oh-my-openagent-pr15/packages/omo-opencode/src/features/background-agent/spawner-policy-preservation.test.ts:104:40)
+(fail) background-agent spawner capability policy > given a persisted tool-free task when resumed then wildcard denial reaches the child prompt [0.53ms]
+119 | 
+120 |     // when
+121 |     const fallback = buildFallbackBody(original, "general", { includeTeamToolDenylist: true })
+122 | 
+123 |     // then
+124 |     expect(fallback.tools).toEqual({ "*": false })
+                                 ^
+error: expect(received).toEqual(expected)
+
+  {
+-   "*": false,
++   "call_omo_agent": true,
++   "question": false,
++   "task": false,
++   "team_approve_shutdown": false,
++   "team_create": false,
++   "team_delete": false,
++   "team_list": false,
++   "team_reject_shutdown": false,
++   "team_send_message": false,
++   "team_shutdown_request": false,
++   "team_status": false,
++   "team_task_create": false,
++   "team_task_get": false,
++   "team_task_list": false,
++   "team_task_update": false,
+  }
+
+- Expected  - 1
++ Received  + 15
+
+      at <anonymous> (/root/workspace/oh-my-openagent-pr15/packages/omo-opencode/src/features/background-agent/spawner-policy-preservation.test.ts:124:28)
+(fail) background-agent spawner capability policy > given a tool-free prompt when its agent falls back then the fallback preserves wildcard denial [0.16ms]
+
+ 0 pass
+ 3 fail
+ 3 expect() calls
+Ran 3 tests across 1 file. [267.00ms]
