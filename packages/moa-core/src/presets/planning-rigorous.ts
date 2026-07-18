@@ -4,7 +4,7 @@ import type { MoAPresetConfig } from "../types"
 export const planningRigorousPreset: MoAPresetConfig = {
   enabled: true,
   description: "Single-round adversarial planning before Prometheus or Atlas execution.",
-  prompt_pack: "omo-hermes-derived-v1",
+  prompt_pack: "omo-hermes-derived-v2",
   execution_policy: "consultation_only",
   advisors: [
     { name: "skeptic", role: "skeptic", mode: "planning", category: "moa-skeptic", tool_policy: "none" },

@@ -4,7 +4,7 @@ import type { MoAPresetConfig } from "../types"
 export const hermesLikeFrontierPreset: MoAPresetConfig = {
   enabled: true,
   description: "Two references with Claude Opus as final synthesizer.",
-  prompt_pack: "omo-hermes-derived-v1",
+  prompt_pack: "omo-hermes-derived-v2",
   execution_policy: "consultation_only",
   advisors: [
     { name: "validator", role: "validator", mode: "analysis", category: "moa-validator", tool_policy: "none" },

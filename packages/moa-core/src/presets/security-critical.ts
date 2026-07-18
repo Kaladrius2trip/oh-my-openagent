@@ -4,7 +4,7 @@ import type { MoAPresetConfig } from "../types"
 export const securityCriticalPreset: MoAPresetConfig = {
   enabled: true,
   description: "Security-critical review of trust boundaries, secrets and abuse cases.",
-  prompt_pack: "omo-hermes-derived-v1",
+  prompt_pack: "omo-hermes-derived-v2",
   execution_policy: "consultation_only",
   advisors: [
     {
