@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
-import type { MoAAdvisorMode, MoAAdvisorRole } from "../types"
+import type { MoAAdvisorMode, MoAAdvisorRole, MoAToolPolicy } from "../types"
 import { escapeEnvelopeValue, renderTemplate } from "./placeholder-engine"
+import { TOOL_POLICY_TEMPLATES_V1 } from "./policies/tool-policy-v1"
 import type { ResolvedPromptPack } from "./registry"
 
 export interface ComposedPrompt {
@@ -28,6 +29,7 @@ export interface ComposeAdvisorPromptInput {
   originalTask: string
   constraints?: string
   context: SanitizedContextView
+  toolPolicy?: MoAToolPolicy
   promptAppend?: string
 }
 
@@ -79,6 +81,7 @@ export function composeAdvisorPrompt(pack: ResolvedPromptPack, input: ComposeAdv
   const base = pack.advisorBase.content
   const modeTemplate = pack.advisorModes[input.mode]
   const roleTemplate = pack.roleTemplates[input.role]
+  const toolPolicyTemplate = TOOL_POLICY_TEMPLATES_V1[input.toolPolicy ?? "none"]
   const contract = pack.advisorOutputContract.content
 
   const envelope = renderTemplate(pack.taskEnvelope.content, {
@@ -95,13 +98,13 @@ export function composeAdvisorPrompt(pack: ResolvedPromptPack, input: ComposeAdv
     SANITIZED_CONTEXT: escapeEnvelopeValue(input.context.text),
   })
 
-  const systemPortion = joinBlocks([base, modeTemplate.content, roleTemplate.content, contract])
-  const text = joinBlocks([base, modeTemplate.content, roleTemplate.content, roleHintBlock(input.promptAppend), envelope, contract])
+  const systemPortion = joinBlocks([base, modeTemplate.content, roleTemplate.content, toolPolicyTemplate.content, contract])
+  const text = joinBlocks([base, modeTemplate.content, roleTemplate.content, toolPolicyTemplate.content, roleHintBlock(input.promptAppend), envelope, contract])
 
   return {
     text,
     systemHash: sha256(systemPortion),
-    templateIds: [pack.advisorBase.id, modeTemplate.id, roleTemplate.id, pack.taskEnvelope.id, pack.advisorOutputContract.id],
+    templateIds: [pack.advisorBase.id, modeTemplate.id, roleTemplate.id, toolPolicyTemplate.id, pack.taskEnvelope.id, pack.advisorOutputContract.id],
   }
 }
 

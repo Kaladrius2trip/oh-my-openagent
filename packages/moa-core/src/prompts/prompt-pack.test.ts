@@ -14,7 +14,7 @@ import {
 // Golden system-portion hashes. The system portion is task-independent, so these
 // pin the trusted advisor and aggregator contract text. Editing any base/mode/role/
 // contract template body changes the hash and forces a template version bump.
-const ADVISOR_ANALYSIS_ARCHITECT_SYSTEM_HASH = "57cb165c0b5dda9836087c36f8c78e9c4d3d989cca9021117eaf8a2630eddcd1"
+const ADVISOR_ANALYSIS_ARCHITECT_SYSTEM_HASH = "c2509f3358c088f45782301a539b1a1d0a870b479087234ace627e6ef6889db6"
 const AGGREGATOR_SYSTEM_HASH = "ece5bc2555eee853c8c37c51bd339ddfeeac2913c4a97b6ed79cc4df71a71cff"
 
 const CONTEXT = { mode: "task_only", truncated: false, text: "task-only context body" } as const
@@ -70,7 +70,7 @@ describe("resolvePromptPack", () => {
     const pack = resolvePromptPack(DEFAULT_PROMPT_PACK_ID)
 
     // then
-    expect(pack.advisorBase.id).toBe("builtin:moa-reference-advisor-v1")
+    expect(pack.advisorBase.id).toBe("builtin:moa-reference-advisor-v2")
     expect(pack.aggregatorBase.id).toBe("builtin:moa-consult-aggregator-v1")
     expect(pack.taskEnvelope.id).toBe("builtin:moa-task-envelope-v1")
     expect(pack.aggregationEnvelope.id).toBe("builtin:moa-aggregation-envelope-v1")
@@ -120,9 +120,10 @@ describe("composeAdvisorPrompt", () => {
     expect(composed.text).toContain("Decide whether to split module X.")
     expect(composed.text).toContain("task-only context body")
     expect(composed.templateIds).toEqual([
-      "builtin:moa-reference-advisor-v1",
+      "builtin:moa-reference-advisor-v2",
       "builtin:moa-mode-analysis-v1",
       "builtin:moa-role-architect-v1",
+      "builtin:moa-tool-free-guidance-v1",
       "builtin:moa-task-envelope-v1",
       "builtin:moa-advisor-report-v1",
     ])
@@ -138,6 +139,31 @@ describe("composeAdvisorPrompt", () => {
     // then
     expect(composed.text).toContain("<role_hint>")
     expect(composed.text).toContain("Focus on migration cost.")
+  })
+
+  test("#given a read-only advisor #when composed #then trusted guidance permits only targeted evidence-gap research", () => {
+    const pack = resolvePromptPack(DEFAULT_PROMPT_PACK_ID)
+
+    const composed = composeAdvisorPrompt(pack, advisorInput({
+      role: "researcher",
+      mode: "research",
+      toolPolicy: "read_only",
+    }))
+
+    expect(composed.text).toContain("Read-only research tools are available for this advisor.")
+    expect(composed.text).toContain("only when the supplied context lacks evidence")
+    expect(composed.text).toContain("stop when the claim is supported or falsified")
+    expect(composed.text).not.toContain("Do not browse")
+    expect(composed.templateIds).toContain("builtin:moa-read-only-guidance-v1")
+  })
+
+  test("#given a tool-free advisor #when composed #then research-tool guidance is absent", () => {
+    const pack = resolvePromptPack(DEFAULT_PROMPT_PACK_ID)
+
+    const composed = composeAdvisorPrompt(pack, advisorInput({ toolPolicy: "none" }))
+
+    expect(composed.text).not.toContain("Read-only research tools are available for this advisor.")
+    expect(composed.templateIds).not.toContain("builtin:moa-read-only-guidance-v1")
   })
 
   test("#given different task inputs #when composed #then the trusted system hash is unchanged", () => {
