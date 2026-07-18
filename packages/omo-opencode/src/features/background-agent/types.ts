@@ -30,6 +30,7 @@ export interface BackgroundTaskPolicyFields {
   readonly continuationPolicy?: BackgroundTaskContinuationPolicy
   readonly toolPolicy?: BackgroundTaskToolPolicy
   readonly capabilityProfile?: BackgroundTaskCapabilityProfile
+  readonly maxToolCalls?: number
   readonly orchestration?: BackgroundTaskOrchestration
 }
 
@@ -39,6 +40,7 @@ export interface ResolvedBackgroundTaskPolicies {
   readonly continuationPolicy: BackgroundTaskContinuationPolicy
   readonly toolPolicy: BackgroundTaskToolPolicy
   readonly capabilityProfile?: BackgroundTaskCapabilityProfile
+  readonly maxToolCalls?: number
   readonly orchestration?: BackgroundTaskOrchestration
 }
 
@@ -53,6 +55,7 @@ export function resolveBackgroundTaskPolicies(
     ...(fields.capabilityProfile !== undefined
       ? { capabilityProfile: fields.capabilityProfile }
       : {}),
+    ...(fields.maxToolCalls !== undefined ? { maxToolCalls: fields.maxToolCalls } : {}),
     ...(fields.orchestration !== undefined
       ? { orchestration: fields.orchestration }
       : {}),
