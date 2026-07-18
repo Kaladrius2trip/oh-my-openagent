@@ -112,6 +112,9 @@ export async function startTask(
     model: input.model,
     prompt: input.prompt,
     includeTeamToolDenylist: input.teamRunId === undefined,
+    userPermission: input.userPermission,
+    toolPolicy: input.toolPolicy,
+    capabilityProfile: input.capabilityProfile,
   })
   setSessionTools(sessionID, promptBody.tools)
 
@@ -240,6 +243,9 @@ export async function resumeTask(
     model: task.model,
     prompt: input.prompt,
     includeTeamToolDenylist: task.teamRunId === undefined,
+    userPermission: task.userPermission,
+    toolPolicy: task.toolPolicy,
+    capabilityProfile: task.capabilityProfile,
   })
   setSessionTools(sessionID, resumeBody.tools)
 
