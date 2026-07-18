@@ -6293,6 +6293,10 @@
           "default": false,
           "type": "boolean"
         },
+        "tmux_visualization": {
+          "default": false,
+          "type": "boolean"
+        },
         "default_preset": {
           "default": "architecture-balanced",
           "type": "string"
@@ -6580,6 +6584,7 @@
       },
       "required": [
         "enabled",
+        "tmux_visualization",
         "default_preset",
         "default_prompt_pack",
         "max_advisors_per_run"

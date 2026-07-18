@@ -80,6 +80,7 @@ export const MoAPresetConfigSchema = z.object({
 
 export const MoAConfigSchema = z.object({
   enabled: z.boolean().default(false),
+  tmux_visualization: z.boolean().default(false),
   default_preset: z.string().default("architecture-balanced"),
   default_prompt_pack: z.string().default("omo-hermes-derived-v1"),
   max_advisors_per_run: z.number().int().min(1).max(8).default(8),

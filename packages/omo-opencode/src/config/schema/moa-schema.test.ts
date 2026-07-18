@@ -8,6 +8,7 @@ describe("MoAConfigSchema", () => {
       const result = MoAConfigSchema.parse({})
 
       expect(result.enabled).toBe(false)
+      expect(result.tmux_visualization).toBe(false)
       expect(result.default_preset).toBe("architecture-balanced")
       expect(result.default_prompt_pack).toBe("omo-hermes-derived-v1")
       expect(result.max_advisors_per_run).toBe(8)
@@ -21,6 +22,14 @@ describe("MoAConfigSchema", () => {
       expect(result.enabled).toBe(true)
       expect(result.default_preset).toBe("architecture-balanced")
       expect(result.max_advisors_per_run).toBe(8)
+    })
+  })
+
+  describe("#given tmux_visualization: true", () => {
+    test("#when parsed #then the observe-only tmux option is preserved", () => {
+      const result = MoAConfigSchema.parse({ tmux_visualization: true })
+
+      expect(result.tmux_visualization).toBe(true)
     })
   })
 
