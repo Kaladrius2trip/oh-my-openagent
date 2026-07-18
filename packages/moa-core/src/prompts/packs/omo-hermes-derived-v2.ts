@@ -9,9 +9,9 @@ export const omoHermesDerivedV2Pack: MoAPromptPackConfig = {
     review: "builtin:moa-mode-review-v1",
     "evidence-search": "builtin:moa-mode-evidence-search-v2",
   },
-  aggregator_base: "builtin:moa-consult-aggregator-v1",
+  aggregator_base: "builtin:moa-consult-aggregator-v2",
   task_envelope: "builtin:moa-task-envelope-v1",
-  advisor_output_contract: "builtin:moa-advisor-report-v1",
+  advisor_output_contract: "builtin:moa-advisor-report-v2",
   aggregator_output_contract: "builtin:moa-decision-bundle-v1",
 }
 

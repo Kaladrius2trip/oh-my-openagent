@@ -1,8 +1,10 @@
 import type { MoAAdvisorMode, MoAAdvisorRole, MoAPromptPackConfig, MoAPromptTemplateRef } from "../types"
 import { consultAggregatorV1 } from "./base/consult-aggregator-v1"
+import { consultAggregatorV2 } from "./base/consult-aggregator-v2"
 import { referenceAdvisorV1 } from "./base/reference-advisor-v1"
 import { referenceAdvisorV2 } from "./base/reference-advisor-v2"
 import { advisorReportV1 } from "./contracts/advisor-report-v1"
+import { advisorReportV2 } from "./contracts/advisor-report-v2"
 import { decisionBundleV1 } from "./contracts/decision-bundle-v1"
 import { aggregationEnvelopeV1 } from "./envelopes/aggregation-envelope-v1"
 import { taskEnvelopeV1 } from "./envelopes/task-envelope-v1"
@@ -20,9 +22,11 @@ const BUILTIN_TEMPLATE_LIST: readonly MoAPromptTemplate[] = [
   referenceAdvisorV1,
   referenceAdvisorV2,
   consultAggregatorV1,
+  consultAggregatorV2,
   taskEnvelopeV1,
   aggregationEnvelopeV1,
   advisorReportV1,
+  advisorReportV2,
   decisionBundleV1,
   ...Object.values(MODE_TEMPLATES_V1),
   ...MODE_TEMPLATES_V2,
