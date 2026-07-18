@@ -106,6 +106,7 @@ describe("background task visibility", () => {
     const onSubagentSessionCreated = mock(async (event: { title: string }) => {
       if (event.title === "normal") resolveNormalPane()
     })
+    const onMoASessionCreated = mock(async () => {})
     const client = {
       session: {
         get: async ({ path }: { path: { id: string } }) => ({
@@ -142,7 +143,16 @@ describe("background task visibility", () => {
         parentSessionId: "parent-session",
         parentMessageId: "parent-message",
       }
-      await manager.launch({ ...base, description: "internal", visibility: "internal" })
+      await manager.launch({
+        ...base,
+        description: "MoA advisor: architect",
+        visibility: "internal",
+        notificationPolicy: "manual",
+        continuationPolicy: "forbid",
+        toolPolicy: "none",
+        capabilityProfile: "moa-consultation-only",
+        onSessionCreated: onMoASessionCreated,
+      })
       await manager.launch({ ...base, description: "normal", visibility: "normal" })
       let diagnosticTimeout: ReturnType<typeof setTimeout> | undefined
       try {
@@ -160,6 +170,12 @@ describe("background task visibility", () => {
       }
 
       expect(onSubagentSessionCreated).toHaveBeenCalledTimes(1)
+      expect(onMoASessionCreated).toHaveBeenCalledTimes(1)
+      expect(manager.getTasksSnapshot().map((task) => task.title)).toEqual(["normal"])
+      expect(manager.getTasksSnapshotIncludingInternal().map((task) => task.title)).toEqual([
+        "MoA advisor: architect",
+        "normal",
+      ])
     } finally {
       if (originalTmux === undefined) delete process.env.TMUX
       else process.env.TMUX = originalTmux
