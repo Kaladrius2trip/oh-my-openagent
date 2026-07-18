@@ -1,6 +1,6 @@
 # Mixture of Advisors
 
-Mixture of Advisors (MoA) runs a bounded consultation before implementation. Tool-free advisors analyze one objective in parallel. One aggregator returns a decision bundle. Parent OMO agent remains only implementation authority.
+Mixture of Advisors (MoA) runs a bounded consultation before implementation. Advisors analyze one objective in parallel and are tool-free by default. Selected advisors may receive bounded read-only research tools. One tool-free aggregator returns a decision bundle. Parent OMO agent remains only implementation authority.
 
 MoA is disabled by default. Disabled state registers no `moa_consult` tool, no `/moa` command, no manager, and doctor reports a skipped check.
 
@@ -52,14 +52,30 @@ Omit `preset` to use `default_preset`.
 | --- | --- | --- |
 | `moa.enabled` | `false` | Registers MoA runtime, tool and command. |
 | `moa.default_preset` | `architecture-balanced` | Preset used when caller omits one. |
-| `moa.default_prompt_pack` | `omo-hermes-derived-v1` | Built-in prompt pack identifier. |
+| `moa.default_prompt_pack` | `omo-hermes-derived-v2` | Tool-policy-aware built-in prompt pack identifier. |
 | `moa.max_advisors_per_run` | `8` | Hard advisor cap, from 1 through 8. |
 | `moa.presets` | none | Project-defined preset records. |
 | `moa.prompt_packs` | none | Project-defined prompt-pack records. |
 
-Preset fields control advisors, aggregator, context bounds, diversity thresholds, success threshold and timeouts. Every preset accepts only `execution_policy: "consultation_only"`. Every advisor accepts only `tool_policy: "none"` and one mode from `analysis`, `research`, `planning`, `review` or `evidence-search`.
+Preset fields control advisors, aggregator, context bounds, diversity thresholds, success threshold and timeouts. Every preset accepts only `execution_policy: "consultation_only"`. Every advisor accepts `tool_policy: "none"` or `"read_only"` and one mode from `analysis`, `research`, `planning`, `review` or `evidence-search`. Omitted `tool_policy` defaults to `"none"`.
 
 Preset `advisor_timeout_ms` and `aggregator_timeout_ms` values are base timeouts: each is the first liveness checkpoint, not an unconditional kill deadline. `idle_window_ms` defaults to `60000` and extends a wait by one liveness-grace window when recent child stream activity exists. `max_wall_ms` is the absolute cap for both advisor and aggregator waits; when omitted, runtime uses four times the relevant base timeout.
+
+### Read-only research
+
+Set `tool_policy: "read_only"` on individual advisors that need evidence absent from supplied context. Runtime exposes only `read`, `grep` and `glob`, with a fixed limit of 12 tool calls per research advisor. User and agent denials can remove any of those tools. The profile cannot gain shell, write, edit, network, MCP, delegation or background-task capabilities. Aggregators remain tool-free.
+
+```jsonc
+{
+  "name": "researcher",
+  "role": "researcher",
+  "mode": "research",
+  "category": "moa-researcher",
+  "tool_policy": "read_only"
+}
+```
+
+Prompt pack v2 tells advisors to research only when context lacks evidence and to stop when a claim is supported or falsified. Use `"none"` when supplied context is sufficient.
 
 ### Per-role temperature
 
@@ -108,11 +124,14 @@ Doctor warns when an explicit slot temperature targets a statically known primar
 }
 ```
 
+`toolsExposed` reports the maximum distinct advisor tool types configured for the run: `0` for tool-free presets and `3` when any advisor uses `read_only`. Aggregator exposure remains zero. Agent or user denials may reduce actual advisor availability below that maximum.
+
 Fallback collapse can change a successful consultation from `completed` to `degraded`. Doctor predicts this risk from model fallback chains before a run.
 
 ## Security model
 
-- Advisor and aggregator sessions receive zero tools through runtime capability enforcement.
+- Tool-free advisors and all aggregators receive zero tools through runtime capability enforcement.
+- Read-only advisors receive only `read`, `grep` and `glob`, capped at 12 calls. Existing denials can narrow this set.
 - Internal sessions cannot notify, wake, resume or appear as normal background tasks.
 - Parent system prompt, hidden messages and raw tool transcripts are excluded from default context.
 - Advisor reports are escaped and placed inside an explicit untrusted XML boundary.
