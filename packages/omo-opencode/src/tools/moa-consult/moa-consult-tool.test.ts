@@ -78,7 +78,7 @@ describe("createMoaConsultTool", () => {
     // When the tool runs with only a prompt
     const result = await moaTool.execute({ prompt: "Should we split module X?" }, context)
 
-    // Then it returns the consultation bundle with zero tools exposed and parent authority
+    // Then it returns the research-first consultation bundle with parent authority
     if (typeof result === "string") throw new Error(`expected a structured result, got: ${result}`)
     const bundle = result.metadata
     expect(bundle?.runId).toBe("run-1")
@@ -87,13 +87,13 @@ describe("createMoaConsultTool", () => {
     expect(bundle?.synthesis).toBe("## Decision\nProceed with the split.")
     expect(bundle?.execution).toEqual({
       policy: "consultation_only",
-      toolsExposed: 0,
+      toolsExposed: 3,
       advisorPolicies: [
-        { name: "architect", policy: "none" },
-        { name: "validator", policy: "none" },
-        { name: "challenger", policy: "none" },
+        { name: "architect", policy: "read_only" },
+        { name: "validator", policy: "read_only" },
+        { name: "challenger", policy: "read_only" },
       ],
-      advisorToolsExposed: [],
+      advisorToolsExposed: ["read", "grep", "glob"],
       aggregatorToolsExposed: [],
       mutationsPerformed: 0,
       implementationAuthority: "parent",
