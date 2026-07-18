@@ -21,7 +21,7 @@ class FakeBackgroundManager {
     const sessionId = `session-${index}`
     moaLaunchInputs.push(input)
     await input.onSessionCreated?.(sessionId)
-    fakeTasks.set(taskId, { id: taskId, status: "completed", model: input.model, result: "done" })
+    fakeTasks.set(taskId, { id: taskId, status: "completed", model: input.model })
     return { id: taskId, sessionId }
   }
 
@@ -29,6 +29,7 @@ class FakeBackgroundManager {
     return fakeTasks.get(taskId)
   }
 
+  async readTaskOutput() { return { status: "resolved", output: "done" } as const }
   async cancelTask(): Promise<boolean> { return true }
   async shutdown(): Promise<void> {}
 }

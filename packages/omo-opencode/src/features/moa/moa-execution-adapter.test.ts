@@ -43,6 +43,7 @@ describe("createMoAExecutionAdapter", () => {
           return { id: `bg-${launches.length}`, sessionId: `session-${launches.length}` }
         },
         getTask: () => undefined,
+        readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
       parent: {
@@ -109,6 +110,7 @@ describe("createMoAExecutionAdapter", () => {
           return { id: "bg-1" }
         },
         getTask: () => undefined,
+        readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
       parent: { sessionID: "parent-session", messageID: "parent-message" },
@@ -139,7 +141,6 @@ describe("createMoAExecutionAdapter", () => {
           id: "bg-1",
           status: "completed",
           sessionId: "child-session",
-          result: "advisor report",
           model: target.model,
           attemptCount: 1,
           attempts: [{
@@ -150,6 +151,7 @@ describe("createMoAExecutionAdapter", () => {
             status: "completed",
           }],
         }),
+        readTaskOutput: async () => ({ status: "resolved", output: "advisor report" }),
         cancelTask: async () => true,
       },
       parent: { sessionID: "parent-session", messageID: "parent-message" },
@@ -172,6 +174,39 @@ describe("createMoAExecutionAdapter", () => {
     expect(result.fallbackCount).toBe(1)
   })
 
+  test("#given completed task without resolvable text #when adapter waits #then result fails closed", async () => {
+    // given
+    const adapter = createMoAExecutionAdapter({
+      backgroundManager: {
+        launch: async () => ({ id: "bg-1", sessionId: "child-session" }),
+        getTask: () => ({
+          id: "bg-1",
+          status: "completed",
+          sessionId: "child-session",
+          model: target.model,
+        }),
+        readTaskOutput: async () => ({ status: "failed", reason: "assistant_text_missing" }),
+        cancelTask: async () => true,
+      },
+      parent: { sessionID: "parent-session", messageID: "parent-message" },
+      resolveTarget: async () => target,
+      pollIntervalMs: 1,
+    })
+
+    // when
+    const result = await adapter.waitForChild({
+      taskId: "bg-1",
+      sessionId: "child-session",
+      role: "advisor",
+      slot: "architect",
+    }, 100, new AbortController().signal)
+
+    // then
+    expect(result.status).toBe("failed")
+    expect(result.output).toBeUndefined()
+    expect(result.errorCategory).toBe("output_resolution_failed")
+  })
+
   test("#given an active child #when adapter cancels it #then BackgroundManager receives silent MoA cancellation", async () => {
     // given
     const cancellations: Array<{ taskId: string; reason?: string; skipNotification?: boolean }> = []
@@ -179,6 +214,7 @@ describe("createMoAExecutionAdapter", () => {
       backgroundManager: {
         launch: async () => ({ id: "bg-1" }),
         getTask: () => undefined,
+        readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async (taskId, options) => {
           cancellations.push({ taskId, reason: options?.reason, skipNotification: options?.skipNotification })
           return true

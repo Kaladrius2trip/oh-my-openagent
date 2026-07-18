@@ -10,9 +10,11 @@ import {
 
 export { isCompactionAgent } from "../../shared/compaction-marker"
 
-type SessionMessage = {
+export type SessionMessage = {
   id?: string
   info?: {
+    role?: string
+    error?: unknown
     agent?: string
     model?: {
       providerID?: string
@@ -23,8 +25,17 @@ type SessionMessage = {
     modelID?: string
     tools?: StoredMessage["tools"]
   }
-  parts?: Array<{ type?: string }>
+  parts?: Array<{ type?: string; text?: string }>
 }
+
+export type FinalAssistantOutputFailureReason =
+  | "assistant_message_missing"
+  | "assistant_message_error"
+  | "assistant_text_missing"
+
+export type FinalAssistantOutputResult =
+  | { readonly status: "resolved"; readonly output: string }
+  | { readonly status: "failed"; readonly reason: FinalAssistantOutputFailureReason }
 
 function hasFullAgentAndModel(message: StoredMessage): boolean {
   return !!message.agent &&
@@ -130,6 +141,32 @@ export function resolvePromptContextFromSessionMessages(
     .reverse()
 
   return mergeStoredMessages(convertedMessages, sessionID)
+}
+
+export function extractFinalAssistantOutput(
+  messages: readonly SessionMessage[],
+): FinalAssistantOutputResult {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index]
+    if (message?.info?.role !== "assistant" || isCompactionMessage(message)) {
+      continue
+    }
+
+    if (message.info.error !== undefined) {
+      return { status: "failed", reason: "assistant_message_error" }
+    }
+
+    const text = (message.parts ?? [])
+      .filter((part) => part.type === "text" && typeof part.text === "string")
+      .map((part) => part.text?.trim() ?? "")
+      .filter((part) => part.length > 0)
+      .join("\n\n")
+    return text.length > 0
+      ? { status: "resolved", output: text }
+      : { status: "failed", reason: "assistant_text_missing" }
+  }
+
+  return { status: "failed", reason: "assistant_message_missing" }
 }
 
 export function findNearestMessageExcludingCompaction(
