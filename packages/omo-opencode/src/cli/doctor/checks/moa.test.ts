@@ -19,7 +19,15 @@ function getMoACheck() {
   return checkMoA
 }
 
-function enabledConfig(fallbackModels: readonly [string, string]) {
+function enabledConfig(
+  fallbackModels: readonly [string, string],
+  options: {
+    readonly advisorModel?: string
+    readonly advisorTemperature?: number
+    readonly aggregatorModel?: string
+    readonly aggregatorTemperature?: number
+  } = {},
+) {
   return {
     moa: {
       enabled: true,
@@ -28,10 +36,18 @@ function enabledConfig(fallbackModels: readonly [string, string]) {
         "doctor-fixture": {
           execution_policy: "consultation_only",
           advisors: [
-            { name: "architect", category: "doctor-a", tool_policy: "none" },
+            {
+              name: "architect",
+              category: "doctor-a",
+              tool_policy: "none",
+              ...(options.advisorTemperature !== undefined ? { temperature: options.advisorTemperature } : {}),
+            },
             { name: "validator", category: "doctor-b", tool_policy: "none" },
           ],
-          aggregator: { category: "doctor-aggregator" },
+          aggregator: {
+            category: "doctor-aggregator",
+            ...(options.aggregatorTemperature !== undefined ? { temperature: options.aggregatorTemperature } : {}),
+          },
           diversity: {
             min_distinct_providers: 2,
             min_distinct_models: 2,
@@ -41,9 +57,9 @@ function enabledConfig(fallbackModels: readonly [string, string]) {
       },
     },
     categories: {
-      "doctor-a": { model: "anthropic/doctor-a", fallback_models: [fallbackModels[0]] },
+      "doctor-a": { model: options.advisorModel ?? "anthropic/doctor-a", fallback_models: [fallbackModels[0]] },
       "doctor-b": { model: "google/doctor-b", fallback_models: [fallbackModels[1]] },
-      "doctor-aggregator": { model: "openai/doctor-aggregator" },
+      "doctor-aggregator": { model: options.aggregatorModel ?? "openai/doctor-aggregator" },
     },
   }
 }
@@ -105,5 +121,60 @@ describe("MoA doctor check", () => {
     // then
     expect(result.status).toBe("fail")
     expect(result.message).toContain("missing")
+  })
+
+  test("#given explicit advisor temperature on a known unsupported primary model #when doctor runs #then it warns", async () => {
+    // given
+    await writeConfig(enabledConfig(
+      ["anthropic/doctor-a-fallback", "google/doctor-b-fallback"],
+      { advisorModel: "openai/gpt-5.4", advisorTemperature: 0.8 },
+    ))
+
+    // when
+    const result = await getMoACheck()()
+
+    // then
+    expect(result.status).toBe("warn")
+    expect(result.issues).toContainEqual(expect.objectContaining({
+      title: "Configured MoA temperature is unsupported",
+      affects: ["advisor:architect"],
+    }))
+  })
+
+  test("#given explicit aggregator temperature on a known unsupported primary model #when doctor runs #then it warns", async () => {
+    // given
+    await writeConfig(enabledConfig(
+      ["anthropic/doctor-a-fallback", "google/doctor-b-fallback"],
+      { aggregatorModel: "openai/gpt-5.4", aggregatorTemperature: 0.2 },
+    ))
+
+    // when
+    const result = await getMoACheck()()
+
+    // then
+    expect(result.status).toBe("warn")
+    expect(result.issues).toContainEqual(expect.objectContaining({
+      title: "Configured MoA temperature is unsupported",
+      affects: ["aggregator"],
+    }))
+  })
+
+  test.each([
+    ["supported", "xai/grok-4-fast"],
+    ["unknown", "mystery/doctor-unknown"],
+  ])("#given explicit temperature on a %s primary model #when doctor runs #then temperature warning stays silent", async (_kind, model) => {
+    // given
+    await writeConfig(enabledConfig(
+      ["anthropic/doctor-a-fallback", "google/doctor-b-fallback"],
+      { advisorModel: model, advisorTemperature: 0.8 },
+    ))
+
+    // when
+    const result = await getMoACheck()()
+
+    // then
+    expect(result.issues).not.toContainEqual(expect.objectContaining({
+      title: "Configured MoA temperature is unsupported",
+    }))
   })
 })
