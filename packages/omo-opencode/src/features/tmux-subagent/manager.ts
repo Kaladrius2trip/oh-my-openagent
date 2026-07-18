@@ -1,6 +1,6 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { TmuxConfig } from "../../config/schema"
-import type { TrackedSession, CapacityConfig, TmuxPaneMode, WindowState } from "./types"
+import type { TrackedSession, CapacityConfig, TmuxPaneMode, WindowState, WindowStateQueryResult } from "./types"
 import * as sharedModule from "../../shared"
 import { resolveSessionEventID } from "../../shared/event-session-id"
 import {
@@ -15,8 +15,9 @@ import {
   sweepStaleOmoAttachPanes,
   activateReadOnlyTmuxPane,
   activateTmuxPane,
+  classifyTmuxError,
 } from "../../shared/tmux"
-import { queryWindowState as defaultQueryWindowState } from "./pane-state-querier"
+import { queryWindowState as defaultQueryWindowState, unwrapWindowState } from "./pane-state-querier"
 import { decideSpawnActions, decideCloseAction, type SessionMapping } from "./decision-engine"
 import { executeActions, executeAction } from "./action-executor"
 import { TmuxPollingManager } from "./polling-manager"
@@ -31,6 +32,12 @@ import { parseSessionStatusResponse } from "./session-status-parser"
 import { FailedReadinessCache, type FailedReadinessSessionSeed } from "./failed-readiness-cache"
 import { resolveServerUrl } from "./resolve-server-url"
 import { sweepStaleTmuxResources } from "./stale-tmux-resource-sweeper"
+import { createSourcePaneRecovery, type SourcePaneRecovery } from "./source-pane-recovery"
+import {
+  createDeferredAttachLoop,
+  type DeferredAttachLoop,
+  type DeferredDrainOutcome,
+} from "./deferred-attach-loop"
 type OpencodeClient = PluginInput["client"]
 
 type SpawnStage =
@@ -56,7 +63,7 @@ interface DeferredSession {
 export interface TmuxUtilDeps {
   isInsideTmux: () => boolean
   getCurrentPaneId: () => string | undefined
-  queryWindowState: (paneId: string) => Promise<WindowState | null>
+  queryWindowState: (paneId: string) => Promise<WindowStateQueryResult>
   waitForSessionReady: (params: { client: OpencodeClient; sessionId: string }) => Promise<boolean>
   executeActions: typeof executeActions
   executeAction: typeof executeAction
@@ -98,7 +105,6 @@ const defaultTmuxDeps: TmuxUtilDeps = {
 
 const DEFERRED_SESSION_TTL_MS = 5 * 60 * 1000
 const FAILED_READINESS_SESSION_TTL_MS = 5 * 60 * 1000
-const FAILED_READINESS_SWEEP_INTERVAL_MS = 60 * 1000
 const MAX_DEFERRED_QUEUE_SIZE = 20
 const MAX_CLOSE_RETRY_COUNT = 3
 // After MAX_CLOSE_RETRY_COUNT failed close attempts with the pane still
@@ -123,7 +129,7 @@ export class TmuxSessionManager {
   private projectDirectory: string
   private serverUrl: string
   private ctxServerUrl: string | undefined
-  private sourcePaneId: string | undefined
+  private readonly sourcePaneRecovery: SourcePaneRecovery
   private sessions = new Map<string, TrackedSession>()
   private pendingSessions = new Set<string>()
   private closedByPolling = new Set<string>()
@@ -131,9 +137,8 @@ export class TmuxSessionManager {
   private spawnQueue: Promise<void> = Promise.resolve()
   private deferredSessions = new Map<string, DeferredSession>()
   private deferredQueue: string[] = []
-  private deferredAttachInterval?: ReturnType<typeof setInterval>
-  private deferredAttachTickScheduled = false
-  private nullStateCount = 0
+  private readonly deferredAttachLoop: DeferredAttachLoop
+  private pendingDeferredOverflowWarnings = 0
   private deps: TmuxUtilDeps
   private shouldSkipSession: (sessionId: string) => boolean
   private pollingManager: TmuxPollingManager
@@ -156,13 +161,25 @@ export class TmuxSessionManager {
     this.shouldSkipSession = options.shouldSkipSession ?? (() => false)
     this.failedReadinessCache = new FailedReadinessCache({
       ttlMs: FAILED_READINESS_SESSION_TTL_MS,
-      sweepIntervalMs: FAILED_READINESS_SWEEP_INTERVAL_MS,
-      log: this.deps.log,
     })
     const rawServerUrl = ctx.serverUrl?.toString()
     this.ctxServerUrl = rawServerUrl
     this.serverUrl = resolveServerUrl(rawServerUrl, process.env, this.deps.log)
-    this.sourcePaneId = this.deps.getCurrentPaneId()
+    const initialSourcePaneId = this.deps.getCurrentPaneId()
+    this.sourcePaneRecovery = createSourcePaneRecovery({
+      initialPaneId: initialSourcePaneId,
+      queryWindowState: this.deps.queryWindowState,
+      getManagedPaneIds: () => new Set(Array.from(this.sessions.values(), (session) => session.paneId)),
+      log: this.deps.log,
+    })
+    this.deferredAttachLoop = createDeferredAttachLoop({
+      normalIntervalMs: POLL_INTERVAL_BACKGROUND_MS,
+      hasWork: () => this.deferredQueue.length > 0 || this.failedReadinessCache.size > 0,
+      drain: this.runDeferredAttachTick.bind(this),
+      schedule: (run, delayMs) => setTimeout(run, delayMs),
+      cancel: (timer) => clearTimeout(timer),
+      onError: (error) => this.deps.log("[tmux-session-manager] deferred attach drain failed", { error: String(error) }),
+    })
     this.pollingManager = new TmuxPollingManager(
       this.client,
       this.sessions,
@@ -177,7 +194,7 @@ export class TmuxSessionManager {
       tmuxConfig: this.tmuxConfig,
       projectDirectory: this.projectDirectory,
       serverUrl: this.serverUrl,
-      sourcePaneId: this.sourcePaneId,
+      sourcePaneId: initialSourcePaneId,
     })
   }
   private isEnabled(): boolean {
@@ -192,7 +209,14 @@ export class TmuxSessionManager {
     if (this.isIsolated() && this.isolatedWindowPaneId) {
       return this.isolatedWindowPaneId
     }
-    return this.sourcePaneId
+    return this.sourcePaneRecovery.getPaneId()
+  }
+
+  private async queryEffectiveWindowState(): Promise<WindowStateQueryResult> {
+    if (this.isIsolated() && this.isolatedWindowPaneId) {
+      return this.deps.queryWindowState(this.isolatedWindowPaneId)
+    }
+    return this.sourcePaneRecovery.queryWindowState()
   }
 
   private async spawnInIsolatedContainer(
@@ -201,14 +225,14 @@ export class TmuxSessionManager {
   ): Promise<string | null> {
     if (!this.isIsolated()) return null
     if (this.isolatedWindowPaneId) {
-        const state = await this.deps.queryWindowState(this.isolatedWindowPaneId).catch((error) => {
+        const stateResult = await this.deps.queryWindowState(this.isolatedWindowPaneId).catch((error): WindowStateQueryResult => {
         this.deps.log("[tmux-session-manager] failed to query isolated window state", {
           paneId: this.isolatedWindowPaneId,
           error: String(error),
         })
-        return null
+        return { kind: "transient", detail: String(error) }
       })
-      if (state) {
+      if (stateResult.kind === "ok") {
         this.isolatedContainerNullStateCount = 0
         return null
       }
@@ -236,7 +260,7 @@ export class TmuxSessionManager {
         this.tmuxConfig,
         this.serverUrl,
         this.projectDirectory,
-        this.sourcePaneId,
+        this.sourcePaneRecovery.getPaneId(),
         undefined,
         this.isolatedSessionManagerId,
       )
@@ -342,7 +366,7 @@ export class TmuxSessionManager {
           directory: this.projectDirectory,
           serverUrl: this.serverUrl,
           windowState: state,
-          sourcePaneId: this.sourcePaneId ?? tracked.paneId,
+          sourcePaneId: this.sourcePaneRecovery.getPaneId() ?? tracked.paneId,
         },
       )
 
@@ -378,7 +402,16 @@ export class TmuxSessionManager {
     if (!paneId) return null
 
     try {
-      return await this.deps.queryWindowState(paneId)
+      const result = await this.queryEffectiveWindowState()
+      switch (result.kind) {
+        case "ok":
+          return result.state
+        case "source_gone":
+          return null
+        case "transient":
+          this.deps.log("[tmux-session-manager] transient window state query failure", { detail: result.detail })
+          return null
+      }
     } catch (error) {
       this.deps.log("[tmux-session-manager] failed to query window state for close", {
         error: String(error),
@@ -646,11 +679,8 @@ export class TmuxSessionManager {
       return
     }
     if (this.deferredQueue.length >= MAX_DEFERRED_QUEUE_SIZE) {
-      this.deps.log("[tmux-session-manager] deferred queue full, dropping session", {
-        sessionId,
-        queueLength: this.deferredQueue.length,
-        maxQueueSize: MAX_DEFERRED_QUEUE_SIZE,
-      })
+      this.pendingDeferredOverflowWarnings += 1
+      this.startDeferredAttachLoop()
       return
     }
     this.deferredSessions.set(sessionId, {
@@ -675,37 +705,71 @@ export class TmuxSessionManager {
       sessionId,
       queueLength: this.deferredQueue.length,
     })
-    if (this.deferredQueue.length === 0) {
+    if (this.deferredQueue.length === 0 && this.failedReadinessCache.size === 0) {
       this.stopDeferredAttachLoop()
     }
   }
 
   private startDeferredAttachLoop(): void {
-    if (this.deferredAttachInterval) return
-    this.nullStateCount = 0
-    this.deferredAttachInterval = setInterval(() => {
-      if (this.deferredAttachTickScheduled) return
-      this.deferredAttachTickScheduled = true
-      void this.enqueueSpawn(async () => {
-        try {
-          await this.tryAttachDeferredSession()
-        } finally {
-          this.deferredAttachTickScheduled = false
-        }
-      })
-    }, POLL_INTERVAL_BACKGROUND_MS)
+    this.deferredAttachLoop.arm()
     this.deps.log("[tmux-session-manager] deferred attach polling started", {
       intervalMs: POLL_INTERVAL_BACKGROUND_MS,
     })
   }
 
   private stopDeferredAttachLoop(): void {
-    if (!this.deferredAttachInterval) return
-    clearInterval(this.deferredAttachInterval)
-    this.deferredAttachInterval = undefined
-    this.deferredAttachTickScheduled = false
-    this.nullStateCount = 0
+    this.deferredAttachLoop.stop()
     this.deps.log("[tmux-session-manager] deferred attach polling stopped")
+  }
+
+  private async runDeferredAttachTick(): Promise<DeferredDrainOutcome> {
+    let outcome: DeferredDrainOutcome = "waiting"
+    await this.enqueueSpawn(async () => {
+      outcome = await this.tryAttachDeferredSession()
+    })
+    const expiredReadiness = this.failedReadinessCache.takeExpired()
+    if (expiredReadiness.length > 0) {
+      this.deps.log("[tmux-session-manager] subagent pane readiness retries expired", {
+        kind: "warning",
+        count: expiredReadiness.length,
+        sessionIds: expiredReadiness.map((session) => session.sessionId),
+      })
+    }
+    const readinessSessions = this.failedReadinessCache.values()
+    for (const session of readinessSessions) {
+      await this.retryFailedReadinessSession(session.sessionId)
+    }
+    if (readinessSessions.length > 0) outcome = "success"
+    return outcome
+  }
+
+  private rememberFailedReadiness(session: FailedReadinessSessionSeed): void {
+    this.failedReadinessCache.remember(session)
+    this.startDeferredAttachLoop()
+  }
+
+  private expireDeferredSessions(): number {
+    const now = Date.now()
+    const expiredIds = this.deferredQueue.filter((sessionId) => {
+      const deferred = this.deferredSessions.get(sessionId)
+      return deferred !== undefined && now - deferred.queuedAt.getTime() > DEFERRED_SESSION_TTL_MS
+    })
+    if (expiredIds.length === 0) return 0
+    const expiredSet = new Set(expiredIds)
+    this.deferredQueue = this.deferredQueue.filter((sessionId) => !expiredSet.has(sessionId))
+    for (const sessionId of expiredIds) this.deferredSessions.delete(sessionId)
+    return expiredIds.length
+  }
+
+  private surfaceDeferredWarnings(expiredCount: number): void {
+    const count = expiredCount + this.pendingDeferredOverflowWarnings
+    if (count === 0) return
+    this.pendingDeferredOverflowWarnings = 0
+    this.deps.log("[tmux-session-manager] subagent panes deferred or expired", {
+      kind: "warning",
+      count,
+      reason: "grid full",
+    })
   }
 
   private beginPendingSession(
@@ -781,7 +845,7 @@ export class TmuxSessionManager {
     const readyForSpawn = await this.ensureSessionReadyBeforeSpawn(sessionId, stage)
     if (!readyForSpawn) {
       if (rememberReadinessFailure) {
-        this.failedReadinessCache.remember(session)
+        this.rememberFailedReadiness(session)
       }
       return
     }
@@ -794,7 +858,7 @@ export class TmuxSessionManager {
         status: sessionStatus,
       })
       if (rememberReadinessFailure) {
-        this.failedReadinessCache.remember(session)
+        this.rememberFailedReadiness(session)
       }
       return
     }
@@ -816,15 +880,20 @@ export class TmuxSessionManager {
       this.enqueueDeferredSession(sessionId, title, mode, true)
       return
     }
-    const sourcePaneId = this.getEffectiveSourcePaneId()
-    if (!sourcePaneId) {
+    if (!this.getEffectiveSourcePaneId()) {
       this.deps.log("[tmux-session-manager] no effective source pane id")
       return
     }
 
-    const state = await this.deps.queryWindowState(sourcePaneId)
-    if (!state) {
+    const stateResult = await this.queryEffectiveWindowState()
+    if (stateResult.kind !== "ok") {
       this.deps.log("[tmux-session-manager] failed to query window state, deferring session")
+      this.enqueueDeferredSession(sessionId, title, mode)
+      return
+    }
+    const state = stateResult.state
+    const sourcePaneId = this.getEffectiveSourcePaneId()
+    if (!sourcePaneId) {
       this.enqueueDeferredSession(sessionId, title, mode)
       return
     }
@@ -904,6 +973,52 @@ export class TmuxSessionManager {
       return
     }
 
+    const spawnFailure = result.results.find(
+      (entry) => entry.action.type === "spawn" && entry.result.tmuxFailure !== undefined,
+    )?.result.tmuxFailure
+    if (spawnFailure?.kind === "terminal") {
+      if (classifyTmuxError(spawnFailure.stderr) !== "target_gone") {
+        this.deps.log("[tmux-session-manager] terminal pane spawn failure", {
+          kind: "warning",
+          sessionId,
+          error: result.results.find((entry) => entry.result.tmuxFailure === spawnFailure)?.result.error,
+        })
+        return
+      }
+
+      const recovered = await this.sourcePaneRecovery.recoverAfterTargetLoss()
+      const recoveredSourcePaneId = this.getEffectiveSourcePaneId()
+      if (recovered.kind !== "ok" || !recoveredSourcePaneId) {
+        this.enqueueDeferredSession(sessionId, title, mode)
+        return
+      }
+      const retryDecision = decideSpawnActions(
+        recovered.state,
+        sessionId,
+        title,
+        this.getCapacityConfig(),
+        this.getSessionMappings(),
+      )
+      if (!retryDecision.canSpawn || retryDecision.actions.length === 0) {
+        this.enqueueDeferredSession(sessionId, title, mode)
+        return
+      }
+      const retryResult = await this.deps.executeActions(retryDecision.actions, {
+        config: this.tmuxConfig,
+        directory: this.projectDirectory,
+        serverUrl: this.serverUrl,
+        windowState: recovered.state,
+        sourcePaneId: recoveredSourcePaneId,
+      })
+      if (retryResult.success && retryResult.spawnedPaneId) {
+        await this.addTrackedSession(session, retryResult.spawnedPaneId)
+        this.failedReadinessCache.clear(sessionId)
+        return
+      }
+      this.enqueueDeferredSession(sessionId, title, mode)
+      return
+    }
+
     this.deps.log("[tmux-session-manager] spawn failed", {
       success: result.success,
       results: result.results.map((resultEntry) => ({
@@ -944,6 +1059,14 @@ export class TmuxSessionManager {
       return
     }
 
+    const expired = this.failedReadinessCache.takeExpired()
+    if (expired.length > 0) {
+      this.deps.log("[tmux-session-manager] subagent pane readiness retries expired", {
+        kind: "warning",
+        count: expired.length,
+        sessionIds: expired.map((session) => session.sessionId),
+      })
+    }
     const failedReadinessSession = this.failedReadinessCache.get(sessionId)
     if (!failedReadinessSession) {
       return
@@ -965,7 +1088,6 @@ export class TmuxSessionManager {
             return
           }
 
-          this.failedReadinessCache.clear(sessionId)
           await this.spawnPendingSession({
             session: failedReadinessSession,
             stage: "session.idle.retry",
@@ -980,44 +1102,31 @@ export class TmuxSessionManager {
     }
   }
 
-  private async tryAttachDeferredSession(): Promise<void> {
+  private async tryAttachDeferredSession(): Promise<DeferredDrainOutcome> {
+    const expiredCount = this.expireDeferredSessions()
+    this.surfaceDeferredWarnings(expiredCount)
     const sessionId = this.deferredQueue[0]
     if (!sessionId) {
-      this.stopDeferredAttachLoop()
-      return
+      if (this.failedReadinessCache.size === 0) this.stopDeferredAttachLoop()
+      return "success"
     }
 
     const deferred = this.deferredSessions.get(sessionId)
     if (!deferred) {
       this.deferredQueue.shift()
-      return
+      return "success"
     }
 
     if (this.shouldSkipRespawnAfterPollingClose(sessionId, "deferred attach")) {
       this.removeDeferredSession(sessionId)
-      return
+      return "success"
     }
 
     if (!this.beginPendingSession(sessionId, { allowDeferredSession: true })) {
-      return
+      return "waiting"
     }
 
     try {
-      if (Date.now() - deferred.queuedAt.getTime() > DEFERRED_SESSION_TTL_MS) {
-        this.deferredQueue.shift()
-        this.deferredSessions.delete(sessionId)
-        this.deps.log("[tmux-session-manager] deferred session expired", {
-          sessionId,
-          queuedAt: deferred.queuedAt.toISOString(),
-          ttlMs: DEFERRED_SESSION_TTL_MS,
-          queueLength: this.deferredQueue.length,
-        })
-        if (this.deferredQueue.length === 0) {
-          this.stopDeferredAttachLoop()
-        }
-        return
-      }
-
       if (deferred.retryIsolatedContainer) {
         const readyForIsolatedContainer = await this.ensureSessionReadyBeforeSpawn(
           sessionId,
@@ -1025,7 +1134,7 @@ export class TmuxSessionManager {
         )
         if (!readyForIsolatedContainer) {
           this.removeDeferredSession(sessionId)
-          return
+          return "success"
         }
 
         const isolatedPaneId = await this.spawnInIsolatedContainer(sessionId, deferred.title)
@@ -1036,28 +1145,21 @@ export class TmuxSessionManager {
             sessionId,
             paneId: isolatedPaneId,
           })
-          return
+          return "success"
         }
       }
 
+      if (!this.getEffectiveSourcePaneId()) return "waiting"
+
+      const stateResult = await this.queryEffectiveWindowState()
+      if (stateResult.kind === "transient") {
+        this.deps.log("[tmux-session-manager] deferred attach window state transient", { detail: stateResult.detail })
+        return "transient"
+      }
+      if (stateResult.kind === "source_gone") return "waiting"
+      const state = stateResult.state
       const effectiveSourcePaneId = this.getEffectiveSourcePaneId()
-      if (!effectiveSourcePaneId) return
-
-      const state = await this.deps.queryWindowState(effectiveSourcePaneId)
-      if (!state) {
-        this.nullStateCount += 1
-        this.deps.log("[tmux-session-manager] deferred attach window state is null", {
-          nullStateCount: this.nullStateCount,
-        })
-        if (this.nullStateCount >= 3) {
-          this.deps.log("[tmux-session-manager] stopping deferred attach loop after consecutive null states", {
-            nullStateCount: this.nullStateCount,
-          })
-          this.stopDeferredAttachLoop()
-        }
-        return
-      }
-      this.nullStateCount = 0
+      if (!effectiveSourcePaneId) return "waiting"
 
       const decision = decideSpawnActions(
         state,
@@ -1072,7 +1174,7 @@ export class TmuxSessionManager {
           sessionId,
           reason: decision.reason,
         })
-        return
+        return "success"
       }
 
       const readyForDeferredAttach = await this.ensureSessionReadyBeforeSpawn(
@@ -1081,7 +1183,7 @@ export class TmuxSessionManager {
       )
       if (!readyForDeferredAttach) {
         this.removeDeferredSession(sessionId)
-        return
+        return "success"
       }
 
       const result = await this.deps.executeActions(decision.actions, {
@@ -1101,7 +1203,7 @@ export class TmuxSessionManager {
             error: r.result.error,
           })),
         })
-        return
+        return "transient"
       }
 
       await this.addTrackedSession(deferred, result.spawnedPaneId)
@@ -1110,6 +1212,7 @@ export class TmuxSessionManager {
         sessionId,
         paneId: result.spawnedPaneId,
       })
+      return "success"
     } finally {
       this.pendingSessions.delete(sessionId)
     }
@@ -1119,7 +1222,7 @@ export class TmuxSessionManager {
     session: FailedReadinessSessionSeed,
     stage: SpawnStage,
   ): Promise<void> {
-    if (!this.sourcePaneId) {
+    if (!this.getEffectiveSourcePaneId()) {
       this.deps.log("[tmux-session-manager] no source pane id")
       return
     }
@@ -1210,6 +1313,9 @@ export class TmuxSessionManager {
     this.closedByPolling.delete(event.sessionID)
     this.failedReadinessCache.clear(event.sessionID)
     this.removeDeferredSession(event.sessionID)
+    if (this.deferredQueue.length === 0 && this.failedReadinessCache.size === 0) {
+      this.stopDeferredAttachLoop()
+    }
 
     if (!this.getEffectiveSourcePaneId()) return
 

@@ -3,7 +3,7 @@ import type { TmuxConfig } from "../../config/schema"
 import type { CapacityConfig, TrackedSession } from "./types"
 import { log } from "../../shared"
 import { resolveSessionEventID } from "../../shared/event-session-id"
-import { queryWindowState } from "./pane-state-querier"
+import { queryWindowState, unwrapWindowState } from "./pane-state-querier"
 import { decideSpawnActions, type SessionMapping } from "./decision-engine"
 import { executeActions, type ExecuteActionsResult } from "./action-executor"
 import type { SessionCreatedEvent } from "./session-created-event"
@@ -65,7 +65,7 @@ export async function handleSessionCreated(
   deps.pendingSessions.add(sessionId)
 
   try {
-    const state = await (deps.queryWindowState ?? queryWindowState)(deps.sourcePaneId)
+    const state = unwrapWindowState(await (deps.queryWindowState ?? queryWindowState)(deps.sourcePaneId))
     if (!state) {
       log("[tmux-session-manager] failed to query window state")
       return

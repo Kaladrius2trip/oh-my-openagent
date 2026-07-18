@@ -8,9 +8,10 @@ import { unsafeTestValue } from "../../../../../test-support/unsafe-test-value"
 function createTrackedSession(sessionId: string, createdAt: Date): TrackedSession {
   return {
     sessionId,
-    paneId: "%1",
-    description: "test",
-    attachActivated: false,
+	    paneId: "%1",
+	    description: "test",
+	    mode: "interactive",
+	    attachActivated: false,
     createdAt,
     lastSeenAt: createdAt,
     closePending: false,

@@ -6,7 +6,7 @@ import { parsePaneStateOutput } from "./pane-state-parser"
 describe("parsePaneStateOutput", () => {
   it("accepts a single pane when tmux omits the empty trailing title field", () => {
     // given
-    const stdout = "%0\t120\t40\t0\t0\t1\t120\t40\t1\t1\n"
+    const stdout = "%0\t@3\t120\t40\t0\t0\t1\t120\t40\t1\t1\n"
 
     // when
     const result = parsePaneStateOutput(stdout)
@@ -14,6 +14,7 @@ describe("parsePaneStateOutput", () => {
     // then
     expect(result).not.toBe(null)
     expect(result).toEqual({
+      windowId: "@3",
       windowWidth: 120,
       windowHeight: 40,
       windowActive: true,
@@ -34,7 +35,7 @@ describe("parsePaneStateOutput", () => {
 
   it("handles CRLF line endings without dropping panes", () => {
     // given
-    const stdout = "%0\t120\t40\t0\t0\t1\t120\t40\t1\t1\r\n%1\t60\t40\t60\t0\t0\t120\t40\t1\t1\tagent\r\n"
+    const stdout = "%0\t@3\t120\t40\t0\t0\t1\t120\t40\t1\t1\r\n%1\t@3\t60\t40\t60\t0\t0\t120\t40\t1\t1\tagent\r\n"
 
     // when
     const result = parsePaneStateOutput(stdout)
@@ -65,7 +66,7 @@ describe("parsePaneStateOutput", () => {
 
   it("preserves tabs inside pane titles", () => {
     // given
-    const stdout = "%0\t120\t40\t0\t0\t1\t120\t40\t0\t0\ttitle\twith\ttabs\n"
+    const stdout = "%0\t@3\t120\t40\t0\t0\t1\t120\t40\t0\t0\ttitle\twith\ttabs\n"
 
     // when
     const result = parsePaneStateOutput(stdout)

@@ -279,20 +279,26 @@ describe("createEventHandler - idle deduplication", () => {
 			}
 		})
 		const executeAction = mock(async () => ({ success: true }))
-		const queryWindowState = mock(async () => ({
-			windowWidth: 220,
-			windowHeight: 44,
-			mainPane: {
-				paneId: "%0",
-				width: 110,
-				height: 44,
-				left: 0,
-				top: 0,
-				title: "main",
-				isActive: true,
-			},
-			agentPanes: [],
-		}))
+			const queryWindowState = mock(async () => ({
+				kind: "ok" as const,
+				state: {
+					windowId: "@0",
+					windowWidth: 220,
+					windowHeight: 44,
+					windowActive: true,
+					sessionAttached: true,
+					mainPane: {
+						paneId: "%0",
+						width: 110,
+						height: 44,
+						left: 0,
+						top: 0,
+						title: "main",
+						isActive: true,
+					},
+					agentPanes: [],
+				},
+			}))
 		const waitForSessionReady = mock(async () => {
 			waitForSessionReadyCallCount += 1
 			if (waitForSessionReadyCallCount === 1) {

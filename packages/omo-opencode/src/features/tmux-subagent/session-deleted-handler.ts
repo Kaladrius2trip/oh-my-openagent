@@ -1,7 +1,7 @@
 import type { TmuxConfig } from "../../config/schema"
 import type { TrackedSession } from "./types"
 import { log } from "../../shared"
-import { queryWindowState } from "./pane-state-querier"
+import { queryWindowState, unwrapWindowState } from "./pane-state-querier"
 import { decideCloseAction, type SessionMapping } from "./decision-engine"
 import { executeAction } from "./action-executor"
 
@@ -28,7 +28,7 @@ export async function handleSessionDeleted(
 
   log("[tmux-session-manager] onSessionDeleted", { sessionId: event.sessionID })
 
-  const state = await queryWindowState(deps.sourcePaneId)
+  const state = unwrapWindowState(await queryWindowState(deps.sourcePaneId))
   if (!state) {
     deps.sessions.delete(event.sessionID)
     return

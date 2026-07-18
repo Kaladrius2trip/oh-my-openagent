@@ -24,3 +24,8 @@ export interface SpawnPaneResult {
   readonly success: boolean
   readonly paneId?: string
 }
+
+export type SpawnResult =
+  | { readonly kind: "ok"; readonly paneId: string }
+  | { readonly kind: "transient"; readonly stderr: string }
+  | { readonly kind: "terminal"; readonly stderr: string }

@@ -6,7 +6,7 @@ import {
 } from "../../shared/tmux"
 import { log } from "../../shared"
 import type { TrackedSession } from "./types"
-import { queryWindowState } from "./pane-state-querier"
+import { queryWindowState, unwrapWindowState } from "./pane-state-querier"
 import { executeAction } from "./action-executor"
 import {
   MIN_STABILITY_TIME_MS,
@@ -46,7 +46,7 @@ export function createSessionPollingController(params: {
       paneId: tracked.paneId,
     })
 
-    const state = params.sourcePaneId ? await queryWindowState(params.sourcePaneId) : null
+    const state = params.sourcePaneId ? unwrapWindowState(await queryWindowState(params.sourcePaneId)) : null
     if (state) {
       await executeAction(
         { type: "close", paneId: tracked.paneId, sessionId },

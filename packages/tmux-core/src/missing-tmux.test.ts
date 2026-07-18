@@ -38,7 +38,7 @@ describe("missing-tmux behavior", () => {
     )
 
     // then
-    expect(result).toEqual({ success: false })
+    expect(result).toEqual({ kind: "terminal", stderr: "tmux binary not found" })
     expect(runTmuxCommand).not.toHaveBeenCalled()
   })
 })

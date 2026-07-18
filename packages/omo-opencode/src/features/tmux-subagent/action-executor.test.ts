@@ -6,7 +6,7 @@ import type { WindowState } from "./types"
 
 type SpawnPaneResult = Awaited<ReturnType<ActionExecutorDeps["spawnTmuxPane"]>>
 
-const mockSpawnTmuxPane = mock(async (): Promise<SpawnPaneResult> => ({ success: true, paneId: "%7" }))
+const mockSpawnTmuxPane = mock(async (): Promise<SpawnPaneResult> => ({ kind: "ok", paneId: "%7" }))
 const mockCloseTmuxPane = mock(async () => true)
 const mockEnforceMainPaneWidth = mock(async () => undefined)
 const mockReplaceTmuxPane = mock(async () => ({ success: true, paneId: "%7" }))
@@ -67,7 +67,7 @@ describe("executeAction", () => {
 		mockEnforceMainPaneWidth.mockClear()
 		mockReplaceTmuxPane.mockClear()
 		mockApplyLayout.mockClear()
-		mockSpawnTmuxPane.mockImplementation(async () => ({ success: true, paneId: "%7" }))
+		mockSpawnTmuxPane.mockImplementation(async () => ({ kind: "ok", paneId: "%7" }))
 	})
 
 	test("enforces main pane width with configured percentage after successful spawn", async () => {
@@ -94,7 +94,7 @@ describe("executeAction", () => {
 
 	test("does not apply layout when spawn fails", async () => {
 		// given
-		mockSpawnTmuxPane.mockImplementation(async (): Promise<SpawnPaneResult> => ({ success: false }))
+		mockSpawnTmuxPane.mockImplementation(async (): Promise<SpawnPaneResult> => ({ kind: "transient", stderr: "no space for new pane" }))
 
 		// when
 		const result = await executeActionWithDeps(
@@ -110,9 +110,31 @@ describe("executeAction", () => {
 		)
 
 		// then
-		expect(result).toEqual({ success: false, paneId: undefined })
+		expect(result).toEqual({
+			success: false,
+			error: "no space for new pane",
+			tmuxFailure: { kind: "transient", stderr: "no space for new pane" },
+		})
 		expect(mockApplyLayout).not.toHaveBeenCalled()
 		expect(mockEnforceMainPaneWidth).not.toHaveBeenCalled()
-		mockSpawnTmuxPane.mockImplementation(async (): Promise<SpawnPaneResult> => ({ success: true, paneId: "%7" }))
+		mockSpawnTmuxPane.mockImplementation(async (): Promise<SpawnPaneResult> => ({ kind: "ok", paneId: "%7" }))
+	})
+
+	test("#given terminal tmux stderr is long #when spawn fails #then user error is truncated while full classification detail survives", async () => {
+		// given
+		const stderr = `unknown option ${"x".repeat(400)}`
+		mockSpawnTmuxPane.mockImplementation(async (): Promise<SpawnPaneResult> => ({ kind: "terminal", stderr }))
+
+		// when
+		const result = await executeActionWithDeps(
+			{ type: "spawn", sessionId: "ses_new", description: "background task", targetPaneId: "%0", splitDirection: "-h" },
+			createContext(),
+			mockDeps,
+		)
+
+		// then
+		expect(result.error?.length).toBeLessThanOrEqual(243)
+		expect(result.error?.endsWith("...")).toBe(true)
+		expect(result.tmuxFailure).toEqual({ kind: "terminal", stderr })
 	})
 })
