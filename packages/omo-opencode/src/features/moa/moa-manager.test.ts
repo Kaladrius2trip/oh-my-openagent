@@ -100,12 +100,12 @@ function createManager(adapter: FakeAdapter, activityTimeouts: ActivityTimeoutCo
     config: {
       enabled: true,
       default_preset: "test",
-      default_prompt_pack: "omo-hermes-derived-v1",
+      default_prompt_pack: "omo-hermes-derived-v2",
       max_advisors_per_run: 8,
       presets: {
         test: {
           execution_policy: "consultation_only",
-          prompt_pack: "omo-hermes-derived-v1",
+          prompt_pack: "omo-hermes-derived-v2",
           advisors: [
             { name: "advisor-a", category: "advisor-a", role: "architect", mode: "analysis", temperature: 0.8, tool_policy: "read_only" },
             { name: "advisor-b", category: "advisor-b", role: "validator", mode: "analysis", tool_policy: "none" },
@@ -171,6 +171,8 @@ describe("createMoAManager", () => {
     expect(researchAdvisor).toMatchObject({ toolPolicy: "read_only", capabilityProfile: "moa-research" })
     expect(toolFreeAdvisor).toMatchObject({ toolPolicy: "none", capabilityProfile: "moa-consultation-only" })
     expect(aggregator).toMatchObject({ toolPolicy: "none", capabilityProfile: "moa-consultation-only" })
+    expect(researchAdvisor?.prompt).toContain("Read-only research tools are available for this advisor.")
+    expect(toolFreeAdvisor?.prompt).not.toContain("Read-only research tools are available for this advisor.")
   })
 
   test("#given preset activity timeout values #when consultation runs #then advisor and aggregator waits receive them uniformly", async () => {

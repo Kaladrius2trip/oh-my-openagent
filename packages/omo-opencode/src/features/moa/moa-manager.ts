@@ -168,6 +168,7 @@ export function createMoAManager(options: {
         runId: active.runId, presetName, advisorName: slot.name, role: slot.role ?? "general",
         mode: slot.mode ?? "analysis", requestedTarget: targetLabel(slot), originalTask: request.prompt,
         context: boundedContext,
+        toolPolicy: slot.tool_policy ?? "none",
         ...(request.constraints !== undefined ? { constraints: request.constraints } : {}),
         ...(slot.prompt_append !== undefined ? { promptAppend: slot.prompt_append } : {}),
       }).text)
