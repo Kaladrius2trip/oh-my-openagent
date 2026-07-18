@@ -107,7 +107,7 @@ function createManager(adapter: FakeAdapter, activityTimeouts: ActivityTimeoutCo
           execution_policy: "consultation_only",
           prompt_pack: "omo-hermes-derived-v1",
           advisors: [
-            { name: "advisor-a", category: "advisor-a", role: "architect", mode: "analysis", temperature: 0.8, tool_policy: "none" },
+            { name: "advisor-a", category: "advisor-a", role: "architect", mode: "analysis", temperature: 0.8, tool_policy: "read_only" },
             { name: "advisor-b", category: "advisor-b", role: "validator", mode: "analysis", tool_policy: "none" },
             { name: "advisor-c", category: "advisor-c", role: "challenger", mode: "analysis", tool_policy: "none" },
           ],
@@ -158,6 +158,19 @@ describe("createMoAManager", () => {
     const aggregator = adapter.launches.find((launch) => launch.role === "aggregator")
     expect(advisor?.temperature).toBe(0.8)
     expect(aggregator?.temperature).toBe(0.2)
+  })
+
+  test("#given mixed advisor tool policies #when consultation runs #then only configured advisors receive research controls", async () => {
+    const adapter = new FakeAdapter()
+
+    await createManager(adapter).run({ prompt: "Choose an architecture" }, parent)
+
+    const researchAdvisor = adapter.launches.find((launch) => launch.orchestration.slot === "advisor-a")
+    const toolFreeAdvisor = adapter.launches.find((launch) => launch.orchestration.slot === "advisor-b")
+    const aggregator = adapter.launches.find((launch) => launch.role === "aggregator")
+    expect(researchAdvisor).toMatchObject({ toolPolicy: "read_only", capabilityProfile: "moa-research" })
+    expect(toolFreeAdvisor).toMatchObject({ toolPolicy: "none", capabilityProfile: "moa-consultation-only" })
+    expect(aggregator).toMatchObject({ toolPolicy: "none", capabilityProfile: "moa-consultation-only" })
   })
 
   test("#given preset activity timeout values #when consultation runs #then advisor and aggregator waits receive them uniformly", async () => {

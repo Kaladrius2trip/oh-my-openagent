@@ -1,5 +1,5 @@
 import { BUILTIN_PRESETS, DEFAULT_PRESET_NAME, type MoAConfig, type MoAPresetConfig, type MoARunStatus, type MoATarget, validatePreset } from "@oh-my-opencode/moa-core"
-import { MOA_CONSULTATION_LAUNCH_CONTROLS, type MoAChildHandle, type MoAChildResult, type MoAChildWaitTimeouts, type MoAExecutionAdapter, type ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
+import { MOA_CONSULTATION_LAUNCH_CONTROLS, MOA_RESEARCH_LAUNCH_CONTROLS, type MoAChildHandle, type MoAChildResult, type MoAChildWaitTimeouts, type MoAExecutionAdapter, type ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
 import { buildSanitizedContext, type MoAContextMessage } from "@oh-my-opencode/moa-core/context"
 import { evaluateConfiguredDiversity, evaluateEffectiveDiversity, type MoADiversityCheck } from "@oh-my-opencode/moa-core/diversity"
 import { DEFAULT_PROMPT_PACK_ID, composeAdvisorPrompt, composeAggregatorPrompt, resolvePromptPack } from "@oh-my-opencode/moa-core/prompts"
@@ -110,7 +110,7 @@ async function launchAdvisors(
       role: "advisor",
       target,
       prompt,
-      ...MOA_CONSULTATION_LAUNCH_CONTROLS,
+      ...(slot.tool_policy === "read_only" ? MOA_RESEARCH_LAUNCH_CONTROLS : MOA_CONSULTATION_LAUNCH_CONTROLS),
       orchestration: { kind: "moa", runId: run.runId, role: "advisor", slot: slot.name },
       ...(slot.temperature !== undefined ? { temperature: slot.temperature } : {}),
       ...(slot.maxTokens !== undefined ? { maxTokens: slot.maxTokens } : {}),
