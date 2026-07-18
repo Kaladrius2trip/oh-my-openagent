@@ -83,6 +83,76 @@ describe("background task capability profiles", () => {
     })
   })
 
+  describe("given the MoA research profile", () => {
+    test("when tools are resolved then only read, grep, and glob are exposed", () => {
+      const resolveTools = createCapabilityProfileResolver(() => ({}))
+
+      const tools = resolveTools({
+        agent: "oracle",
+        includeTeamToolDenylist: true,
+        toolPolicy: "default",
+        capabilityProfile: "moa-research",
+      })
+
+      expect(tools).toEqual({
+        "*": false,
+        read: true,
+        grep: true,
+        glob: true,
+        list_mcp_resources: false,
+        list_mcp_resource_templates: false,
+        read_mcp_resource: false,
+      })
+    })
+
+    test("when user or agent policy denies an allowed tool then denial wins", () => {
+      const resolveTools = createCapabilityProfileResolver(() => ({
+        read: true,
+        grep: false,
+        glob: true,
+      }))
+
+      const tools = resolveTools({
+        agent: "oracle",
+        includeTeamToolDenylist: true,
+        capabilityProfile: "moa-research",
+        userPermission: { read: "deny", grep: "allow", glob: "allow" },
+      })
+
+      expect(tools.read).toBe(false)
+      expect(tools.grep).toBe(false)
+      expect(tools.glob).toBe(true)
+    })
+
+    test("when malicious policies allow extra tools then no capability is added", () => {
+      const resolveTools = createCapabilityProfileResolver(() => ({
+        bash: true,
+        webfetch: true,
+        task: true,
+        skill_mcp: true,
+      }))
+
+      const tools = resolveTools({
+        agent: "oracle",
+        includeTeamToolDenylist: true,
+        capabilityProfile: "moa-research",
+        userPermission: {
+          bash: "allow",
+          edit: "allow",
+          task: "allow",
+          call_omo_agent: "allow",
+          list_mcp_resources: "allow",
+        },
+      })
+
+      expect(Object.entries(tools).filter(([, enabled]) => enabled).map(([name]) => name).toSorted()).toEqual([
+        "glob",
+        "grep",
+        "read",
+      ])
+    })
+  })
+
   describe("given the default capability profile", () => {
     test("when tools are resolved then the existing exact map is retained", () => {
       const resolveTools = createCapabilityProfileResolver(() => ({

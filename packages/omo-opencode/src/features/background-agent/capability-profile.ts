@@ -25,14 +25,27 @@ export type CapabilityProfileResolver = (
 export class CapabilityProfileError extends Error {
   readonly name = "CapabilityProfileError"
 
-  constructor(readonly reason: "conflict" | "unknown" | "unsupported", message: string) {
+  constructor(readonly reason: "conflict" | "unknown", message: string) {
     super(message)
   }
 }
 
 const DENY_ALL_TOOLS = { "*": false } as const
+const RESEARCH_TOOL_NAMES = ["read", "grep", "glob"] as const
+const RESEARCH_TOOLS: Readonly<Record<string, boolean>> = {
+  "*": false,
+  read: true,
+  grep: true,
+  glob: true,
+  list_mcp_resources: false,
+  list_mcp_resource_templates: false,
+  read_mcp_resource: false,
+}
 
-function resolvePinnedProfile(input: CapabilityProfileInput): Record<string, boolean> | undefined {
+function resolvePinnedProfile(
+  input: CapabilityProfileInput,
+  agentRestrictions: Readonly<Record<string, boolean>>,
+): Record<string, boolean> | undefined {
   const profile = input.capabilityProfile
   if (profile === undefined) return input.toolPolicy === "none" ? DENY_ALL_TOOLS : undefined
 
@@ -52,7 +65,13 @@ function resolvePinnedProfile(input: CapabilityProfileInput): Record<string, boo
           'Conflicting capability profile "moa-research" and tool policy "none".',
         )
       }
-      throw new CapabilityProfileError("unsupported", 'Capability profile "moa-research" is not available yet.')
+      const researchTools = { ...RESEARCH_TOOLS }
+      for (const tool of RESEARCH_TOOL_NAMES) {
+        if (input.userPermission?.[tool] === "deny" || agentRestrictions[tool] === false) {
+          researchTools[tool] = false
+        }
+      }
+      return researchTools
     default:
       throw new CapabilityProfileError("unknown", `Unknown capability profile: ${String(profile)}`)
   }
@@ -62,7 +81,12 @@ export function createCapabilityProfileResolver(
   resolveAgentToolRestrictions: AgentToolRestrictionsResolver = getAgentToolRestrictions,
 ): CapabilityProfileResolver {
   return (input) => {
-    const pinnedProfile = resolvePinnedProfile(input)
+    const agentRestrictions = input.capabilityProfile === "moa-research"
+      ? resolveAgentToolRestrictions(input.agent, {
+          includeTeamToolDenylist: input.includeTeamToolDenylist,
+        })
+      : {}
+    const pinnedProfile = resolvePinnedProfile(input, agentRestrictions)
     if (pinnedProfile !== undefined) return pinnedProfile
 
     const userDeniedTools: Record<string, boolean> = {}
