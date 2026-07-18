@@ -11,10 +11,11 @@ import { predictFallbackDiversity } from "../../../features/moa/diversity-predic
 import { buildFallbackChainFromModels } from "../../../shared/fallback-chain-from-models"
 import { normalizeFallbackModels } from "../../../shared/model-resolver"
 import { parseModelString } from "../../../shared/model-string-parser"
+import { getModelCapabilities } from "../../../shared/model-capabilities"
 import { detectPluginConfigFile, getOpenCodeConfigDir, parseJsonc } from "../../../shared"
 import { CONFIG_BASENAME, LEGACY_CONFIG_BASENAME } from "../../../shared/plugin-identity"
 import { CHECK_IDS, CHECK_NAMES } from "../framework/constants"
-import type { CheckResult } from "../framework/types"
+import type { CheckResult, DoctorIssue } from "../framework/types"
 
 const BUILTIN_MOA_CATEGORIES: CategoriesConfig = {
   "moa-architect": { model: "anthropic/claude-opus-4-7", fallback_models: ["openai/gpt-5.5", "google/gemini-3.1-pro"] },
@@ -96,6 +97,41 @@ function sharedProviders(targets: readonly ResolvedMoATarget[]): string[] {
   return [...first].filter((provider) => providers.every((chain) => chain.has(provider)))
 }
 
+function unsupportedTemperatureIssues(preset: MoAPresetConfig, categories: CategoriesConfig): DoctorIssue[] {
+  const slots = [
+    ...preset.advisors.map((advisor) => ({
+      label: `advisor:${advisor.name}`,
+      temperature: advisor.temperature,
+      categoryName: "category" in advisor ? advisor.category : undefined,
+    })),
+    {
+      label: "aggregator",
+      temperature: preset.aggregator.temperature,
+      categoryName: "category" in preset.aggregator ? preset.aggregator.category : undefined,
+    },
+  ]
+  const issues: DoctorIssue[] = []
+  for (const slot of slots) {
+    if (slot.temperature === undefined || slot.categoryName === undefined) continue
+    const configuredModel = categories[slot.categoryName]?.model
+    if (configuredModel === undefined) continue
+    const model = parseModelString(configuredModel)
+    if (model === undefined) continue
+    const capabilities = getModelCapabilities({
+      providerID: model.providerID,
+      modelID: `${model.providerID}/${model.modelID}`,
+    })
+    if (capabilities.supportsTemperature !== false) continue
+    issues.push({
+      title: "Configured MoA temperature is unsupported",
+      description: `${slot.label} sets temperature ${slot.temperature} for ${configuredModel}, whose capability metadata disables temperature.`,
+      severity: "warning",
+      affects: [slot.label],
+    })
+  }
+  return issues
+}
+
 function fail(message: string): CheckResult {
   return { name: CHECK_NAMES[CHECK_IDS.MOA], status: "fail", message, issues: [] }
 }
@@ -120,11 +156,17 @@ export async function checkMoA(): Promise<CheckResult> {
   const targets = resolveAdvisorTargets(preset, { ...BUILTIN_MOA_CATEGORIES, ...parsedCategories.data })
   if (typeof targets === "string") return fail(`moa: ${targets}`)
 
+  const issues = unsupportedTemperatureIssues(preset, { ...BUILTIN_MOA_CATEGORIES, ...parsedCategories.data })
   const primary = primaryDiversity(targets)
   const prediction = predictFallbackDiversity(targets, preset.diversity ?? {})
   const prefix = `moa: enabled | preset: ${presetName} | primary diversity: ${primary.providers} providers, ${primary.models} models`
   if (prediction.outcome === "satisfied") {
-    return { name: CHECK_NAMES[CHECK_IDS.MOA], status: "pass", message: `${prefix} | fallback prediction: satisfied`, issues: [] }
+    return {
+      name: CHECK_NAMES[CHECK_IDS.MOA],
+      status: issues.length > 0 ? "warn" : "pass",
+      message: `${prefix} | fallback prediction: satisfied`,
+      issues,
+    }
   }
   const collisions = sharedProviders(targets)
   const collisionText = collisions.length > 0 ? collisions.join(", ") : "unknown provider"
@@ -132,6 +174,6 @@ export async function checkMoA(): Promise<CheckResult> {
     name: CHECK_NAMES[CHECK_IDS.MOA],
     status: "warn",
     message: `${prefix} | fallback prediction: ${prediction.outcome} (${collisionText})`,
-    issues: [],
+    issues,
   }
 }
