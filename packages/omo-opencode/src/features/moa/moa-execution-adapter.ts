@@ -8,6 +8,8 @@ import type {
 import { assertConsultationOnlyLaunch } from "@oh-my-opencode/moa-core/adapter"
 import type { MoAResolvedModel, MoATarget } from "@oh-my-opencode/moa-core"
 import type { BackgroundTask, LaunchInput } from "../background-agent"
+import { log as defaultLog } from "../../shared"
+import { MoAChildSessionObserver, type MoASessionObserver } from "./moa-session-observer"
 
 export interface MoABackgroundManager {
   launch(input: LaunchInput): Promise<Pick<BackgroundTask, "id" | "sessionId">>
@@ -145,37 +147,61 @@ export function createMoAExecutionAdapter(options: {
   readonly parent: MoAAdapterParentContext
   readonly resolveTarget: (target: MoATarget) => Promise<ResolvedMoATarget>
   readonly pollIntervalMs?: number
+  readonly sessionObserver?: MoASessionObserver
+  readonly log?: typeof defaultLog
 }): MoAExecutionAdapter {
   const resolvedTargets = new Map<string, ResolvedMoATarget>()
+  const observers = new Map<string, MoAChildSessionObserver>()
   const pollIntervalMs = options.pollIntervalMs ?? 50
+  const log = options.log ?? defaultLog
+  const disposeObserver = async (taskId: string): Promise<void> => {
+    const observer = observers.get(taskId)
+    if (observer === undefined) return
+    observers.delete(taskId)
+    await observer.dispose()
+  }
   return {
     resolveTarget: options.resolveTarget,
     launchChild: async (input: MoAChildLaunchInput): Promise<MoAChildHandle> => {
       assertConsultationOnlyLaunch(input)
       const temperature = input.temperature ?? input.target.model.temperature
-      const task = await options.backgroundManager.launch({
-        description: `MoA ${input.role}: ${input.orchestration.slot ?? "synthesis"}`,
-        prompt: input.prompt,
-        agent: input.target.agent,
-        parentSessionId: options.parent.sessionID,
-        parentMessageId: options.parent.messageID,
-        parentAgent: options.parent.agent,
-        parentModel: options.parent.model,
-        model: {
-          ...input.target.model,
-          ...(temperature !== undefined ? { temperature } : {}),
-          ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
-        },
-        fallbackChain: runtimeFallbackChain(input.target, input.temperature),
-        category: input.target.category,
-        visibility: "internal",
-        notificationPolicy: "manual",
-        suppressTmuxSpawn: true,
-        toolPolicy: "none",
-        capabilityProfile: "moa-consultation-only",
-        continuationPolicy: "forbid",
-        orchestration: input.orchestration,
-      })
+      const description = `MoA ${input.role}: ${input.orchestration.slot ?? "synthesis"}`
+      const observer = options.sessionObserver === undefined
+        ? undefined
+        : new MoAChildSessionObserver(options.sessionObserver, description, log)
+      let task: Pick<BackgroundTask, "id" | "sessionId">
+      try {
+        task = await options.backgroundManager.launch({
+          description,
+          prompt: input.prompt,
+          agent: input.target.agent,
+          parentSessionId: options.parent.sessionID,
+          parentMessageId: options.parent.messageID,
+          parentAgent: options.parent.agent,
+          parentModel: options.parent.model,
+          model: {
+            ...input.target.model,
+            ...(temperature !== undefined ? { temperature } : {}),
+            ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
+          },
+          fallbackChain: runtimeFallbackChain(input.target, input.temperature),
+          category: input.target.category,
+          visibility: "internal",
+          notificationPolicy: "manual",
+          // Suppress the regular INTERACTIVE subagent pane. Observe-only MoA
+          // projection is an independent capability installed by this callback.
+          suppressTmuxSpawn: true,
+          toolPolicy: "none",
+          capabilityProfile: "moa-consultation-only",
+          continuationPolicy: "forbid",
+          orchestration: input.orchestration,
+          ...(observer !== undefined ? { onSessionCreated: observer.onSessionCreated } : {}),
+        })
+      } catch (error) {
+        await observer?.dispose()
+        throw error
+      }
+      if (observer !== undefined) observers.set(task.id, observer)
       resolvedTargets.set(task.id, input.target)
       return {
         taskId: task.id,
@@ -185,21 +211,29 @@ export function createMoAExecutionAdapter(options: {
       }
     },
     waitForChild: async (handle, timeoutMs, signal): Promise<MoAChildResult> => {
-      return waitForTask(
-        options.backgroundManager,
-        handle,
-        resolvedTargets.get(handle.taskId),
-        timeoutMs,
-        signal,
-        pollIntervalMs,
-      )
+      try {
+        return await waitForTask(
+          options.backgroundManager,
+          handle,
+          resolvedTargets.get(handle.taskId),
+          timeoutMs,
+          signal,
+          pollIntervalMs,
+        )
+      } finally {
+        await disposeObserver(handle.taskId)
+      }
     },
     cancelChild: async (handle, reason): Promise<void> => {
-      await options.backgroundManager.cancelTask(handle.taskId, {
-        source: "moa",
-        reason,
-        skipNotification: true,
-      })
+      try {
+        await options.backgroundManager.cancelTask(handle.taskId, {
+          source: "moa",
+          reason,
+          skipNotification: true,
+        })
+      } finally {
+        await disposeObserver(handle.taskId)
+      }
     },
   }
 }
