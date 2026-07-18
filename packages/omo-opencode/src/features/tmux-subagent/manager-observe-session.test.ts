@@ -58,7 +58,7 @@ function dependencies(overrides: Partial<TmuxUtilDeps> = {}): Partial<TmuxUtilDe
   return {
     isInsideTmux: () => true,
     getCurrentPaneId: () => "%0",
-    queryWindowState: async () => windowState(),
+    queryWindowState: async () => ({ kind: "ok", state: windowState() }),
     waitForSessionReady: async () => true,
     executeActions: async () => successfulSpawn(),
     executeAction: async () => ({ success: true }),
@@ -102,7 +102,7 @@ describe("TmuxSessionManager observeSession", () => {
       return activationCount > 1
     })
     const manager = new TmuxSessionManager(context(), config, dependencies({
-      queryWindowState: async () => windowState(false),
+      queryWindowState: async () => ({ kind: "ok", state: windowState(false) }),
       activateTmuxPane: interactiveActivator,
       activateReadOnlyTmuxPane: readOnlyActivator,
     }))
@@ -125,7 +125,9 @@ describe("TmuxSessionManager observeSession", () => {
     const manager = new TmuxSessionManager(context(), config, dependencies({
       queryWindowState: async () => {
         queryCount += 1
-        return queryCount === 1 ? null : windowState()
+        return queryCount === 1
+          ? { kind: "transient", detail: "test transient" }
+          : { kind: "ok", state: windowState() }
       },
       activateReadOnlyTmuxPane: readOnlyActivator,
     }))

@@ -14,10 +14,10 @@ const tmuxConfig = {
 	agent_pane_min_width: 40,
 } satisfies TmuxConfig
 
-const tmuxDeps: TmuxUtilDeps = {
+const tmuxDeps: Partial<TmuxUtilDeps> = {
 	isInsideTmux: () => true,
 	getCurrentPaneId: () => "%0",
-	queryWindowState: mock(async () => null),
+	queryWindowState: mock(async () => ({ kind: "source_gone" } as const)),
 }
 
 function createPluginInput(directory: string): PluginInput {
@@ -48,6 +48,7 @@ function createPluginInput(directory: string): PluginInput {
 		worktree: process.cwd(),
 		serverUrl: new URL("http://localhost:4096"),
 		$: shell,
+		experimental_workspace: { register: () => {} },
 	}
 }
 

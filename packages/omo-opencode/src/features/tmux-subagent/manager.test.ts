@@ -1,7 +1,7 @@
 /// <reference path="../../../../../bun-test.d.ts" />
 import { describe, test, expect, mock, beforeEach, spyOn, afterAll, afterEach } from 'bun:test'
 import type { TmuxConfig } from '../../config/schema'
-import type { WindowState, PaneAction } from './types'
+import type { WindowState, WindowStateQueryResult, PaneAction } from './types'
 import type { ActionResult, ExecuteContext } from './action-executor'
 import type { TmuxSessionManager as TmuxSessionManagerType, TmuxUtilDeps } from './manager'
 import * as sharedModule from '../../shared'
@@ -41,13 +41,13 @@ function getManagerInternals(manager: TmuxSessionManagerType): TmuxSessionManage
   return cast<TmuxSessionManagerInternals>(manager)
 }
 
-const mockQueryWindowState = mock<(paneId: string) => Promise<WindowState | null>>(
-  async () => ({
+const mockQueryWindowState = mock<(paneId: string) => Promise<WindowStateQueryResult>>(
+  async () => ({ kind: 'ok', state: {
     windowWidth: 212,
     windowHeight: 44,
     mainPane: { paneId: '%0', width: 106, height: 44, left: 0, top: 0, title: 'main', isActive: true },
     agentPanes: [],
-  })
+  } })
 )
 const mockPaneExists = mock<(paneId: string) => Promise<boolean>>(async () => true)
 const mockExecuteActions = mock<(
@@ -197,14 +197,14 @@ function createSessionCreatedEvent(
   }
 }
 
-function createWindowState(overrides?: Partial<WindowState>): WindowState {
-  return {
+function createWindowState(overrides?: Partial<WindowState>): WindowStateQueryResult {
+  return { kind: 'ok', state: {
     windowWidth: 220,
     windowHeight: 44,
     mainPane: { paneId: '%0', width: 110, height: 44, left: 0, top: 0, title: 'main', isActive: true },
     agentPanes: [],
     ...overrides,
-  }
+  } }
 }
 
 function createDeferred<TValue>() {
@@ -1330,7 +1330,7 @@ describe('TmuxSessionManager', () => {
       test('#given queryWindowState returns null #when onSessionCreated fires #then session is enqueued in deferred queue', async () => {
         // given
         mockIsInsideTmux.mockReturnValue(true)
-        mockQueryWindowState.mockImplementation(async () => null)
+        mockQueryWindowState.mockImplementation(async () => ({ kind: 'transient', detail: 'test transient' }))
         const logSpy = spyOn(sharedModule, 'log').mockImplementation(() => {})
 
         const { TmuxSessionManager } = await import('./manager')
@@ -1362,7 +1362,7 @@ describe('TmuxSessionManager', () => {
         mockQueryWindowState.mockImplementation(async (paneId: string) => { if (paneId === isolatedPaneId) {
           isolatedPaneQueryCount += 1
           if (isolatedPaneQueryCount === 1) {
-            return null
+            return { kind: 'transient', detail: 'test transient' }
           }
         
           return createWindowState({
