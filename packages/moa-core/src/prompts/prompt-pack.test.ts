@@ -14,7 +14,7 @@ import {
 // Golden system-portion hashes. The system portion is task-independent, so these
 // pin the trusted advisor and aggregator contract text. Editing any base/mode/role/
 // contract template body changes the hash and forces a template version bump.
-const ADVISOR_ANALYSIS_ARCHITECT_SYSTEM_HASH = "b177458e60da2f1baa361df92ffd64d9fb705255590befde75e17c606338f9ee"
+const ADVISOR_ANALYSIS_ARCHITECT_SYSTEM_HASH = "562e635af13ca2e9e67d7f9f011cb0c65e726057c156044afc1058211eb9b77e"
 const AGGREGATOR_SYSTEM_HASH = "c0c8d8d3663c7adc88ac846520544f5db570dffec2f142d762d0832dac2769a8"
 
 const CONTEXT = { mode: "task_only", truncated: false, text: "task-only context body" } as const
