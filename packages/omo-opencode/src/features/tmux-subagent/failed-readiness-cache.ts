@@ -11,107 +11,52 @@ export interface FailedReadinessSession extends FailedReadinessSessionSeed {
 }
 
 export interface FailedReadinessCacheOptions {
-  ttlMs: number
-  sweepIntervalMs: number
-  log: (message: string, data?: unknown) => void
+  readonly ttlMs: number
 }
 
 export class FailedReadinessCache {
   private readonly sessions = new Map<string, FailedReadinessSession>()
-  private sweepInterval?: ReturnType<typeof setInterval>
   private readonly ttlMs: number
-  private readonly sweepIntervalMs: number
-  private readonly log: (message: string, data?: unknown) => void
 
   constructor(options: FailedReadinessCacheOptions) {
     this.ttlMs = options.ttlMs
-    this.sweepIntervalMs = options.sweepIntervalMs
-    this.log = options.log
   }
 
-  remember(session: FailedReadinessSessionSeed): void {
+  get size(): number {
+    return this.sessions.size
+  }
+
+  remember(session: FailedReadinessSessionSeed, rememberedAt: number = Date.now()): void {
+    const existing = this.sessions.get(session.sessionId)
     this.sessions.set(session.sessionId, {
       ...session,
-      rememberedAt: Date.now(),
+      rememberedAt: existing?.rememberedAt ?? rememberedAt,
     })
-    this.startSweep()
   }
 
   clear(sessionId: string): void {
     this.sessions.delete(sessionId)
-    if (this.sessions.size === 0) {
-      this.stopSweep()
-    }
   }
 
   get(sessionId: string): FailedReadinessSession | undefined {
-    const session = this.sessions.get(sessionId)
-    if (!session) {
-      return undefined
+    return this.sessions.get(sessionId)
+  }
+
+  values(): readonly FailedReadinessSession[] {
+    return Array.from(this.sessions.values())
+  }
+
+  takeExpired(now: number = Date.now()): readonly FailedReadinessSession[] {
+    const expired: FailedReadinessSession[] = []
+    for (const [sessionId, session] of this.sessions) {
+      if (now - session.rememberedAt < this.ttlMs) continue
+      expired.push(session)
+      this.sessions.delete(sessionId)
     }
-
-    if (!this.isExpired(session, Date.now())) {
-      return session
-    }
-
-    this.sessions.delete(sessionId)
-    this.log("[tmux-session-manager] expired failed readiness session on access", {
-      sessionId,
-      ttlMs: this.ttlMs,
-    })
-
-    if (this.sessions.size === 0) {
-      this.stopSweep()
-    }
-
-    return undefined
+    return expired
   }
 
   clearAll(): void {
     this.sessions.clear()
-    this.stopSweep()
-  }
-
-  private isExpired(session: FailedReadinessSession, now: number): boolean {
-    return now - session.rememberedAt >= this.ttlMs
-  }
-
-  private startSweep(): void {
-    if (this.sweepInterval) {
-      return
-    }
-
-    this.sweepInterval = setInterval(() => {
-      this.sweepExpired()
-    }, this.sweepIntervalMs)
-  }
-
-  private stopSweep(): void {
-    if (!this.sweepInterval) {
-      return
-    }
-
-    clearInterval(this.sweepInterval)
-    this.sweepInterval = undefined
-  }
-
-  private sweepExpired(): void {
-    const now = Date.now()
-
-    for (const [sessionId, session] of this.sessions.entries()) {
-      if (!this.isExpired(session, now)) {
-        continue
-      }
-
-      this.sessions.delete(sessionId)
-      this.log("[tmux-session-manager] expired failed readiness session", {
-        sessionId,
-        ttlMs: this.ttlMs,
-      })
-    }
-
-    if (this.sessions.size === 0) {
-      this.stopSweep()
-    }
   }
 }
