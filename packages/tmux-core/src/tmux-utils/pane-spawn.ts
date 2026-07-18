@@ -1,6 +1,6 @@
 import type { TmuxConfig } from "../types"
-import type { SpawnPaneResult } from "../types"
-import type { runTmuxCommand as RunTmuxCommand } from "../runner"
+import type { SpawnResult } from "../types"
+import { classifyTmuxError, getPaneSpawnRetryLimit, type runTmuxCommand as RunTmuxCommand } from "../runner"
 import type { SplitDirection } from "./environment"
 import { isInsideTmux } from "./environment"
 import { isServerRunning } from "./server-health"
@@ -12,6 +12,7 @@ export type SpawnTmuxPaneDeps = {
 	readonly isInsideTmux: typeof isInsideTmux
 	readonly isServerRunning: typeof isServerRunning
 	readonly getTmuxPath: () => Promise<string | null | undefined>
+	readonly delay: (milliseconds: number) => Promise<void>
 }
 
 async function resolveSpawnTmuxPaneDeps(deps?: Partial<SpawnTmuxPaneDeps>): Promise<SpawnTmuxPaneDeps> {
@@ -23,6 +24,7 @@ async function resolveSpawnTmuxPaneDeps(deps?: Partial<SpawnTmuxPaneDeps>): Prom
 		isInsideTmux,
 		isServerRunning,
 		getTmuxPath: async () => null,
+		delay: (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
 		...deps,
 	}
 }
@@ -36,7 +38,7 @@ export async function spawnTmuxPane(
 	targetPaneId?: string,
 	splitDirection: SplitDirection = "-h",
 	depsInput?: Partial<SpawnTmuxPaneDeps>,
-): Promise<SpawnPaneResult> {
+): Promise<SpawnResult> {
 	const deps = await resolveSpawnTmuxPaneDeps(depsInput)
 	const { log, runTmuxCommand } = deps
 
@@ -51,23 +53,23 @@ export async function spawnTmuxPane(
 
 	if (!config.enabled) {
 		log("[spawnTmuxPane] SKIP: config.enabled is false")
-		return { success: false }
+		return { kind: "terminal", stderr: "tmux integration disabled" }
 	}
 	if (!deps.isInsideTmux()) {
 		log("[spawnTmuxPane] SKIP: not inside tmux", { TMUX: process.env.TMUX })
-		return { success: false }
+		return { kind: "terminal", stderr: "not inside tmux" }
 	}
 
 	const serverRunning = await deps.isServerRunning(serverUrl)
 	if (!serverRunning) {
 		log("[spawnTmuxPane] SKIP: server not running", { serverUrl })
-		return { success: false }
+		return { kind: "transient", stderr: "OpenCode server not running" }
 	}
 
 	const tmux = await deps.getTmuxPath()
 	if (!tmux) {
 		log("[spawnTmuxPane] SKIP: tmux not found")
-		return { success: false }
+		return { kind: "terminal", stderr: "tmux binary not found" }
 	}
 
 	log("[spawnTmuxPane] all checks passed, spawning...")
@@ -87,12 +89,28 @@ export async function spawnTmuxPane(
 		placeholderCmd,
 	]
 
-	const result = await runTmuxCommand(tmux, args)
-	const paneId = result.output
+	let result = await runTmuxCommand(tmux, args)
+	let retryCount = 0
+	while (result.exitCode !== 0 || !result.output) {
+		const detail = result.stderr.trim() || "tmux split-window returned no pane id"
+		const retryLimit = getPaneSpawnRetryLimit(detail)
+		if (retryCount >= retryLimit) {
+			const errorKind = classifyTmuxError(detail)
+			const kind = errorKind === "target_gone" || errorKind === "terminal" ? "terminal" : "transient"
+			log("[spawnTmuxPane] split-window failed", {
+				exitCode: result.exitCode,
+				stderr: detail,
+				retryCount,
+				errorKind,
+			})
+			return { kind, stderr: detail }
+		}
 
-	if (result.exitCode !== 0 || !paneId) {
-		return { success: false }
+		retryCount += 1
+		await deps.delay(250)
+		result = await runTmuxCommand(tmux, args)
 	}
+	const paneId = result.output
 
 	const title = `omo-subagent-${description.slice(0, 20)}`
 	const titleResult = await runTmuxCommand(tmux, ["select-pane", "-t", paneId, "-T", title])
@@ -105,5 +123,5 @@ export async function spawnTmuxPane(
 		})
 	}
 
-	return { success: true, paneId }
+	return { kind: "ok", paneId }
 }

@@ -27,6 +27,7 @@ const isInsideTmuxMock = mock((): boolean => true)
 const isServerRunningMock = mock(async (): Promise<boolean> => true)
 const getTmuxPathMock = mock(async (): Promise<string | null> => "sh")
 const logMock = mock(() => undefined)
+const delayMock = mock(async (_milliseconds: number): Promise<void> => undefined)
 
 function toStringArray(value: unknown): string[] {
 	if (!Array.isArray(value)) {
@@ -61,13 +62,14 @@ function getSplitWindowCommand(): string {
 	return splitCommand
 }
 
-function createDeps(): NonNullable<Parameters<typeof import("./pane-spawn").spawnTmuxPane>[7]> {
+function createDeps() {
 	return {
 		log: logMock,
 		runTmuxCommand: runTmuxCommandMock,
 		isInsideTmux: isInsideTmuxMock,
 		isServerRunning: isServerRunningMock,
 		getTmuxPath: getTmuxPathMock,
+		delay: delayMock,
 	}
 }
 
@@ -84,6 +86,7 @@ describe("spawnTmuxPane runner integration", () => {
 		isServerRunningMock.mockClear()
 		getTmuxPathMock.mockClear()
 		logMock.mockClear()
+		delayMock.mockClear()
 
 		const tmuxCommandResults: TmuxCommandResult[] = [
 			{ success: true, output: "%42", stdout: "%42", stderr: "", exitCode: 0 },
@@ -112,12 +115,111 @@ describe("spawnTmuxPane runner integration", () => {
 		// then
 		const firstCall = getRunTmuxCommandCall(0)
 		const secondCall = getRunTmuxCommandCall(1)
-		expect(result).toEqual({ success: true, paneId: "%42" })
+		expect(result).toEqual({ kind: "ok", paneId: "%42" })
 		expect(firstCall[1].slice(0, 8)).toEqual(["split-window", "-h", "-d", "-P", "-F", "#{pane_id}", "-t", "%0"])
 		expect(secondCall[1]).toEqual(["select-pane", "-t", "%42", "-T", "omo-subagent-worker"])
 		expect(getSplitWindowCommand()).toContain("Focus this pane to attach.")
 		expect(getSplitWindowCommand()).toContain("while :; do sleep 86400; done")
 		expect(getSplitWindowCommand()).not.toContain("opencode attach")
+	})
+
+	it("#given split-window reports no capacity #when spawnTmuxPane runs #then returns transient stderr without hot retry", async () => {
+		// given
+		const spawnTmuxPane = await loadSpawnTmuxPane()
+		runTmuxCommandMock.mockResolvedValue({
+			success: false,
+			output: "",
+			stdout: "",
+			stderr: "no space for new pane",
+			exitCode: 1,
+		})
+
+		// when
+		const result = await spawnTmuxPane("session-1", "worker", enabledTmuxConfig, "http://127.0.0.1:1234", "/tmp", "%0", "-h", createDeps())
+
+		// then
+		expect(result).toEqual({ kind: "transient", stderr: "no space for new pane" })
+		expect(runTmuxCommandMock).toHaveBeenCalledTimes(1)
+		expect(delayMock).not.toHaveBeenCalled()
+	})
+
+	it("#given split-window target disappeared #when spawnTmuxPane runs #then returns terminal stderr without retry", async () => {
+		// given
+		const spawnTmuxPane = await loadSpawnTmuxPane()
+		runTmuxCommandMock.mockResolvedValue({
+			success: false,
+			output: "",
+			stdout: "",
+			stderr: "can't find pane: %0",
+			exitCode: 1,
+		})
+
+		// when
+		const result = await spawnTmuxPane("session-1", "worker", enabledTmuxConfig, "http://127.0.0.1:1234", "/tmp", "%0", "-h", createDeps())
+
+		// then
+		expect(result).toEqual({ kind: "terminal", stderr: "can't find pane: %0" })
+		expect(runTmuxCommandMock).toHaveBeenCalledTimes(1)
+	})
+
+	it("#given split-window server errors persist #when spawnTmuxPane runs #then retries twice in slot before returning transient", async () => {
+		// given
+		const spawnTmuxPane = await loadSpawnTmuxPane()
+		runTmuxCommandMock.mockResolvedValue({
+			success: false,
+			output: "",
+			stdout: "",
+			stderr: "server exited unexpectedly",
+			exitCode: 1,
+		})
+
+		// when
+		const result = await spawnTmuxPane("session-1", "worker", enabledTmuxConfig, "http://127.0.0.1:1234", "/tmp", "%0", "-h", createDeps())
+
+		// then
+		expect(result).toEqual({ kind: "transient", stderr: "server exited unexpectedly" })
+		expect(runTmuxCommandMock).toHaveBeenCalledTimes(3)
+		expect(delayMock.mock.calls).toEqual([[250], [250]])
+	})
+
+	it("#given split-window returns unknown failure #when spawnTmuxPane runs #then retries once before returning transient", async () => {
+		// given
+		const spawnTmuxPane = await loadSpawnTmuxPane()
+		runTmuxCommandMock.mockResolvedValue({
+			success: false,
+			output: "",
+			stdout: "",
+			stderr: "unexpected tmux failure",
+			exitCode: 1,
+		})
+
+		// when
+		const result = await spawnTmuxPane("session-1", "worker", enabledTmuxConfig, "http://127.0.0.1:1234", "/tmp", "%0", "-h", createDeps())
+
+		// then
+		expect(result).toEqual({ kind: "transient", stderr: "unexpected tmux failure" })
+		expect(runTmuxCommandMock).toHaveBeenCalledTimes(2)
+		expect(delayMock).toHaveBeenCalledTimes(1)
+	})
+
+	it("#given split-window rejects an option #when spawnTmuxPane runs #then returns terminal stderr without retry", async () => {
+		// given
+		const spawnTmuxPane = await loadSpawnTmuxPane()
+		runTmuxCommandMock.mockResolvedValue({
+			success: false,
+			output: "",
+			stdout: "",
+			stderr: "unknown option --bad",
+			exitCode: 1,
+		})
+
+		// when
+		const result = await spawnTmuxPane("session-1", "worker", enabledTmuxConfig, "http://127.0.0.1:1234", "/tmp", "%0", "-h", createDeps())
+
+		// then
+		expect(result).toEqual({ kind: "terminal", stderr: "unknown option --bad" })
+		expect(runTmuxCommandMock).toHaveBeenCalledTimes(1)
+		expect(logMock).toHaveBeenCalledWith("[spawnTmuxPane] split-window failed", expect.objectContaining({ stderr: "unknown option --bad" }))
 	})
 
 	it("#given description with spaces #when spawnTmuxPane called #then includes it in the placeholder", async () => {
