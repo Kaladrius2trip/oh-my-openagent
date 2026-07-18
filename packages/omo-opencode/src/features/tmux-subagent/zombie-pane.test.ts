@@ -3,17 +3,17 @@ import { afterEach, beforeEach, describe, expect, mock, test, afterAll } from "b
 import type { TmuxConfig } from "../../config/schema"
 import type { ActionResult, ExecuteContext, ExecuteActionsResult } from "./action-executor"
 import type { TmuxUtilDeps } from "./manager"
-import type { TrackedSession, WindowState } from "./types"
+import type { TrackedSession, WindowStateQueryResult } from "./types"
 import * as sharedTmuxOriginal from "../../shared/tmux"
 
 const sharedTmuxSnapshot = { ...sharedTmuxOriginal }
 
-const mockQueryWindowState = mock<(paneId: string) => Promise<WindowState | null>>(async () => ({
+const mockQueryWindowState = mock<(paneId: string) => Promise<WindowStateQueryResult>>(async () => ({ kind: "ok", state: {
   windowWidth: 220,
   windowHeight: 44,
   mainPane: { paneId: "%0", width: 110, height: 44, left: 0, top: 0, title: "main", isActive: true },
   agentPanes: [],
-}))
+} }))
 
 const mockExecuteAction = mock<(
   action: { type: string },
@@ -68,6 +68,8 @@ const mockTmuxDeps: TmuxUtilDeps = {
   waitForSessionReady: async () => true,
   executeActions: mockExecuteActions,
   executeAction: mockExecuteAction,
+  activateTmuxPane: async () => true,
+  activateReadOnlyTmuxPane: async () => true,
   log: () => {},
 }
 
@@ -182,12 +184,12 @@ describe("TmuxSessionManager zombie pane handling", () => {
     mockIsInsideTmux.mockClear()
     mockGetCurrentPaneId.mockClear()
 
-    mockQueryWindowState.mockImplementation(async () => ({
+    mockQueryWindowState.mockImplementation(async () => ({ kind: "ok", state: {
       windowWidth: 220,
       windowHeight: 44,
       mainPane: { paneId: "%0", width: 110, height: 44, left: 0, top: 0, title: "main", isActive: true },
       agentPanes: [],
-    }))
+    } }))
     mockExecuteAction.mockImplementation(async () => ({ success: true }))
     mockExecuteActions.mockImplementation(async () => ({
       success: true,
@@ -202,7 +204,7 @@ describe("TmuxSessionManager zombie pane handling", () => {
 
   test("#given session in sessions Map #when onSessionDeleted called with null window state #then session stays in Map with closePending true", async () => {
     // given
-    mockQueryWindowState.mockImplementation(async () => null)
+    mockQueryWindowState.mockImplementation(async () => ({ kind: "transient", detail: "test transient" }))
     const { TmuxSessionManager } = await import("./manager")
     const manager = createManager(TmuxSessionManager)
     const sessions = getTrackedSessions(manager)
@@ -277,14 +279,14 @@ describe("TmuxSessionManager zombie pane handling", () => {
 
   test("#given session with closePending true and closeRetryCount >= 3 and pane still exists #when retryPendingCloses called #then session stays tracked for manual intervention", async () => {
     // given
-    mockQueryWindowState.mockImplementation(async () => ({
+    mockQueryWindowState.mockImplementation(async () => ({ kind: "ok", state: {
       windowWidth: 220,
       windowHeight: 44,
       mainPane: { paneId: "%0", width: 110, height: 44, left: 0, top: 0, title: "main", isActive: true },
       agentPanes: [
         { paneId: "%1", width: 40, height: 44, left: 110, top: 0, title: "Pending pane", isActive: false },
       ],
-    }))
+    } }))
     const { TmuxSessionManager } = await import("./manager")
     const manager = createManager(TmuxSessionManager)
     const sessions = getTrackedSessions(manager)

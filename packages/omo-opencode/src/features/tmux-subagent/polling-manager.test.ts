@@ -9,9 +9,10 @@ describe("TmuxPollingManager overlap", () => {
     const sessions = new Map<string, TrackedSession>()
     sessions.set("ses-1", {
       sessionId: "ses-1",
-      paneId: "%1",
-      description: "test",
-      attachActivated: true,
+	      paneId: "%1",
+	      description: "test",
+	      mode: "interactive",
+	      attachActivated: true,
       createdAt: new Date(),
       lastSeenAt: new Date(),
       closePending: false,
@@ -63,9 +64,10 @@ describe("TmuxPollingManager overlap", () => {
     const sessions = new Map<string, TrackedSession>()
     sessions.set("ses-1", {
       sessionId: "ses-1",
-      paneId: "%1",
-      description: "test",
-      attachActivated: true,
+	      paneId: "%1",
+	      description: "test",
+	      mode: "interactive",
+	      attachActivated: true,
       createdAt: new Date(Date.now() - 15_000),
       lastSeenAt: new Date(),
       closePending: false,
@@ -117,9 +119,10 @@ describe("TmuxPollingManager overlap", () => {
     const sessions = new Map<string, TrackedSession>()
     sessions.set("ses-1", {
       sessionId: "ses-1",
-      paneId: "%1",
-      description: "test",
-      attachActivated: true,
+	      paneId: "%1",
+	      description: "test",
+	      mode: "interactive",
+	      attachActivated: true,
       createdAt: new Date(now - 1_000),
       lastSeenAt: new Date(now - 7_000),
       closePending: false,
@@ -157,9 +160,10 @@ describe("TmuxPollingManager overlap", () => {
     const sessions = new Map<string, TrackedSession>()
     sessions.set("ses-1", {
       sessionId: "ses-1",
-      paneId: "%1",
-      description: "test",
-      attachActivated: true,
+	      paneId: "%1",
+	      description: "test",
+	      mode: "interactive",
+	      attachActivated: true,
       createdAt: new Date(now - 11 * 60 * 1000),
       lastSeenAt: new Date(now),
       closePending: false,
@@ -197,9 +201,10 @@ describe("TmuxPollingManager overlap", () => {
     const sessions = new Map<string, TrackedSession>()
     sessions.set("ses-1", {
       sessionId: "ses-1",
-      paneId: "%1",
-      description: "test",
-      attachActivated: true,
+	      paneId: "%1",
+	      description: "test",
+	      mode: "interactive",
+	      attachActivated: true,
       createdAt: new Date(now - 11 * 60 * 1000),
       lastSeenAt: new Date(now - 7_000),
       closePending: false,
@@ -237,9 +242,10 @@ describe("TmuxPollingManager overlap", () => {
     const sessions = new Map<string, TrackedSession>()
     sessions.set("ses-1", {
       sessionId: "ses-1",
-      paneId: "%1",
-      description: "test",
-      attachActivated: true,
+	      paneId: "%1",
+	      description: "test",
+	      mode: "interactive",
+	      attachActivated: true,
       createdAt: new Date(Date.now() - 15_000),
       lastSeenAt: new Date(),
       closePending: false,
@@ -289,9 +295,10 @@ describe("TmuxPollingManager overlap", () => {
     const sessions = new Map<string, TrackedSession>()
     const tracked: TrackedSession = {
       sessionId: "ses-1",
-      paneId: "%1",
-      description: "test",
-      attachActivated: false,
+	      paneId: "%1",
+	      description: "test",
+	      mode: "interactive",
+	      attachActivated: false,
       createdAt: new Date(),
       lastSeenAt: new Date(),
       closePending: false,
@@ -307,8 +314,9 @@ describe("TmuxPollingManager overlap", () => {
         messages: async () => ({ data: [] }),
       },
     }
-    const windowState: WindowState = {
-      windowWidth: 160,
+	    const windowState: WindowState = {
+	      windowId: "@0",
+	      windowWidth: 160,
       windowHeight: 48,
       windowActive: true,
       sessionAttached: true,
@@ -344,9 +352,10 @@ describe("TmuxPollingManager overlap", () => {
     const sessions = new Map<string, TrackedSession>()
     sessions.set("ses-1", {
       sessionId: "ses-1",
-      paneId: "%1",
-      description: "test",
-      attachActivated: false,
+	      paneId: "%1",
+	      description: "test",
+	      mode: "interactive",
+	      attachActivated: false,
       createdAt: new Date(Date.now() - 15_000),
       lastSeenAt: new Date(),
       closePending: false,
@@ -390,9 +399,10 @@ describe("TmuxPollingManager overlap", () => {
       const sessions = new Map<string, TrackedSession>()
       const tracked: TrackedSession = {
         sessionId: "ses-1",
-        paneId: "%1",
-        description: "test",
-        attachActivated: false,
+	        paneId: "%1",
+	        description: "test",
+	        mode: "interactive",
+	        attachActivated: false,
         createdAt: new Date(0),
         lastSeenAt: new Date(0),
         closePending: false,
@@ -403,9 +413,12 @@ describe("TmuxPollingManager overlap", () => {
       let activationCount = 0
       let statusCalls = 0
       const closedSessionIds: string[] = []
-      const getWindowState = async (): Promise<WindowState> => ({
-        windowWidth: 220,
-        windowHeight: 44,
+	      const getWindowState = async (): Promise<WindowState> => ({
+	        windowId: "@0",
+	        windowWidth: 220,
+	        windowHeight: 44,
+	        windowActive: true,
+	        sessionAttached: true,
         mainPane: { paneId: "%0", width: 110, height: 44, left: 0, top: 0, title: "main", isActive: false },
         agentPanes: [{ paneId: "%1", width: 110, height: 44, left: 110, top: 0, title: "agent", isActive: true }],
       })
@@ -460,9 +473,10 @@ describe("TmuxPollingManager overlap", () => {
     const sessions = new Map<string, TrackedSession>()
     sessions.set("ses-1", {
       sessionId: "ses-1",
-      paneId: "%1",
-      description: "test",
-      attachActivated: false,
+	      paneId: "%1",
+	      description: "test",
+	      mode: "interactive",
+	      attachActivated: false,
       createdAt: new Date(Date.now() - 15_000),
       lastSeenAt: new Date(),
       closePending: false,

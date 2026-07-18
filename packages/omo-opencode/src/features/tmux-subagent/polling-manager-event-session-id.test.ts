@@ -8,9 +8,11 @@ describe("TmuxPollingManager event session ids", () => {
     const sessions = new Map<string, TrackedSession>()
     sessions.set("ses-part-only", {
       sessionId: "ses-part-only",
-      paneId: "%1",
-      description: "test",
-      createdAt: new Date(),
+	      paneId: "%1",
+	      description: "test",
+	      mode: "interactive",
+	      attachActivated: false,
+	      createdAt: new Date(),
       lastSeenAt: new Date(),
       closePending: false,
       closeRetryCount: 0,
