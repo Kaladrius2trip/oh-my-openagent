@@ -1,3 +1,5 @@
+/// <reference types="bun-types" />
+
 import { afterEach, describe, expect, jest, test } from "bun:test"
 import type { MoAChildHandle, MoAChildResult, MoAChildWaitTimeouts, ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
 import type { BackgroundTask } from "../background-agent"

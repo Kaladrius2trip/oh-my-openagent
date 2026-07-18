@@ -1,3 +1,5 @@
+/// <reference types="bun-types" />
+
 import { afterEach, describe, expect, test } from "bun:test"
 import type { PluginInput } from "@opencode-ai/plugin"
 import { unsafeTestValue } from "../../../../../test-support/unsafe-test-value"
