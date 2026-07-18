@@ -1360,6 +1360,7 @@ describe("keyword-detector moa mode", () => {
     const text = expectTextPartText(output.parts)
     expect(text).toContain("[moa-mode]")
     expect(text).toContain("moa_consult")
+    expect(text).toContain("research-first")
     expect(text).toContain("refactor the parser module")
   })
 
