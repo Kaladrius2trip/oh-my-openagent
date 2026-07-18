@@ -52,3 +52,41 @@ describe("MoAPresetConfigSchema activity timeouts", () => {
     expect(() => MoAPresetConfigSchema.parse(input)).toThrow()
   })
 })
+
+describe("MoAPresetConfigSchema advisor tool policy", () => {
+  test("given an omitted advisor tool policy when parsed then it defaults to none", () => {
+    // given
+    const input = basePreset
+
+    // when
+    const result = MoAPresetConfigSchema.parse(input)
+
+    // then
+    expect(result.advisors[0]?.tool_policy).toBe("none")
+  })
+
+  test("given a read-only advisor tool policy when parsed then it is retained", () => {
+    // given
+    const input = {
+      ...basePreset,
+      advisors: [{ name: "architect", category: "moa-architect", tool_policy: "read_only" }],
+    }
+
+    // when
+    const result = MoAPresetConfigSchema.parse(input)
+
+    // then
+    expect(result.advisors[0]?.tool_policy).toBe("read_only")
+  })
+
+  test("given an unknown advisor tool policy when parsed then it is rejected", () => {
+    // given
+    const input = {
+      ...basePreset,
+      advisors: [{ name: "architect", category: "moa-architect", tool_policy: "write" }],
+    }
+
+    // when / then
+    expect(() => MoAPresetConfigSchema.parse(input)).toThrow()
+  })
+})

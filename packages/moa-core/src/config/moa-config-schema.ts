@@ -33,7 +33,7 @@ export const MoAAdvisorConfigSchema = z
     prompt_append: z.string().optional(),
     temperature: z.number().min(0).max(2).optional(),
     maxTokens: z.number().int().positive().optional(),
-    tool_policy: z.literal("none").optional(),
+    tool_policy: z.enum(["none", "read_only"]).default("none"),
   })
   .refine(exactlyOneTarget, { message: `advisor must ${TARGET_MESSAGE}` })
 
