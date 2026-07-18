@@ -1,9 +1,10 @@
-import type { TrackedSession } from "./types"
+import type { TmuxPaneMode, TrackedSession } from "./types"
 
 export function createTrackedSession(params: {
   sessionId: string
   paneId: string
   description: string
+  mode?: TmuxPaneMode
   now?: Date
 }): TrackedSession {
   const now = params.now ?? new Date()
@@ -12,6 +13,7 @@ export function createTrackedSession(params: {
     sessionId: params.sessionId,
     paneId: params.paneId,
     description: params.description,
+    mode: params.mode ?? "interactive",
     attachActivated: false,
     attachActivatedAt: undefined,
     createdAt: now,
@@ -20,6 +22,14 @@ export function createTrackedSession(params: {
     closeRetryCount: 0,
     activityVersion: 0,
   }
+}
+
+export function markTrackedSessionActivated(tracked: TrackedSession, now = new Date()): void {
+  tracked.attachActivated = true
+  tracked.attachActivatedAt = now
+  tracked.lastSeenAt = now
+  tracked.stableIdlePolls = 0
+  tracked.observedIdleActivityVersion = tracked.activityVersion
 }
 
 export function markTrackedSessionClosePending(tracked: TrackedSession): TrackedSession {
