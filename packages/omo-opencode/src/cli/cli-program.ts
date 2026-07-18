@@ -5,6 +5,7 @@ import { run } from "./run"
 import { getLocalVersion } from "./get-local-version"
 import { doctor, resolveDoctorTarget } from "./doctor"
 import { createMcpOAuthCommand } from "./mcp-oauth"
+import { createMoaCommand } from "./moa"
 import { configureRuntimeCommands } from "./runtime-commands"
 import { availableInstallPlatforms, isSenpiPlatformEnabled, SENPI_PLATFORM_ENV_FLAG } from "./senpi-platform-flag"
 import type { InstallArgs } from "./types"
@@ -258,6 +259,7 @@ Examples:
 configureRuntimeCommands(program)
 
 program.addCommand(createMcpOAuthCommand())
+program.addCommand(createMoaCommand())
 
 export function runCli(): void {
   program.parse()
