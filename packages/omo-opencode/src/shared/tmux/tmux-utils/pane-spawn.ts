@@ -1,6 +1,6 @@
 import { spawnTmuxPane as spawnTmuxPaneCore } from "@oh-my-opencode/tmux-core"
 import type { SpawnTmuxPaneDeps, TmuxConfig } from "@oh-my-opencode/tmux-core"
-import type { SpawnPaneResult } from "../types"
+import type { SpawnResult } from "../types"
 import type { SplitDirection } from "./environment"
 import { withPaneSpawnDeps } from "./adapter-deps"
 
@@ -13,7 +13,7 @@ export async function spawnTmuxPane(
 	targetPaneId?: string,
 	splitDirection: SplitDirection = "-h",
 	depsInput?: Partial<SpawnTmuxPaneDeps>,
-): Promise<SpawnPaneResult> {
+): Promise<SpawnResult> {
 	return spawnTmuxPaneCore(
 		sessionId,
 		description,

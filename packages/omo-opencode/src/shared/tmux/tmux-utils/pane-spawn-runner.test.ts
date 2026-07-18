@@ -112,7 +112,7 @@ describe("spawnTmuxPane runner integration", () => {
 		// then
 		const firstCall = getRunTmuxCommandCall(0)
 		const secondCall = getRunTmuxCommandCall(1)
-		expect(result).toEqual({ success: true, paneId: "%42" })
+		expect(result).toEqual({ kind: "ok", paneId: "%42" })
 		expect(firstCall[1].slice(0, 8)).toEqual(["split-window", "-h", "-d", "-P", "-F", "#{pane_id}", "-t", "%0"])
 		expect(secondCall[1]).toEqual(["select-pane", "-t", "%42", "-T", "omo-subagent-worker"])
 		expect(getSplitWindowCommand()).toContain("Focus this pane to attach.")
