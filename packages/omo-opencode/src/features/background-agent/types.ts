@@ -14,6 +14,7 @@ export type BackgroundTaskVisibility = "normal" | "internal"
 export type BackgroundTaskNotificationPolicy = "auto" | "manual"
 export type BackgroundTaskContinuationPolicy = "allow" | "forbid"
 export type BackgroundTaskToolPolicy = "default" | "none"
+export type BackgroundTaskCapabilityProfile = "moa-consultation-only" | "moa-research"
 export type BackgroundTaskUserPermission = Record<string, "ask" | "allow" | "deny">
 
 export interface BackgroundTaskOrchestration {
@@ -28,7 +29,7 @@ export interface BackgroundTaskPolicyFields {
   readonly notificationPolicy?: BackgroundTaskNotificationPolicy
   readonly continuationPolicy?: BackgroundTaskContinuationPolicy
   readonly toolPolicy?: BackgroundTaskToolPolicy
-  readonly capabilityProfile?: string
+  readonly capabilityProfile?: BackgroundTaskCapabilityProfile
   readonly orchestration?: BackgroundTaskOrchestration
 }
 
@@ -37,7 +38,7 @@ export interface ResolvedBackgroundTaskPolicies {
   readonly notificationPolicy: BackgroundTaskNotificationPolicy
   readonly continuationPolicy: BackgroundTaskContinuationPolicy
   readonly toolPolicy: BackgroundTaskToolPolicy
-  readonly capabilityProfile?: string
+  readonly capabilityProfile?: BackgroundTaskCapabilityProfile
   readonly orchestration?: BackgroundTaskOrchestration
 }
 
