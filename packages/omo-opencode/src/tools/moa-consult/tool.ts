@@ -4,8 +4,10 @@ import { BUILTIN_PRESETS, DEFAULT_PRESET_NAME, type MoAConfig, type MoAConsultTo
 import type { MoAManager, MoARunResult } from "../../features/moa"
 
 const MOA_CONSULT_DESCRIPTION = `Consult a Mixture of Advisors (MoA) panel for a decision.
-Fans the prompt out to several tool-free advisor models plus one aggregator, then returns a synthesized decision bundle.
-Consultation only: advisors never read or write files and never act. The calling (parent) agent keeps all implementation authority.`
+Fans the prompt out to several advisor models plus one aggregator, then returns a synthesized decision bundle.
+Advisors are tool-free by default; presets may grant bounded read, grep and glob research. Consultation remains read-only, and the calling parent keeps all implementation authority.`
+
+const MOA_RESEARCH_TOOL_COUNT = 3 as const
 
 function knownPresetNames(config: MoAConfig): readonly string[] {
   return [...new Set([...Object.keys(BUILTIN_PRESETS), ...Object.keys(config.presets ?? {})])]
@@ -21,7 +23,14 @@ function collectWarnings(result: MoARunResult): string[] {
   )
 }
 
-function toConsultResult(preset: string, result: MoARunResult): MoAConsultToolResult {
+function configuredToolCount(config: MoAConfig, preset: string): 0 | 3 {
+  const resolvedPreset = config.presets?.[preset] ?? BUILTIN_PRESETS[preset]
+  return resolvedPreset?.advisors.some((advisor) => advisor.tool_policy === "read_only") === true
+    ? MOA_RESEARCH_TOOL_COUNT
+    : 0
+}
+
+function toConsultResult(config: MoAConfig, preset: string, result: MoARunResult): MoAConsultToolResult {
   const configured = result.configuredDiversity
   const effective = result.effectiveDiversity ?? configured
   return {
@@ -29,7 +38,12 @@ function toConsultResult(preset: string, result: MoARunResult): MoAConsultToolRe
     preset,
     status: result.status,
     ...(result.synthesis !== undefined ? { synthesis: result.synthesis } : {}),
-    execution: { policy: "consultation_only", toolsExposed: 0, mutationsPerformed: 0, implementationAuthority: "parent" },
+    execution: {
+      policy: "consultation_only",
+      toolsExposed: configuredToolCount(config, preset),
+      mutationsPerformed: 0,
+      implementationAuthority: "parent",
+    },
     advisorSummary: {
       requested: result.advisorResults.length,
       successful: countByStatus(result, "completed"),
@@ -72,7 +86,7 @@ export function createMoaConsultTool(moaManager: MoAManager, config: MoAConfig):
         { prompt: args.prompt, preset },
         { sessionID: context.sessionID, messageID: context.messageID, agent: context.agent },
       )
-      const consult = toConsultResult(preset, runResult)
+      const consult = toConsultResult(config, preset, runResult)
       return { title: `MoA consult: ${preset}`, output: summaryOutput(consult), metadata: consult }
     },
   })

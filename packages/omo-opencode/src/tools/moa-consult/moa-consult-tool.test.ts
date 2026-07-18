@@ -116,6 +116,25 @@ describe("createMoaConsultTool", () => {
     expect(requests[0]?.preset).toBe("security-critical")
   })
 
+  test("reports the bounded read-only tool surface for a research-enabled preset", async () => {
+    const { manager } = createFakeManager()
+    const moaTool = createMoaConsultTool(manager, {
+      ...config,
+      default_preset: "research-enabled",
+      presets: {
+        "research-enabled": {
+          advisors: [{ name: "researcher", category: "moa-researcher", tool_policy: "read_only" }],
+          aggregator: { category: "moa-aggregator" },
+        },
+      },
+    })
+
+    const result = await moaTool.execute({ prompt: "research" }, context)
+
+    if (typeof result === "string") throw new Error(`expected a structured result, got: ${result}`)
+    expect(result.metadata?.execution.toolsExposed).toBe(3)
+  })
+
   test("rejects an unknown preset without starting a run", async () => {
     // Given a manager whose run must never be called
     const { manager, requests } = createFakeManager()

@@ -135,7 +135,7 @@ export interface MoAConsultToolResult {
   synthesis?: string
   execution: {
     policy: "consultation_only"
-    toolsExposed: 0
+    toolsExposed: 0 | 3
     mutationsPerformed: 0
     implementationAuthority: "parent"
   }
