@@ -14,7 +14,20 @@ export type TmuxCommandResult = {
 	exitCode: number
 }
 
-const TERMINAL_TMUX_ERROR_PATTERN = /can't find (pane|session)/i
+const TARGET_GONE_PATTERN = /(?:can't find|no such) (?:pane|session|window)|unknown target/i
+const CAPACITY_PATTERN = /no space for new pane/i
+const SERVER_TRANSIENT_PATTERN = /server exited unexpectedly|no server running|failed to connect to server|lost server|connection (?:refused|reset)|socket/i
+const TERMINAL_PATTERN = /unknown option|invalid option|command not found|no such file or directory|permission denied|not executable/i
+
+export type TmuxErrorKind = "target_gone" | "capacity" | "server_transient" | "terminal" | "unknown"
+
+const PANE_SPAWN_RETRY_LIMITS = {
+	target_gone: 0,
+	capacity: 0,
+	server_transient: 2,
+	terminal: 0,
+	unknown: 1,
+} as const satisfies Record<TmuxErrorKind, 0 | 1 | 2>
 
 function createTmuxCommandResult(stdout: string, stderr: string, exitCode: number): TmuxCommandResult {
 	return {
@@ -26,8 +39,21 @@ function createTmuxCommandResult(stdout: string, stderr: string, exitCode: numbe
 	}
 }
 
-function isTerminalTmuxError(stderr: string): boolean {
-	return TERMINAL_TMUX_ERROR_PATTERN.test(stderr)
+export function classifyTmuxError(stderr: string): TmuxErrorKind {
+	if (TARGET_GONE_PATTERN.test(stderr)) return "target_gone"
+	if (CAPACITY_PATTERN.test(stderr)) return "capacity"
+	if (SERVER_TRANSIENT_PATTERN.test(stderr)) return "server_transient"
+	if (TERMINAL_PATTERN.test(stderr)) return "terminal"
+	return "unknown"
+}
+
+export function getPaneSpawnRetryLimit(stderr: string): 0 | 1 | 2 {
+	return PANE_SPAWN_RETRY_LIMITS[classifyTmuxError(stderr)]
+}
+
+export function isTerminalTmuxError(stderr: string): boolean {
+	const kind = classifyTmuxError(stderr)
+	return kind === "target_gone" || kind === "capacity" || kind === "terminal"
 }
 
 function resolveTmuxExecutable(tmuxPath: string): string[] {

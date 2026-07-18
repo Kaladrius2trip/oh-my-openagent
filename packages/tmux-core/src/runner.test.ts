@@ -6,7 +6,7 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 
-import { runTmuxCommand } from "./runner"
+import { classifyTmuxError, getPaneSpawnRetryLimit, runTmuxCommand } from "./runner"
 
 const temporaryDirectories: string[] = []
 const originalCmuxSocketPath = process.env.CMUX_SOCKET_PATH
@@ -54,6 +54,39 @@ beforeEach(() => {
 	delete process.env.CMUX_SOCKET_PATH
 	delete process.env.TMUX
 	process.env.PATH = originalPath
+})
+
+describe("tmux error classification", () => {
+	test.each([
+		["can't find pane: %1", "target_gone"],
+		["no such pane: %1", "target_gone"],
+		["no space for new pane", "capacity"],
+		["server exited unexpectedly", "server_transient"],
+		["failed to connect to server", "server_transient"],
+		["unknown option --bad", "terminal"],
+		["permission denied", "terminal"],
+		["unexpected tmux failure", "unknown"],
+	] as const)("#given stderr %s #when classified #then returns %s", (stderr, expected) => {
+		// when
+		const result = classifyTmuxError(stderr)
+
+		// then
+		expect(result).toBe(expected)
+	})
+
+	test.each([
+		["server exited unexpectedly", 2],
+		["unexpected tmux failure", 1],
+		["no space for new pane", 0],
+		["can't find pane: %1", 0],
+		["unknown option --bad", 0],
+	] as const)("#given stderr %s #when pane spawn retry limit is selected #then returns %d", (stderr, expected) => {
+		// when
+		const result = getPaneSpawnRetryLimit(stderr)
+
+		// then
+		expect(result).toBe(expected)
+	})
 })
 
 afterAll(async () => {
