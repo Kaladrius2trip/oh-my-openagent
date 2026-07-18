@@ -17,24 +17,27 @@ export class MoAChildSessionObserver {
     private readonly log: ObserverLog,
   ) {}
 
-  readonly onSessionCreated = (sessionId: string): Promise<void> => this.enqueue(async () => {
-    if (this.disposed || this.currentSessionId === sessionId) return
+  readonly onSessionCreated = (sessionId: string): Promise<void> => {
+    if (this.disposed) return Promise.resolve()
 
-    if (this.currentSessionId !== undefined) {
-      await this.close(this.currentSessionId)
-    }
-    if (this.disposed) return
+    return this.enqueue(async () => {
+      if (this.currentSessionId === sessionId) return
 
-    try {
-      await this.observer.openSession(sessionId, this.title)
-      this.currentSessionId = sessionId
-    } catch (error) {
-      this.log("[moa-session-observer] failed to open observe-only session", {
-        sessionId,
-        error: error instanceof Error ? error.message : String(error),
-      })
-    }
-  })
+      if (this.currentSessionId !== undefined) {
+        await this.close(this.currentSessionId)
+      }
+
+      try {
+        await this.observer.openSession(sessionId, this.title)
+        this.currentSessionId = sessionId
+      } catch (error) {
+        this.log("[moa-session-observer] failed to open observe-only session", {
+          sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    })
+  }
 
   dispose(): Promise<void> {
     if (this.disposal !== undefined) return this.disposal

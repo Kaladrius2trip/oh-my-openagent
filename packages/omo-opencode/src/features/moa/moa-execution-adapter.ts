@@ -195,7 +195,9 @@ export function createMoAExecutionAdapter(options: {
           capabilityProfile: "moa-consultation-only",
           continuationPolicy: "forbid",
           orchestration: input.orchestration,
-          ...(observer !== undefined ? { onSessionCreated: observer.onSessionCreated } : {}),
+          ...(observer !== undefined
+            ? { onSessionCreated: (sessionId: string): void => { void observer.onSessionCreated(sessionId) } }
+            : {}),
         })
       } catch (error) {
         await observer?.dispose()
