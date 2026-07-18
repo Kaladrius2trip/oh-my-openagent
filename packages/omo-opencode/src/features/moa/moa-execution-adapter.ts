@@ -32,13 +32,20 @@ export class MoAChildTaskError extends Error {
   }
 }
 
-function runtimeFallbackChain(target: ResolvedMoATarget): LaunchInput["fallbackChain"] {
-  return target.fallbackChain.map((fallback) => ({
-    providers: [fallback.providerID],
-    model: fallback.modelID,
-    ...(fallback.variant !== undefined ? { variant: fallback.variant } : {}),
-    ...(fallback.reasoningEffort !== undefined ? { reasoningEffort: fallback.reasoningEffort } : {}),
-  }))
+function runtimeFallbackChain(
+  target: ResolvedMoATarget,
+  slotTemperature: number | undefined,
+): LaunchInput["fallbackChain"] {
+  return target.fallbackChain.map((fallback) => {
+    const temperature = slotTemperature ?? fallback.temperature
+    return {
+      providers: [fallback.providerID],
+      model: fallback.modelID,
+      ...(fallback.variant !== undefined ? { variant: fallback.variant } : {}),
+      ...(fallback.reasoningEffort !== undefined ? { reasoningEffort: fallback.reasoningEffort } : {}),
+      ...(temperature !== undefined ? { temperature } : {}),
+    }
+  })
 }
 
 function finalModel(
@@ -145,6 +152,7 @@ export function createMoAExecutionAdapter(options: {
     resolveTarget: options.resolveTarget,
     launchChild: async (input: MoAChildLaunchInput): Promise<MoAChildHandle> => {
       assertConsultationOnlyLaunch(input)
+      const temperature = input.temperature ?? input.target.model.temperature
       const task = await options.backgroundManager.launch({
         description: `MoA ${input.role}: ${input.orchestration.slot ?? "synthesis"}`,
         prompt: input.prompt,
@@ -155,9 +163,10 @@ export function createMoAExecutionAdapter(options: {
         parentModel: options.parent.model,
         model: {
           ...input.target.model,
+          ...(temperature !== undefined ? { temperature } : {}),
           ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
         },
-        fallbackChain: runtimeFallbackChain(input.target),
+        fallbackChain: runtimeFallbackChain(input.target, input.temperature),
         category: input.target.category,
         visibility: "internal",
         notificationPolicy: "manual",
