@@ -647,6 +647,7 @@ export class BackgroundManager {
         continuationPolicy: input.continuationPolicy,
         toolPolicy: input.toolPolicy,
         capabilityProfile: input.capabilityProfile,
+        maxToolCalls: input.maxToolCalls,
         orchestration: input.orchestration,
         model: input.model,
         fallbackChain: input.fallbackChain,
@@ -1853,7 +1854,7 @@ The fallback retry session is now created and can be inspected directly.
           }
         }
 
-        const maxToolCalls = circuitBreaker.maxToolCalls
+        const maxToolCalls = task.maxToolCalls ?? circuitBreaker.maxToolCalls
         if (task.progress.toolCalls >= maxToolCalls) {
           log("[background-agent] Circuit breaker: tool call limit reached", {
             taskId: task.id,
