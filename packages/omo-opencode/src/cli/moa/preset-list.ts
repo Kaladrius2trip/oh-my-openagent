@@ -1,4 +1,3 @@
-import type { MoAConfig } from "@oh-my-opencode/moa-core"
 import { BUILTIN_PRESETS, DEFAULT_PRESET_NAME } from "@oh-my-opencode/moa-core/presets"
 
 export type MoAPresetProvenance = "built-in" | "custom" | "override"
@@ -12,7 +11,16 @@ export type MoAPresetRow = {
   readonly description: string
 }
 
-export function buildPresetRows(config: MoAConfig | undefined): readonly MoAPresetRow[] {
+type PresetListConfig = {
+  readonly default_preset?: string
+  readonly presets?: Readonly<Record<string, {
+    readonly enabled?: boolean
+    readonly description?: string
+    readonly advisors: readonly unknown[]
+  }>>
+}
+
+export function buildPresetRows(config: PresetListConfig | undefined): readonly MoAPresetRow[] {
   const customPresets = config?.presets ?? {}
   const presets = { ...BUILTIN_PRESETS, ...customPresets }
   const activePreset = config?.default_preset ?? DEFAULT_PRESET_NAME
