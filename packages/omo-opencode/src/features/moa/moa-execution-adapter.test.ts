@@ -91,6 +91,45 @@ describe("createMoAExecutionAdapter", () => {
     ])
   })
 
+  test("#given a direct slot temperature #when adapter launches #then it overrides the target and every fallback", async () => {
+    // given
+    const launches: LaunchInput[] = []
+    const temperatureTarget: ResolvedMoATarget = {
+      ...target,
+      model: { ...target.model, temperature: 0.3 },
+      fallbackChain: [
+        { providerID: "openai", modelID: "gpt-5.5", temperature: 0.4 },
+        { providerID: "google", modelID: "gemini-3.1-pro", temperature: 0.6 },
+      ],
+    }
+    const adapter = createMoAExecutionAdapter({
+      backgroundManager: {
+        launch: async (input) => {
+          launches.push(input)
+          return { id: "bg-1" }
+        },
+        getTask: () => undefined,
+        cancelTask: async () => true,
+      },
+      parent: { sessionID: "parent-session", messageID: "parent-message" },
+      resolveTarget: async () => temperatureTarget,
+    })
+
+    // when
+    await adapter.launchChild({
+      ...childInput("advisor", "architect"),
+      target: temperatureTarget,
+      temperature: 0.8,
+    })
+
+    // then
+    expect(launches[0]?.model?.temperature).toBe(0.8)
+    expect(launches[0]?.fallbackChain).toEqual([
+      { providers: ["openai"], model: "gpt-5.5", temperature: 0.8 },
+      { providers: ["google"], model: "gemini-3.1-pro", temperature: 0.8 },
+    ])
+  })
+
   test("#given a completed fallback task #when adapter waits #then result reports output and final settled model", async () => {
     // given
     const adapter = createMoAExecutionAdapter({
