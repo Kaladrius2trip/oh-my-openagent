@@ -40,6 +40,29 @@ describe("createMoATargetResolver", () => {
     })
   })
 
+  test("#given category primary and fallback temperatures #when target resolves #then both temperatures survive", async () => {
+    // given
+    const resolveTarget = createMoATargetResolver({
+      deps: {
+        resolveCategoryExecutionFn: async (category) => ({
+          agent: "sisyphus-junior",
+          category,
+          model: { providerID: "anthropic", modelID: "claude-opus-4-7", temperature: 0.4 },
+          fallbackChain: [{ providers: ["openai"], model: "gpt-5.5", temperature: 0.7 }],
+        }),
+      },
+    })
+
+    // when
+    const resolved = await resolveTarget({ category: "moa-architect" })
+
+    // then
+    expect(resolved.model.temperature).toBe(0.4)
+    expect(resolved.fallbackChain).toEqual([
+      { providerID: "openai", modelID: "gpt-5.5", temperature: 0.7 },
+    ])
+  })
+
   test("#given a callable subagent target #when it resolves #then subagent model resolution supplies its concrete target", async () => {
     // given
     const calls: string[] = []

@@ -11,7 +11,16 @@ import {
 import type { BackgroundTask } from "./types"
 
 const fallbackChain: FallbackEntry[] = [
-  { model: "fallback-model", providers: ["provider-b"], variant: "high" },
+  {
+    model: "fallback-model",
+    providers: ["provider-b"],
+    variant: "high",
+    reasoningEffort: "medium",
+    temperature: 0.7,
+    top_p: 0.9,
+    maxTokens: 4096,
+    thinking: { type: "enabled", budgetTokens: 2048 },
+  },
 ]
 
 function createBackgroundTask(): BackgroundTask {
@@ -94,6 +103,38 @@ describe("fallback retry launch input", () => {
           role: "advisor",
           slot: "correctness",
         },
+      })
+    })
+
+    test("when fallback retry requeues then every fallback model setting is preserved", async () => {
+      const task = createBackgroundTask()
+      const queuesByKey = new Map<string, QueueItem[]>()
+      const client = unsafeTestValue<OpencodeClient>({
+        session: { abort: mock(async () => ({ data: true })) },
+      })
+
+      await tryFallbackRetry({
+        task,
+        errorInfo: { name: "OverloadedError", message: "model overloaded" },
+        source: "test",
+        concurrencyManager: new ConcurrencyManager(),
+        client,
+        idleDeferralTimers: new Map(),
+        queuesByKey,
+        processKey: mock(() => {}),
+        deps: createRetryDependencies(),
+      })
+      const retryModel = Array.from(queuesByKey.values()).flat().at(0)?.input.model
+
+      expect(retryModel).toEqual({
+        providerID: "provider-b",
+        modelID: "fallback-model",
+        variant: "high",
+        reasoningEffort: "medium",
+        temperature: 0.7,
+        top_p: 0.9,
+        maxTokens: 4096,
+        thinking: { type: "enabled", budgetTokens: 2048 },
       })
     })
   })

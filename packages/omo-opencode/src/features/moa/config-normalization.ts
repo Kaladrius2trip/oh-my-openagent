@@ -55,6 +55,7 @@ function normalizeAdvisor(advisor: MoAPresetConfigParsed["advisors"][number]): M
     ...(advisor.role !== undefined ? { role: advisor.role } : {}),
     ...(advisor.mode !== undefined ? { mode: advisor.mode } : {}),
     ...(advisor.prompt_append !== undefined ? { prompt_append: advisor.prompt_append } : {}),
+    ...(advisor.temperature !== undefined ? { temperature: advisor.temperature } : {}),
     ...(advisor.maxTokens !== undefined ? { maxTokens: advisor.maxTokens } : {}),
     ...(advisor.tool_policy !== undefined ? { tool_policy: advisor.tool_policy } : {}),
   }
@@ -64,6 +65,7 @@ function normalizeAggregator(aggregator: MoAPresetConfigParsed["aggregator"]): M
   return {
     ...normalizeTarget(aggregator),
     ...(aggregator.prompt_append !== undefined ? { prompt_append: aggregator.prompt_append } : {}),
+    ...(aggregator.temperature !== undefined ? { temperature: aggregator.temperature } : {}),
     ...(aggregator.maxTokens !== undefined ? { maxTokens: aggregator.maxTokens } : {}),
   }
 }

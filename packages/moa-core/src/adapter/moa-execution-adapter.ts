@@ -1,11 +1,6 @@
 import type { MoAResolvedModel, MoATarget, MoAToolPolicy } from "../types"
 
-export interface ResolvedFallbackTarget {
-  providerID: string
-  modelID: string
-  variant?: string
-  reasoningEffort?: string
-}
+export type ResolvedFallbackTarget = MoAResolvedModel
 
 export interface ResolvedMoATarget {
   requested: MoATarget
@@ -42,6 +37,7 @@ export interface MoAChildLaunchInput {
   capabilityProfile: "moa-consultation-only"
   continuationPolicy: "forbid"
   orchestration: MoAOrchestrationTag
+  temperature?: number
   maxTokens?: number
 }
 

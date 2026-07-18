@@ -31,6 +31,7 @@ export const MoAAdvisorConfigSchema = z
     category: z.string().min(1).optional(),
     subagent_type: z.string().min(1).optional(),
     prompt_append: z.string().optional(),
+    temperature: z.number().min(0).max(2).optional(),
     maxTokens: z.number().int().positive().optional(),
     tool_policy: z.literal("none").optional(),
   })
@@ -41,6 +42,7 @@ export const MoAAggregatorConfigSchema = z
     category: z.string().min(1).optional(),
     subagent_type: z.string().min(1).optional(),
     prompt_append: z.string().optional(),
+    temperature: z.number().min(0).max(2).optional(),
     maxTokens: z.number().int().positive().optional(),
   })
   .refine(exactlyOneTarget, { message: `aggregator must ${TARGET_MESSAGE}` })

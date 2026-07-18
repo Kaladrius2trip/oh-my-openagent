@@ -196,6 +196,11 @@ export async function tryFallbackRetry(args: {
     providerID,
     modelID: transformedModelId,
     variant: nextFallback.variant,
+    ...(nextFallback.reasoningEffort !== undefined ? { reasoningEffort: nextFallback.reasoningEffort } : {}),
+    ...(nextFallback.temperature !== undefined ? { temperature: nextFallback.temperature } : {}),
+    ...(nextFallback.top_p !== undefined ? { top_p: nextFallback.top_p } : {}),
+    ...(nextFallback.maxTokens !== undefined ? { maxTokens: nextFallback.maxTokens } : {}),
+    ...(nextFallback.thinking !== undefined ? { thinking: nextFallback.thinking } : {}),
   }
   task.attemptCount = selectedAttemptCount
   const failedAttemptID = ensureCurrentAttempt(task, previousModel).attemptId
