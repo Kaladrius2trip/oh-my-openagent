@@ -59,6 +59,40 @@ Omit `preset` to use `default_preset`.
 
 Preset fields control advisors, aggregator, context bounds, diversity thresholds, success threshold and timeouts. Every preset accepts only `execution_policy: "consultation_only"`. Every advisor accepts only `tool_policy: "none"` and one mode from `analysis`, `research`, `planning`, `review` or `evidence-search`.
 
+### Per-role temperature
+
+Set `temperature` from `0` through `2` on each advisor or aggregator slot:
+
+```jsonc
+{
+  "moa": {
+    "enabled": true,
+    "default_preset": "diverse-advice",
+    "presets": {
+      "diverse-advice": {
+        "execution_policy": "consultation_only",
+        "advisors": [
+          {
+            "name": "architect",
+            "category": "moa-architect",
+            "temperature": 0.8,
+            "tool_policy": "none"
+          }
+        ],
+        "aggregator": {
+          "category": "moa-aggregator",
+          "temperature": 0.2
+        }
+      }
+    }
+  }
+}
+```
+
+Precedence is slot temperature, then resolved category temperature, then provider default. A slot override applies to its primary model and every runtime fallback. Built-in presets do not set temperatures.
+
+Doctor warns when an explicit slot temperature targets a statically known primary model with `supportsTemperature: false`. Unknown models, subagent targets and fallback capability changes do not produce this warning. Runtime model compatibility still removes temperature when active model metadata says it is unsupported.
+
 ## Result contract
 
 `moa_consult` returns run ID, preset, terminal status, synthesis, advisor counts, configured and effective diversity, and warnings. Execution metadata is fixed:

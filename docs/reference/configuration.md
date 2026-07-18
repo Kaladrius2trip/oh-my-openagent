@@ -451,6 +451,35 @@ MoA is disabled by default. Enable it to register `moa_consult` and `/moa`:
 | `presets` | none | Custom preset definitions. |
 | `prompt_packs` | none | Custom prompt-pack definitions. |
 
+Custom presets can set `temperature` from `0` through `2` on every `advisors[]` entry and on `aggregator`:
+
+```jsonc
+{
+  "moa": {
+    "enabled": true,
+    "presets": {
+      "diverse-advice": {
+        "execution_policy": "consultation_only",
+        "advisors": [
+          {
+            "name": "architect",
+            "category": "moa-architect",
+            "temperature": 0.8,
+            "tool_policy": "none"
+          }
+        ],
+        "aggregator": {
+          "category": "moa-aggregator",
+          "temperature": 0.2
+        }
+      }
+    }
+  }
+}
+```
+
+Temperature precedence: slot temperature > resolved category temperature > provider default. Slot temperature also overrides every runtime fallback. Doctor warns only when a statically resolved primary model is known not to support temperature; runtime compatibility strips unsupported temperature settings.
+
 See [Mixture of Advisors](moa.md) for preset catalog, security model and result contract. See [MoA Prompt Reference](moa-prompts.md) for composition and override policy.
 
 ### Sisyphus Agent
