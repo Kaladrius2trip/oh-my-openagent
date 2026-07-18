@@ -153,7 +153,7 @@ export function createMoAManager(options: {
       }
 
       transition(active, "advising")
-      const advisorPrompts = preset.advisors.map((slot, index) => composeAdvisorPrompt(pack, {
+      const advisorPrompts = preset.advisors.map((slot) => composeAdvisorPrompt(pack, {
         runId: active.runId, presetName, advisorName: slot.name, role: slot.role ?? "general",
         mode: slot.mode ?? "analysis", requestedTarget: targetLabel(slot), originalTask: request.prompt,
         context: boundedContext,
