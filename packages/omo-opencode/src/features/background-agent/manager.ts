@@ -50,8 +50,11 @@ import {
 } from "./background-task-notification-template"
 import { writeBackgroundTaskMarker } from "./background-task-marker"
 import {
+  extractFinalAssistantOutput,
   findNearestMessageExcludingCompaction,
   resolvePromptContextFromSessionMessages,
+  type FinalAssistantOutputFailureReason,
+  type SessionMessage,
 } from "./compaction-aware-message-resolver"
 import { ConcurrencyManager } from "./concurrency"
 import {
@@ -250,6 +253,17 @@ export interface BackgroundManagerConfig {
   modelFallbackControllerAccessor?: ModelFallbackControllerAccessor
   log?: typeof log
 }
+
+export type BackgroundTaskOutputResult =
+  | { readonly status: "resolved"; readonly output: string }
+  | {
+      readonly status: "failed"
+      readonly reason:
+        | FinalAssistantOutputFailureReason
+        | "task_missing"
+        | "session_missing"
+        | "message_read_failed"
+    }
 
 export class BackgroundManager {
 
@@ -1072,6 +1086,28 @@ The fallback retry session is now created and can be inspected directly.
 
   getTask(id: string): BackgroundTask | undefined {
     return this.tasks.get(id) ?? this.completedTaskArchive.get(id) ?? getRegisteredBackgroundTask(id)
+  }
+
+  async readTaskOutput(taskId: string): Promise<BackgroundTaskOutputResult> {
+    const task = this.getTask(taskId)
+    if (task === undefined) {
+      return { status: "failed", reason: "task_missing" }
+    }
+    if (task.sessionId === undefined) {
+      return { status: "failed", reason: "session_missing" }
+    }
+
+    try {
+      const response = await messagesInDirectory(this.client, {
+        path: { id: task.sessionId },
+      }, this.directory)
+      const messages = normalizeSDKResponse<SessionMessage[]>(response, [], {
+        preferResponseOnMissingData: true,
+      })
+      return extractFinalAssistantOutput(messages)
+    } catch {
+      return { status: "failed", reason: "message_read_failed" }
+    }
   }
 
   getTasksSnapshot(): BackgroundTaskSnapshot[] { return toBackgroundTaskSnapshots(this.tasks.values()) }
