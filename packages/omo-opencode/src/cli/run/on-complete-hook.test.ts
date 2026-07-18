@@ -66,7 +66,13 @@ describe("executeOnCompleteHook", () => {
       SHELL: process.env.SHELL,
       PSModulePath: process.env.PSModulePath,
       ComSpec: process.env.ComSpec,
+      BASH_VERSION: process.env.BASH_VERSION,
+      MSYSTEM: process.env.MSYSTEM,
+      WSL_DISTRO_NAME: process.env.WSL_DISTRO_NAME,
     }
+    delete process.env.BASH_VERSION
+    delete process.env.MSYSTEM
+    delete process.env.WSL_DISTRO_NAME
     logCalls = []
   })
 
