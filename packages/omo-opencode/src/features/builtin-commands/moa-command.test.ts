@@ -40,4 +40,13 @@ describe("loadBuiltinCommands - moa gating", () => {
     // Then it stays unregistered
     expect(commands.moa).toBeUndefined()
   })
+
+  test("the /moa template instructs parsing an inline --preset flag into the tool preset argument", () => {
+    // Given moa enabled
+    const commands = loadBuiltinCommands(undefined, { moaEnabled: true })
+    // Then the template teaches the model to extract --preset and pass it as the tool preset
+    const template = commands.moa?.template ?? ""
+    expect(template).toContain("--preset")
+    expect(template).toContain("preset argument")
+  })
 })
