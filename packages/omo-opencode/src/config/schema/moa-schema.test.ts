@@ -87,6 +87,52 @@ describe("MoAPresetConfigSchema", () => {
       ).toThrow()
     })
   })
+
+  test.each([0, 0.8, 2])("#given advisor temperature %p #when parsed #then it is preserved", (temperature) => {
+    // given
+    const input = {
+      advisors: [{ name: "architect", category: "moa-architect", temperature }],
+      aggregator: { category: "moa-aggregator" },
+    }
+
+    // when
+    const preset = MoAPresetConfigSchema.parse(input)
+
+    // then
+    expect(preset.advisors[0]?.temperature).toBe(temperature)
+  })
+
+  test.each([0, 0.8, 2])("#given aggregator temperature %p #when parsed #then it is preserved", (temperature) => {
+    // given
+    const input = {
+      advisors: [{ name: "architect", category: "moa-architect" }],
+      aggregator: { category: "moa-aggregator", temperature },
+    }
+
+    // when
+    const preset = MoAPresetConfigSchema.parse(input)
+
+    // then
+    expect(preset.aggregator.temperature).toBe(temperature)
+  })
+
+  test.each([-0.1, 2.1])("#given advisor temperature %p #when parsed #then it is rejected", (temperature) => {
+    expect(() =>
+      MoAPresetConfigSchema.parse({
+        advisors: [{ name: "architect", category: "moa-architect", temperature }],
+        aggregator: { category: "moa-aggregator" },
+      }),
+    ).toThrow()
+  })
+
+  test.each([-0.1, 2.1])("#given aggregator temperature %p #when parsed #then it is rejected", (temperature) => {
+    expect(() =>
+      MoAPresetConfigSchema.parse({
+        advisors: [{ name: "architect", category: "moa-architect" }],
+        aggregator: { category: "moa-aggregator", temperature },
+      }),
+    ).toThrow()
+  })
 })
 
 describe("OhMyOpenCodeConfigSchema moa key", () => {
