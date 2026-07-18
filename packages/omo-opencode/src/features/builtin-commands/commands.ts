@@ -120,15 +120,20 @@ ${HYPERPLAN_TEMPLATE}
       template: `<command-instruction>
 The user invoked /moa. Mixture of Advisors (MoA) fans a question out to a panel of tool-free advisor models plus one aggregator and returns a synthesized decision bundle. Advisors never read or write files; you, the parent agent, keep all implementation authority.
 
-When <user-request> below is non-empty, call the moa_consult tool with the request as its prompt, then act on the returned decision bundle yourself.
+Parse <user-request> for an optional leading inline flag before calling the moa_consult tool:
+- If it contains "--preset <name>" (or "--preset=<name>"), pass <name> as the moa_consult preset argument and strip the flag from the text that becomes the prompt.
+- If no --preset flag is present, omit the preset argument so the configured default preset applies.
+- Everything left after removing the flag is the moa_consult prompt.
 
-When <user-request> is empty, explain what /moa does and ask the user for the decision or design question to consult on, optionally naming a preset.
+When the remaining request text is non-empty, call the moa_consult tool with that text as its prompt (and the parsed preset, if any), then act on the returned decision bundle yourself.
+
+When the remaining request text is empty, explain what /moa does, list that a preset can be chosen with --preset <name>, and ask the user for the decision or design question to consult on.
 </command-instruction>
 
 <user-request>
 $ARGUMENTS
 </user-request>`,
-      argumentHint: "<decision or design question>",
+      argumentHint: "[--preset <name>] <decision or design question>",
     },
   }
 }
