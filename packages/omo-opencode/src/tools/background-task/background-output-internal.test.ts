@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from "bun:test"
 import type { ToolContext } from "@opencode-ai/plugin/tool"
 import { unsafeTestValue } from "../../../../../test-support/unsafe-test-value"
-import type { BackgroundTask } from "../../features/background-agent"
+import { BackgroundManager, type BackgroundTask } from "../../features/background-agent"
 import type { BackgroundOutputClient, BackgroundOutputManager } from "./clients"
 import { createBackgroundOutput } from "./create-background-output"
 
@@ -46,5 +46,34 @@ describe("background_output internal task boundary", () => {
     expect(output).not.toContain("SECRET")
     expect(messageReads).not.toHaveBeenCalled()
     expect(metadata).not.toHaveBeenCalled()
+  })
+
+  test("given an archived internal task when output is requested then session text remains inaccessible", async () => {
+    const task = createInternalTask()
+    const messageReads = mock(async () => ({
+      data: [{ info: { role: "assistant" }, parts: [{ type: "text", text: "SECRET_RESULT" }] }],
+    }))
+    const client: BackgroundOutputClient = { session: { messages: messageReads } }
+    const manager = new BackgroundManager({
+      pluginContext: unsafeTestValue({ client, directory: "/tmp/internal-archive" }),
+    })
+    unsafeTestValue<{ removeTask(task: BackgroundTask): void }>(manager).removeTask(task)
+    const tool = createBackgroundOutput(manager, client)
+
+    try {
+      const output = await tool.execute(
+        { task_id: task.id },
+        unsafeTestValue<ToolContext>({
+          sessionID: "external-session",
+          messageID: "external-message",
+        }),
+      )
+
+      expect(output).toContain("task is internal")
+      expect(output).not.toContain("SECRET")
+      expect(messageReads).not.toHaveBeenCalled()
+    } finally {
+      await manager.shutdown()
+    }
   })
 })

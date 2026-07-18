@@ -484,6 +484,7 @@ export class BackgroundManager {
       model: task.model,
       error: task.error,
       category: task.category,
+      visibility: task.visibility,
     }
 
     this.completedTaskArchive.set(task.id, archivedTask)
