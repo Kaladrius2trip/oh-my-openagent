@@ -1,5 +1,5 @@
 import { BUILTIN_PRESETS, DEFAULT_PRESET_NAME, type MoAConfig, type MoAPresetConfig, type MoARunStatus, type MoATarget, validatePreset } from "@oh-my-opencode/moa-core"
-import { MOA_CONSULTATION_LAUNCH_CONTROLS, type MoAChildHandle, type MoAChildResult, type MoAExecutionAdapter, type ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
+import { MOA_CONSULTATION_LAUNCH_CONTROLS, type MoAChildHandle, type MoAChildResult, type MoAChildWaitTimeouts, type MoAExecutionAdapter, type ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
 import { buildSanitizedContext, type MoAContextMessage } from "@oh-my-opencode/moa-core/context"
 import { evaluateConfiguredDiversity, evaluateEffectiveDiversity, type MoADiversityCheck } from "@oh-my-opencode/moa-core/diversity"
 import { DEFAULT_PROMPT_PACK_ID, composeAdvisorPrompt, composeAggregatorPrompt, resolvePromptPack } from "@oh-my-opencode/moa-core/prompts"
@@ -58,6 +58,17 @@ export class MoARunError extends Error {
   }
 }
 
+const DEFAULT_CHILD_TIMEOUT_MS = 150_000
+const DEFAULT_IDLE_WINDOW_MS = 60_000
+
+function childWaitTimeouts(preset: MoAPresetConfig, baseMs: number): MoAChildWaitTimeouts {
+  return {
+    baseMs,
+    idleWindowMs: preset.idle_window_ms ?? DEFAULT_IDLE_WINDOW_MS,
+    maxWallMs: preset.max_wall_ms ?? baseMs * 4,
+  }
+}
+
 function targetLabel(target: MoATarget): string {
   return "category" in target ? `category:${target.category}` : `subagent:${target.subagent_type}`
 }
@@ -110,11 +121,11 @@ async function launchAdvisors(
   }))
 }
 
-async function settleAdvisors(run: ActiveRun, handles: readonly MoAChildHandle[], timeoutMs: number): Promise<MoAChildResult[]> {
-  const deadline = Date.now() + timeoutMs
+async function settleAdvisors(run: ActiveRun, handles: readonly MoAChildHandle[], preset: MoAPresetConfig): Promise<MoAChildResult[]> {
+  const timeouts = childWaitTimeouts(preset, preset.advisor_timeout_ms ?? DEFAULT_CHILD_TIMEOUT_MS)
   return Promise.all(handles.map((handle) => run.adapter.waitForChild(
     handle,
-    Math.max(1, deadline - Date.now()),
+    timeouts,
     run.controller.signal,
   )))
 }
@@ -162,7 +173,7 @@ export function createMoAManager(options: {
       }).text)
       const handles = await launchAdvisors(active, preset, advisorTargets, advisorPrompts)
       if (active.controller.signal.aborted) return result(active, advisorResults)
-      advisorResults = await settleAdvisors(active, handles, preset.advisor_timeout_ms ?? 150_000)
+      advisorResults = await settleAdvisors(active, handles, preset)
       if (active.controller.signal.aborted) return result(active, advisorResults)
       const successful = advisorResults.filter((advisor) => advisor.status === "completed").length
       const threshold = preset.min_successful_advisors ?? preset.advisors.length
@@ -213,7 +224,11 @@ export function createMoAManager(options: {
         ...(preset.aggregator.maxTokens !== undefined ? { maxTokens: preset.aggregator.maxTokens } : {}),
       })
       active.handles.push(aggregator)
-      const aggregate = await active.adapter.waitForChild(aggregator, preset.aggregator_timeout_ms ?? 150_000, active.controller.signal)
+      const aggregate = await active.adapter.waitForChild(
+        aggregator,
+        childWaitTimeouts(preset, preset.aggregator_timeout_ms ?? DEFAULT_CHILD_TIMEOUT_MS),
+        active.controller.signal,
+      )
       if (aggregate.status === "timed_out") {
         await active.adapter.cancelChild(aggregator, "aggregator deadline exceeded")
       }
