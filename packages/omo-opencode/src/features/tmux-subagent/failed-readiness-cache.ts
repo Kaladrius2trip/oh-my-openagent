@@ -1,6 +1,9 @@
+import type { TmuxPaneMode } from "./types"
+
 export interface FailedReadinessSessionSeed {
   sessionId: string
   title: string
+  mode: TmuxPaneMode
 }
 
 export interface FailedReadinessSession extends FailedReadinessSessionSeed {

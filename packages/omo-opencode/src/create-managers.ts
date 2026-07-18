@@ -19,6 +19,7 @@ import {
   createMoATargetResolver,
   normalizeMoAConfig,
   type MoAManager,
+  type MoASessionObserver,
 } from "./features/moa"
 import * as openclawRuntimeDispatch from "./openclaw/runtime-dispatch"
 import { registerManagerForCleanup } from "./features/background-agent/process-cleanup"
@@ -203,6 +204,13 @@ export function createManagers(args: {
 
   let moaManager: MoAManager | undefined
   if (pluginConfig.moa?.enabled === true) {
+    const sessionObserver: MoASessionObserver | undefined =
+      pluginConfig.moa.tmux_visualization === true && tmuxConfig.enabled
+        ? {
+          openSession: (sessionId, title) => tmuxSessionManager.observeSession(sessionId, title),
+          closeSession: (sessionId) => tmuxSessionManager.onSessionDeleted({ sessionID: sessionId }),
+        }
+        : undefined
     const resolveTarget = createMoATargetResolver({
       executorContext: {
         manager: backgroundManager,
@@ -220,6 +228,7 @@ export function createManagers(args: {
         backgroundManager,
         parent,
         resolveTarget,
+        ...(sessionObserver !== undefined ? { sessionObserver } : {}),
       }),
     })
     deps.registerManagerForCleanupFn(moaManager)

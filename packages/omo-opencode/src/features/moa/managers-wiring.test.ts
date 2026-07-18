@@ -5,9 +5,31 @@ import { OhMyOpenCodeConfigSchema } from "../../config/schema/oh-my-opencode-con
 import { createManagers } from "../../create-managers"
 import { createPluginDispose } from "../../plugin-dispose"
 import { createModelCacheState } from "../../plugin-state"
-import type { MoAManager } from "./moa-manager"
+import type { MoAChildLaunchInput, ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
+import type { BackgroundTask, LaunchInput } from "../background-agent"
+import { createMoAManager, type MoAManager } from "./moa-manager"
+
+const observedSessions: Array<{ sessionId: string; title: string }> = []
+const closedSessions: string[] = []
+const moaLaunchInputs: LaunchInput[] = []
+const fakeTasks = new Map<string, Partial<BackgroundTask> & Pick<BackgroundTask, "id" | "status">>()
 
 class FakeBackgroundManager {
+  async launch(input: LaunchInput): Promise<Pick<BackgroundTask, "id" | "sessionId">> {
+    const index = moaLaunchInputs.length + 1
+    const taskId = `bg-${index}`
+    const sessionId = `session-${index}`
+    moaLaunchInputs.push(input)
+    await input.onSessionCreated?.(sessionId)
+    fakeTasks.set(taskId, { id: taskId, status: "completed", model: input.model, result: "done" })
+    return { id: taskId, sessionId }
+  }
+
+  getTask(taskId: string): Partial<BackgroundTask> & Pick<BackgroundTask, "id" | "status"> | undefined {
+    return fakeTasks.get(taskId)
+  }
+
+  async cancelTask(): Promise<boolean> { return true }
   async shutdown(): Promise<void> {}
 }
 
@@ -16,6 +38,12 @@ class FakeSkillMcpManager {
 }
 
 class FakeTmuxSessionManager {
+  async observeSession(sessionId: string, title: string): Promise<void> {
+    observedSessions.push({ sessionId, title })
+  }
+  async onSessionDeleted(event: { sessionID: string }): Promise<void> {
+    closedSessions.push(event.sessionID)
+  }
   async cleanup(): Promise<void> {}
   getTrackedPaneId(): undefined { return undefined }
 }
@@ -36,9 +64,9 @@ function context(): PluginInput {
   }
 }
 
-function tmuxConfig() {
+function tmuxConfig(enabled = false) {
   return {
-    enabled: false,
+    enabled,
     layout: "main-vertical" as const,
     main_pane_size: 60,
     main_pane_min_width: 120,
@@ -48,15 +76,19 @@ function tmuxConfig() {
 }
 
 function createHarness(moaManager: MoAManager) {
-  const factoryCalls: unknown[] = []
+  observedSessions.length = 0
+  closedSessions.length = 0
+  moaLaunchInputs.length = 0
+  fakeTasks.clear()
+  const factoryCalls: Array<Parameters<typeof createMoAManager>[0]> = []
   const cleanupRegistrations: Array<{ shutdown: () => void | Promise<void> }> = []
-  const managers = (enabled: boolean) => createManagers({
+  const managers = (enabled: boolean, tmuxVisualization = false, tmuxEnabled = false) => createManagers({
     ctx: context(),
     pluginConfig: OhMyOpenCodeConfigSchema.parse({
-      moa: { enabled },
+      moa: { enabled, tmux_visualization: tmuxVisualization },
       tui: { sidebar: { enabled: false } },
     }),
-    tmuxConfig: tmuxConfig(),
+    tmuxConfig: tmuxConfig(tmuxEnabled),
     modelCacheState: createModelCacheState(),
     backgroundNotificationHookEnabled: false,
     deps: {
@@ -75,6 +107,29 @@ function createHarness(moaManager: MoAManager) {
     },
   })
   return { managers, factoryCalls, cleanupRegistrations }
+}
+
+const resolvedTarget: ResolvedMoATarget = {
+  requested: { category: "moa-architect" },
+  agent: "sisyphus-junior",
+  category: "moa-architect",
+  model: { providerID: "openai", modelID: "gpt-5.5" },
+  fallbackChain: [],
+}
+
+function childInput(role: "advisor" | "aggregator", slot?: string): MoAChildLaunchInput {
+  return {
+    role,
+    target: resolvedTarget,
+    prompt: `${role} prompt`,
+    visibility: "internal",
+    notificationPolicy: "manual",
+    suppressTmuxSpawn: true,
+    toolPolicy: "none",
+    capabilityProfile: "moa-consultation-only",
+    continuationPolicy: "forbid",
+    orchestration: { kind: "moa", runId: "run-1", role, ...(slot !== undefined ? { slot } : {}) },
+  }
 }
 
 describe("MoA manager wiring", () => {
@@ -131,5 +186,56 @@ describe("MoA manager wiring", () => {
     releaseShutdown?.()
     await disposePromise
     expect(shutdownFinished).toBe(true)
+  })
+
+  test.each([
+    ["visualization defaults off", false, true],
+    ["tmux is unavailable", true, false],
+  ] as const)("#given %s #when a MoA advisor launches #then no observer callback is installed", async (
+    _caseName,
+    tmuxVisualization,
+    tmuxEnabled,
+  ) => {
+    const moaManager: MoAManager = {
+      run: async () => ({ runId: "unused", status: "failed", advisorResults: [] }),
+      cancel: async () => false,
+      getRun: () => undefined,
+      shutdown: async () => {},
+    }
+    const harness = createHarness(moaManager)
+    harness.managers(true, tmuxVisualization, tmuxEnabled)
+    const factoryOptions = harness.factoryCalls[0]
+    if (factoryOptions === undefined) throw new Error("MoA manager factory was not called")
+    const adapter = factoryOptions.createAdapter({ sessionID: "parent", messageID: "message" })
+
+    await adapter.launchChild(childInput("advisor", "architect"))
+
+    expect(moaLaunchInputs[0]?.onSessionCreated).toBeUndefined()
+    expect(observedSessions).toEqual([])
+  })
+
+  test("#given visualization and tmux are enabled #when advisor and aggregator finish #then both observer panes open and close", async () => {
+    const moaManager: MoAManager = {
+      run: async () => ({ runId: "unused", status: "failed", advisorResults: [] }),
+      cancel: async () => false,
+      getRun: () => undefined,
+      shutdown: async () => {},
+    }
+    const harness = createHarness(moaManager)
+    harness.managers(true, true, true)
+    const factoryOptions = harness.factoryCalls[0]
+    if (factoryOptions === undefined) throw new Error("MoA manager factory was not called")
+    const adapter = factoryOptions.createAdapter({ sessionID: "parent", messageID: "message" })
+
+    const advisor = await adapter.launchChild(childInput("advisor", "architect"))
+    const aggregator = await adapter.launchChild(childInput("aggregator"))
+    await adapter.waitForChild(advisor, 100, new AbortController().signal)
+    await adapter.waitForChild(aggregator, 100, new AbortController().signal)
+
+    expect(observedSessions).toEqual([
+      { sessionId: "session-1", title: "MoA advisor: architect" },
+      { sessionId: "session-2", title: "MoA aggregator: synthesis" },
+    ])
+    expect(closedSessions).toEqual(["session-1", "session-2"])
   })
 })

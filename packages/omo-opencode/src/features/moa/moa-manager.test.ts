@@ -21,6 +21,8 @@ class FakeAdapter implements MoAExecutionAdapter {
   readonly launches: MoAChildLaunchInput[] = []
   readonly cancellations: string[] = []
   firstLaunchResolutionCount = 0
+  aggregatorStatus: MoAChildStatus = "completed"
+  waitFailureSlot: string | undefined
   private resolutionCount = 0
   private readonly targetByTask = new Map<string, ResolvedMoATarget>()
   private launchReadyResolve: (() => void) | undefined
@@ -54,12 +56,15 @@ class FakeAdapter implements MoAExecutionAdapter {
   async waitForChild(handle: MoAChildHandle, _timeoutMs: number, signal: AbortSignal): Promise<MoAChildResult> {
     const target = this.targetByTask.get(handle.taskId)
     if (target === undefined) throw new Error(`Missing target for ${handle.taskId}`)
+    if (this.waitFailureSlot !== undefined && handle.slot === this.waitFailureSlot) {
+      throw new Error(`wait failed for ${handle.slot}`)
+    }
     if (this.blockUntilAbort && handle.role === "advisor") {
       await new Promise<void>((resolve) => signal.addEventListener("abort", () => resolve(), { once: true }))
       return { handle, status: "cancelled", finalModel: target.model, fallbackCount: 0 }
     }
     const status = handle.role === "aggregator"
-      ? "completed"
+      ? this.aggregatorStatus
       : this.advisorStatuses[handle.slot ?? ""] ?? "completed"
     return {
       handle,
@@ -204,5 +209,26 @@ describe("createMoAManager", () => {
     // then
     expect(result.status).toBe("failed")
     expect(adapter.launches).toHaveLength(0)
+  })
+
+  test("#given aggregator wait times out #when consultation terminates #then the aggregator child is cancelled", async () => {
+    const adapter = new FakeAdapter()
+    adapter.aggregatorStatus = "timed_out"
+
+    const result = await createManager(adapter).run({ prompt: "Review decision" }, parent)
+
+    expect(result.status).toBe("timed_out")
+    expect(adapter.cancellations).toContain("task-4")
+  })
+
+  test("#given an advisor wait throws after all launches #when run catches the error #then every launched advisor is cancelled", async () => {
+    const adapter = new FakeAdapter()
+    adapter.waitFailureSlot = "advisor-c"
+
+    const result = await createManager(adapter).run({ prompt: "Review decision" }, parent)
+
+    expect(result.status).toBe("failed")
+    expect(adapter.launches).toHaveLength(3)
+    expect(adapter.cancellations).toEqual(["task-1", "task-2", "task-3"])
   })
 })

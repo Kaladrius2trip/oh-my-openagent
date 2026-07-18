@@ -1,7 +1,10 @@
+export type TmuxPaneMode = "interactive" | "observe-only"
+
 export interface TrackedSession {
   sessionId: string
   paneId: string
   description: string
+  mode: TmuxPaneMode
   attachActivated: boolean
   attachActivatedAt?: Date
   createdAt: Date
