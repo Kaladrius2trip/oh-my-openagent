@@ -111,6 +111,7 @@ function flattenFallbackChain(chain: readonly FallbackEntry[]): ResolvedMoATarge
     modelID: entry.model,
     ...(entry.variant !== undefined ? { variant: entry.variant } : {}),
     ...(entry.reasoningEffort !== undefined ? { reasoningEffort: entry.reasoningEffort } : {}),
+    ...(entry.temperature !== undefined ? { temperature: entry.temperature } : {}),
   })))
 }
 
