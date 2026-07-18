@@ -1,6 +1,6 @@
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { TmuxConfig } from "../../config/schema"
-import type { TrackedSession, CapacityConfig, WindowState } from "./types"
+import type { TrackedSession, CapacityConfig, TmuxPaneMode, WindowState } from "./types"
 import * as sharedModule from "../../shared"
 import { resolveSessionEventID } from "../../shared/event-session-id"
 import {
@@ -13,13 +13,18 @@ import {
   getIsolatedSessionName,
   sweepStaleOmoAgentSessions,
   sweepStaleOmoAttachPanes,
+  activateReadOnlyTmuxPane,
   activateTmuxPane,
 } from "../../shared/tmux"
 import { queryWindowState as defaultQueryWindowState } from "./pane-state-querier"
 import { decideSpawnActions, decideCloseAction, type SessionMapping } from "./decision-engine"
 import { executeActions, executeAction } from "./action-executor"
 import { TmuxPollingManager } from "./polling-manager"
-import { createTrackedSession, markTrackedSessionClosePending } from "./tracked-session-state"
+import {
+  createTrackedSession,
+  markTrackedSessionActivated,
+  markTrackedSessionClosePending,
+} from "./tracked-session-state"
 import { waitForSessionReady } from "./session-ready-waiter"
 import { isAttachableSessionStatus } from "./attachable-session-status"
 import { parseSessionStatusResponse } from "./session-status-parser"
@@ -32,6 +37,7 @@ type SpawnStage =
   | "deferred.attach"
   | "deferred.isolated-container"
   | "session.created"
+  | "session.observe"
   | "session.idle.retry"
 
 interface SessionCreatedEvent {
@@ -44,6 +50,7 @@ interface DeferredSession {
   title: string
   queuedAt: Date
   retryIsolatedContainer: boolean
+  mode: TmuxPaneMode
 }
 
 export interface TmuxUtilDeps {
@@ -53,6 +60,8 @@ export interface TmuxUtilDeps {
   waitForSessionReady: (params: { client: OpencodeClient; sessionId: string }) => Promise<boolean>
   executeActions: typeof executeActions
   executeAction: typeof executeAction
+  activateTmuxPane: typeof activateTmuxPane
+  activateReadOnlyTmuxPane: typeof activateReadOnlyTmuxPane
   log: typeof sharedModule.log
 }
 
@@ -82,6 +91,8 @@ const defaultTmuxDeps: TmuxUtilDeps = {
   waitForSessionReady,
   executeActions,
   executeAction,
+  activateTmuxPane,
+  activateReadOnlyTmuxPane,
   log: sharedModule.log,
 }
 
@@ -377,7 +388,40 @@ export class TmuxSessionManager {
   }
 
   private async activateTrackedSessionPane(tracked: TrackedSession): Promise<boolean> {
-    return activateTmuxPane(tracked.paneId, tracked.sessionId, this.serverUrl, this.projectDirectory)
+    if (tracked.mode === "observe-only") {
+      return this.deps.activateReadOnlyTmuxPane(
+        tracked.paneId,
+        tracked.sessionId,
+        this.serverUrl,
+        this.projectDirectory,
+      )
+    }
+    return this.deps.activateTmuxPane(
+      tracked.paneId,
+      tracked.sessionId,
+      this.serverUrl,
+      this.projectDirectory,
+    )
+  }
+
+  private async addTrackedSession(
+    session: FailedReadinessSessionSeed,
+    paneId: string,
+  ): Promise<TrackedSession> {
+    const tracked = createTrackedSession({
+      sessionId: session.sessionId,
+      paneId,
+      description: session.title,
+      mode: session.mode,
+    })
+    this.sessions.set(session.sessionId, tracked)
+
+    if (tracked.mode === "observe-only" && await this.activateTrackedSessionPane(tracked)) {
+      markTrackedSessionActivated(tracked)
+    }
+
+    this.pollingManager.startPolling()
+    return tracked
   }
 
   private windowStateContainsPane(state: WindowState, paneId: string): boolean {
@@ -583,6 +627,7 @@ export class TmuxSessionManager {
   private enqueueDeferredSession(
     sessionId: string,
     title: string,
+    mode: TmuxPaneMode,
     retryIsolatedContainer = false,
   ): void {
     if (this.shouldSkipRespawnAfterPollingClose(sessionId, "deferred enqueue")) {
@@ -613,6 +658,7 @@ export class TmuxSessionManager {
       title,
       queuedAt: new Date(),
       retryIsolatedContainer,
+      mode,
     })
     this.deferredQueue.push(sessionId)
     this.deps.log("[tmux-session-manager] deferred session queued", {
@@ -730,7 +776,7 @@ export class TmuxSessionManager {
     rememberReadinessFailure: boolean
   }): Promise<void> {
     const { session, stage, rememberReadinessFailure } = args
-    const { sessionId, title } = session
+    const { sessionId, title, mode } = session
 
     const readyForSpawn = await this.ensureSessionReadyBeforeSpawn(sessionId, stage)
     if (!readyForSpawn) {
@@ -757,11 +803,7 @@ export class TmuxSessionManager {
 
     const isolatedPaneId = await this.spawnInIsolatedContainer(sessionId, title)
     if (isolatedPaneId) {
-      this.sessions.set(
-        sessionId,
-        createTrackedSession({ sessionId, paneId: isolatedPaneId, description: title }),
-      )
-      this.pollingManager.startPolling()
+      await this.addTrackedSession(session, isolatedPaneId)
       this.deps.log("[tmux-session-manager] first subagent spawned in isolated window", {
         sessionId,
         paneId: isolatedPaneId,
@@ -771,7 +813,7 @@ export class TmuxSessionManager {
 
     if (this.isIsolated() && !this.isolatedWindowPaneId) {
       this.deps.log("[tmux-session-manager] isolated container failed, deferring session for retry", { sessionId })
-      this.enqueueDeferredSession(sessionId, title, true)
+      this.enqueueDeferredSession(sessionId, title, mode, true)
       return
     }
     const sourcePaneId = this.getEffectiveSourcePaneId()
@@ -783,7 +825,7 @@ export class TmuxSessionManager {
     const state = await this.deps.queryWindowState(sourcePaneId)
     if (!state) {
       this.deps.log("[tmux-session-manager] failed to query window state, deferring session")
-      this.enqueueDeferredSession(sessionId, title)
+      this.enqueueDeferredSession(sessionId, title, mode)
       return
     }
 
@@ -821,7 +863,7 @@ export class TmuxSessionManager {
 
     if (!decision.canSpawn) {
       this.deps.log("[tmux-session-manager] cannot spawn", { reason: decision.reason })
-      this.enqueueDeferredSession(sessionId, title)
+      this.enqueueDeferredSession(sessionId, title, mode)
       return
     }
 
@@ -853,20 +895,12 @@ export class TmuxSessionManager {
     }
 
     if (result.success && result.spawnedPaneId) {
-      this.sessions.set(
-        sessionId,
-        createTrackedSession({
-          sessionId,
-          paneId: result.spawnedPaneId,
-          description: title,
-        }),
-      )
+      await this.addTrackedSession(session, result.spawnedPaneId)
       this.failedReadinessCache.clear(sessionId)
       this.deps.log("[tmux-session-manager] pane spawned and tracked", {
         sessionId,
         paneId: result.spawnedPaneId,
       })
-      this.pollingManager.startPolling()
       return
     }
 
@@ -882,7 +916,7 @@ export class TmuxSessionManager {
     this.deps.log("[tmux-session-manager] re-queueing deferred session after spawn failure", {
       sessionId,
     })
-    this.enqueueDeferredSession(sessionId, title)
+    this.enqueueDeferredSession(sessionId, title, mode)
 
     if (result.spawnedPaneId) {
       await this.deps.executeAction(
@@ -996,16 +1030,8 @@ export class TmuxSessionManager {
 
         const isolatedPaneId = await this.spawnInIsolatedContainer(sessionId, deferred.title)
         if (isolatedPaneId) {
-          this.sessions.set(
-            sessionId,
-            createTrackedSession({
-              sessionId,
-              paneId: isolatedPaneId,
-              description: deferred.title,
-            }),
-          )
+          await this.addTrackedSession(deferred, isolatedPaneId)
           this.removeDeferredSession(sessionId)
-          this.pollingManager.startPolling()
           this.deps.log("[tmux-session-manager] deferred session attached in isolated window", {
             sessionId,
             paneId: isolatedPaneId,
@@ -1078,16 +1104,8 @@ export class TmuxSessionManager {
         return
       }
 
-      this.sessions.set(
-        sessionId,
-        createTrackedSession({
-          sessionId,
-          paneId: result.spawnedPaneId,
-          description: deferred.title,
-        }),
-      )
+      await this.addTrackedSession(deferred, result.spawnedPaneId)
       this.removeDeferredSession(sessionId)
-      this.pollingManager.startPolling()
       this.deps.log("[tmux-session-manager] deferred session attached", {
         sessionId,
         paneId: result.spawnedPaneId,
@@ -1095,6 +1113,42 @@ export class TmuxSessionManager {
     } finally {
       this.pendingSessions.delete(sessionId)
     }
+  }
+
+  private async startTrackingSession(
+    session: FailedReadinessSessionSeed,
+    stage: SpawnStage,
+  ): Promise<void> {
+    if (!this.sourcePaneId) {
+      this.deps.log("[tmux-session-manager] no source pane id")
+      return
+    }
+
+    if (!this.beginPendingSession(session.sessionId)) return
+
+    try {
+      await this.retryPendingCloses()
+      await this.enqueueSpawn(async () => {
+        try {
+          await this.spawnPendingSession({
+            session,
+            stage,
+            rememberReadinessFailure: true,
+          })
+        } finally {
+          this.pendingSessions.delete(session.sessionId)
+        }
+      })
+    } finally {
+      this.pendingSessions.delete(session.sessionId)
+    }
+  }
+
+  async observeSession(sessionId: string, title: string): Promise<void> {
+    if (!this.isEnabled()) return
+
+    await this.sweepStaleIsolatedSessionsOnce()
+    await this.startTrackingSession({ sessionId, title, mode: "observe-only" }, "session.observe")
   }
 
   async onSessionCreated(event: SessionCreatedEvent): Promise<void> {
@@ -1131,35 +1185,7 @@ export class TmuxSessionManager {
     }
 
     const title = info.title ?? "Subagent"
-
-    if (!this.sourcePaneId) {
-      this.deps.log("[tmux-session-manager] no source pane id")
-      return
-    }
-
-    if (!this.beginPendingSession(sessionId)) {
-      return
-    }
-
-    try {
-      await this.retryPendingCloses()
-
-      const session = { sessionId, title }
-
-      await this.enqueueSpawn(async () => {
-        try {
-          await this.spawnPendingSession({
-            session,
-            stage: "session.created",
-            rememberReadinessFailure: true,
-          })
-        } finally {
-          this.pendingSessions.delete(sessionId)
-        }
-      })
-    } finally {
-      this.pendingSessions.delete(sessionId)
-    }
+    await this.startTrackingSession({ sessionId, title, mode: "interactive" }, "session.created")
   }
 
   private async enqueueSpawn(run: () => Promise<void>): Promise<void> {

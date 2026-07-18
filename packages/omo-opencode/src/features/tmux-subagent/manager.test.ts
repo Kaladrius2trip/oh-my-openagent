@@ -93,6 +93,8 @@ const mockSweepStaleOmoAgentSessions = mock<() => Promise<number>>(async () => 0
 const mockSweepStaleOmoAttachPanes = mock<() => Promise<number>>(async () => 0)
 const mockIsInsideTmux = mock<() => boolean>(() => true)
 const mockGetCurrentPaneId = mock<() => string | undefined>(() => '%0')
+const mockActivateTmuxPane = mock(async () => true)
+const mockActivateReadOnlyTmuxPane = mock(async () => true)
 
 const mockTmuxDeps: TmuxUtilDeps = {
   isInsideTmux: mockIsInsideTmux,
@@ -101,6 +103,8 @@ const mockTmuxDeps: TmuxUtilDeps = {
   waitForSessionReady: mockWaitForSessionReady,
   executeActions: mockExecuteActions,
   executeAction: mockExecuteAction,
+  activateTmuxPane: mockActivateTmuxPane,
+  activateReadOnlyTmuxPane: mockActivateReadOnlyTmuxPane,
   log: (...args) => sharedModule.log(...args),
 }
 
@@ -132,6 +136,8 @@ function registerModuleMocks(): void {
       getIsolatedSessionName: (pid: number = 12345) => `omo-agents-${pid}`,
       sweepStaleOmoAgentSessions: mockSweepStaleOmoAgentSessions,
       sweepStaleOmoAttachPanes: mockSweepStaleOmoAttachPanes,
+      activateTmuxPane: mockActivateTmuxPane,
+      activateReadOnlyTmuxPane: mockActivateReadOnlyTmuxPane,
     }
   })
 }
@@ -259,6 +265,8 @@ describe('TmuxSessionManager', () => {
     mockSweepStaleOmoAttachPanes.mockClear()
     mockIsInsideTmux.mockClear()
     mockGetCurrentPaneId.mockClear()
+    mockActivateTmuxPane.mockClear()
+    mockActivateReadOnlyTmuxPane.mockClear()
     trackedSessions.clear()
     readySessions.clear()
 

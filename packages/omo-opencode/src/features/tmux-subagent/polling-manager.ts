@@ -9,6 +9,7 @@ import type { TrackedSession, WindowState } from "./types"
 import { log } from "../../shared"
 import { resolveMessageEventSessionID } from "../../shared/event-session-id"
 import { parseSessionStatusResponse } from "./session-status-parser"
+import { markTrackedSessionActivated } from "./tracked-session-state"
 
 const MIN_STABILITY_TIME_MS = 10 * 1000
 const STABLE_POLLS_REQUIRED = 3
@@ -233,12 +234,12 @@ export class TmuxPollingManager {
 
     const state = await this.getWindowState().catch(() => null)
     if (!state) return
-    if (this.canActivatePane && !this.canActivatePane(state)) {
+    const interactiveActivationAllowed = !this.canActivatePane || this.canActivatePane(state)
+    if (!interactiveActivationAllowed) {
       log("[tmux-session-manager] activation gate blocked auto-attach", {
         windowActive: state.windowActive,
         sessionAttached: state.sessionAttached,
       })
-      return
     }
 
     const panes = [state.mainPane, ...state.agentPanes].filter((pane): pane is NonNullable<typeof pane> => Boolean(pane))
@@ -247,15 +248,11 @@ export class TmuxPollingManager {
 
     for (const tracked of this.sessions.values()) {
       if (tracked.attachActivated) continue
-      if (!activePaneIds.has(tracked.paneId)) continue
+      if (tracked.mode !== "observe-only" && (!interactiveActivationAllowed || !activePaneIds.has(tracked.paneId))) continue
 
       const activated = await this.activateSessionPane(tracked)
       if (activated) {
-        tracked.attachActivated = true
-        tracked.attachActivatedAt = new Date()
-        tracked.lastSeenAt = new Date()
-        tracked.stableIdlePolls = 0
-        tracked.observedIdleActivityVersion = tracked.activityVersion
+        markTrackedSessionActivated(tracked)
         log("[tmux-session-manager] activated focused pane", {
           sessionId: tracked.sessionId,
           paneId: tracked.paneId,
