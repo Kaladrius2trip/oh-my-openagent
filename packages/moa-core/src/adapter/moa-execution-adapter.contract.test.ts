@@ -1,3 +1,5 @@
+/// <reference types="bun-types" />
+
 import { describe, expect, test } from "bun:test"
 import type { MoATarget } from "../types"
 import {
@@ -5,6 +7,7 @@ import {
   type MoAChildHandle,
   type MoAChildLaunchInput,
   type MoAChildResult,
+  type MoAChildWaitTimeouts,
   type MoAExecutionAdapter,
   type ResolvedMoATarget,
 } from "./moa-execution-adapter"
@@ -34,23 +37,39 @@ function consultationLaunch(target: ResolvedMoATarget, runId: string): MoAChildL
   }
 }
 
-function createFakeAdapter(): MoAExecutionAdapter & { launches: MoAChildLaunchInput[]; cancellations: string[] } {
+function createFakeAdapter(): MoAExecutionAdapter & {
+  launches: MoAChildLaunchInput[]
+  waits: MoAChildWaitTimeouts[]
+  cancellations: string[]
+} {
   const launches: MoAChildLaunchInput[] = []
+  const waits: MoAChildWaitTimeouts[] = []
   const cancellations: string[] = []
   let counter = 0
   return {
     launches,
+    waits,
     cancellations,
     async resolveTarget(target: MoATarget): Promise<ResolvedMoATarget> {
-      const category = "category" in target ? target.category : target.subagent_type
-      return resolved(category, "anthropic", "claude-opus-4-7")
+      if ("category" in target && target.category !== undefined) {
+        return resolved(target.category, "anthropic", "claude-opus-4-7")
+      }
+      if ("subagent_type" in target && target.subagent_type !== undefined) {
+        return resolved(target.subagent_type, "anthropic", "claude-opus-4-7")
+      }
+      throw new Error("MoA target missing")
     },
     async launchChild(input: MoAChildLaunchInput): Promise<MoAChildHandle> {
       launches.push(input)
       counter += 1
-      return { taskId: `task-${counter}`, role: input.role, slot: input.orchestration.slot }
+      return {
+        taskId: `task-${counter}`,
+        role: input.role,
+        ...(input.orchestration.slot !== undefined ? { slot: input.orchestration.slot } : {}),
+      }
     },
-    async waitForChild(handle: MoAChildHandle): Promise<MoAChildResult> {
+    async waitForChild(handle: MoAChildHandle, timeouts: MoAChildWaitTimeouts): Promise<MoAChildResult> {
+      waits.push(timeouts)
       return {
         handle,
         status: "completed",
@@ -70,12 +89,14 @@ describe("MoAExecutionAdapter port", () => {
     const adapter = createFakeAdapter()
     const target = await adapter.resolveTarget({ category: "moa-architect" })
     const handle = await adapter.launchChild(consultationLaunch(target, "run-1"))
-    const result = await adapter.waitForChild(handle, 1000, new AbortController().signal)
+    const timeouts = { baseMs: 1_000, idleWindowMs: 60_000, maxWallMs: 4_000 }
+    const result = await adapter.waitForChild(handle, timeouts, new AbortController().signal)
     await adapter.cancelChild(handle, "done")
 
     expect(target.model.providerID).toBe("anthropic")
     expect(handle.taskId).toBe("task-1")
     expect(result.status).toBe("completed")
+    expect(adapter.waits).toEqual([timeouts])
     expect(adapter.cancellations).toEqual(["task-1"])
   })
 
@@ -94,8 +115,8 @@ describe("MoAExecutionAdapter port", () => {
   })
 
   test("#given a launch input missing a control #when asserted #then it throws", () => {
-    const input = consultationLaunch(resolved("moa-architect", "openai", "gpt-5.5"), "run-1")
-    const tampered = { ...input, continuationPolicy: "allow" } as unknown as MoAChildLaunchInput
+    const tampered = consultationLaunch(resolved("moa-architect", "openai", "gpt-5.5"), "run-1")
+    Reflect.set(tampered, "continuationPolicy", "allow")
 
     expect(() => assertConsultationOnlyLaunch(tampered)).toThrow()
   })

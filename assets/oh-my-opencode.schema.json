@@ -6567,6 +6567,17 @@
                 "exclusiveMinimum": 0,
                 "maximum": 9007199254740991
               },
+              "idle_window_ms": {
+                "default": 60000,
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "max_wall_ms": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
               "include_failures_in_aggregation": {
                 "type": "boolean"
               },
@@ -6576,7 +6587,8 @@
             },
             "required": [
               "advisors",
-              "aggregator"
+              "aggregator",
+              "idle_window_ms"
             ],
             "additionalProperties": false
           }

@@ -73,7 +73,11 @@ describe("MoA execution adapter with BackgroundManager", () => {
 
       // when
       manager.handleEvent({ type: "session.idle", properties: { sessionID: task.sessionId } })
-      const result = await adapter.waitForChild(handle, 1_000, new AbortController().signal)
+      const result = await adapter.waitForChild(
+        handle,
+        { baseMs: 1_000, idleWindowMs: 60_000, maxWallMs: 4_000 },
+        new AbortController().signal,
+      )
 
       // then
       expect(manager.getTask(handle.taskId)?.result).toBeUndefined()

@@ -48,6 +48,12 @@ export interface MoAChildHandle {
   slot?: string
 }
 
+export interface MoAChildWaitTimeouts {
+  readonly baseMs: number
+  readonly idleWindowMs: number
+  readonly maxWallMs: number
+}
+
 export type MoAChildStatus = "completed" | "failed" | "timed_out" | "cancelled"
 
 export interface MoAChildResult {
@@ -65,7 +71,7 @@ export interface MoAChildResult {
 export interface MoAExecutionAdapter {
   resolveTarget(target: MoATarget): Promise<ResolvedMoATarget>
   launchChild(input: MoAChildLaunchInput): Promise<MoAChildHandle>
-  waitForChild(handle: MoAChildHandle, timeoutMs: number, signal: AbortSignal): Promise<MoAChildResult>
+  waitForChild(handle: MoAChildHandle, timeouts: MoAChildWaitTimeouts, signal: AbortSignal): Promise<MoAChildResult>
   cancelChild(handle: MoAChildHandle, reason: string): Promise<void>
 }
 

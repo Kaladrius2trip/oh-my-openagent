@@ -48,6 +48,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-1" }
         },
         getTask: () => task("bg-1", "completed"),
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
@@ -97,6 +98,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: `bg-${taskCount}`, sessionId: `session-${taskCount}` }
         },
         getTask: (taskId) => task(taskId, "completed"),
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
@@ -135,6 +137,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-new" }
         },
         getTask: () => task("bg-1", "completed"),
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
@@ -147,7 +150,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
     })
 
     const handle = await adapter.launchChild(childInput("advisor", "architect"))
-    await adapter.waitForChild(handle, 100, new AbortController().signal)
+    await adapter.waitForChild(handle, { baseMs: 100, idleWindowMs: 60, maxWallMs: 400 }, new AbortController().signal)
 
     expect(events).toEqual([
       "open:session-old",
@@ -177,6 +180,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-1" }
         },
         getTask: () => task("bg-1", backgroundStatus),
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
@@ -192,7 +196,11 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
     const controller = new AbortController()
     if (aborted) controller.abort("cancelled")
 
-    const result = await adapter.waitForChild(handle, timeoutMs, controller.signal)
+    const result = await adapter.waitForChild(
+      handle,
+      { baseMs: timeoutMs, idleWindowMs: 60, maxWallMs: timeoutMs * 4 },
+      controller.signal,
+    )
 
     expect(result.status).toBe(expectedStatus)
     expect(closes).toEqual(["session-1"])
@@ -209,6 +217,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-1" }
         },
         getTask: () => task("bg-1", "cancelled"),
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
@@ -222,7 +231,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
     const handle = await adapter.launchChild(childInput("advisor", "architect"))
 
     await adapter.cancelChild(handle, "MoA manager shutdown")
-    await adapter.waitForChild(handle, 100, new AbortController().signal)
+    await adapter.waitForChild(handle, { baseMs: 100, idleWindowMs: 60, maxWallMs: 400 }, new AbortController().signal)
     const lateSessionCallback = onSessionCreated
     if (lateSessionCallback !== undefined) {
       await Promise.resolve(lateSessionCallback("session-late"))
@@ -240,6 +249,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           throw new Error("launch failed")
         },
         getTask: () => undefined,
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },

@@ -296,6 +296,7 @@ export class BackgroundManager {
   private parentWakeTextDeltaBuffers: Map<string, string> = new Map()
   private observedOutputSessions: Set<string> = new Set()
   private observedIncompleteTodosBySession: Map<string, boolean> = new Map()
+  private readonly taskLastActivityBySession = new Map<string, number>()
   private rootDescendantCounts: Map<string, number>
   private preStartDescendantReservations: Set<string>
   private enableParentSessionNotifications: boolean
@@ -455,10 +456,22 @@ export class BackgroundManager {
   }
 
   private removeTask(task: BackgroundTask): void {
+    this.clearTaskLastActivity(task)
     this.archiveCompletedTask(task)
     archiveBackgroundTask(task)
     this.tasks.delete(task.id)
     this.removeTaskFromParentIndex(task.id, task.parentSessionId)
+  }
+
+  private clearTaskLastActivity(task: BackgroundTask): void {
+    if (task.sessionId !== undefined) {
+      this.taskLastActivityBySession.delete(task.sessionId)
+    }
+    for (const attempt of task.attempts ?? []) {
+      if (attempt.sessionId !== undefined) {
+        this.taskLastActivityBySession.delete(attempt.sessionId)
+      }
+    }
   }
 
   private archiveCompletedTask(task: BackgroundTask): void {
@@ -1040,6 +1053,7 @@ The fallback retry session is now created and can be inspected directly.
           existingTask.error = terminalError
           existingTask.completedAt = new Date()
         }
+        this.clearTaskLastActivity(existingTask)
         if (existingTask.rootSessionId) {
           this.unregisterRootDescendant(existingTask.rootSessionId)
         }
@@ -1087,6 +1101,11 @@ The fallback retry session is now created and can be inspected directly.
 
   getTask(id: string): BackgroundTask | undefined {
     return this.tasks.get(id) ?? this.completedTaskArchive.get(id) ?? getRegisteredBackgroundTask(id)
+  }
+
+  getTaskLastActivityAt(taskId: string): number | undefined {
+    const sessionId = this.getTask(taskId)?.sessionId
+    return sessionId === undefined ? undefined : this.taskLastActivityBySession.get(sessionId)
   }
 
   async readTaskOutput(taskId: string): Promise<BackgroundTaskOutputResult> {
@@ -1529,6 +1548,7 @@ The fallback retry session is now created and can be inspected directly.
       const errorMessage = errorInfo.message ?? (error instanceof Error ? error.message : String(error))
       existingTask.error = errorMessage
       existingTask.completedAt = new Date()
+      this.clearTaskLastActivity(existingTask)
       if (existingTask.rootSessionId) {
         this.unregisterRootDescendant(existingTask.rootSessionId)
       }
@@ -1766,6 +1786,7 @@ The fallback retry session is now created and can be inspected directly.
       const { task } = resolved
 
       if (hasParentWakeOutput) {
+        this.taskLastActivityBySession.set(sessionID, partInfo?.activityTime?.getTime() ?? Date.now())
         this.markSessionOutputObserved(sessionID)
       }
 
@@ -1926,6 +1947,7 @@ The fallback retry session is now created and can be inspected directly.
     if (event.type === "session.deleted") {
       const sessionID = resolveSessionEventID(props)
       if (!sessionID) return
+      this.taskLastActivityBySession.delete(sessionID)
       clearContinuationSessionMetadata(sessionID)
       this.clearSessionOutputObserved(sessionID)
       this.clearSessionTodoObservation(sessionID)
@@ -2046,6 +2068,7 @@ The fallback retry session is now created and can be inspected directly.
       task.error = errorMessage
       task.completedAt = new Date()
     }
+    this.clearTaskLastActivity(task)
 
     if (task.rootSessionId) {
       this.unregisterRootDescendant(task.rootSessionId)
@@ -2168,6 +2191,7 @@ The fallback retry session is now created and can be inspected directly.
       task.error = errorMsg
       task.completedAt = new Date()
     }
+    this.clearTaskLastActivity(task)
     if (task.rootSessionId) {
       this.unregisterRootDescendant(task.rootSessionId)
     }
@@ -2511,6 +2535,7 @@ The task was re-queued on a fallback model after a retryable failure.
         task.error = reason
       }
     }
+    this.clearTaskLastActivity(task)
     if (wasRunning && task.rootSessionId) {
       this.unregisterRootDescendant(task.rootSessionId)
     }
@@ -2642,6 +2667,7 @@ The task was re-queued on a fallback model after a retryable failure.
         task.status = "completed"
         task.completedAt = new Date()
       }
+      this.clearTaskLastActivity(task)
       this.taskHistory.record(task.parentSessionId, { id: task.id, sessionID: task.sessionId, agent: task.agent, description: task.description, status: "completed", category: task.category, startedAt: task.startedAt, completedAt: task.completedAt })
 
       if (task.rootSessionId) {
@@ -3307,6 +3333,7 @@ The task was re-queued on a fallback model after a retryable failure.
     this.processingKeys.clear()
     this.taskHistory.clearAll()
     this.completedTaskSummaries.clear()
+    this.taskLastActivityBySession.clear()
     this.unregisterProcessCleanup()
     log("[background-agent] Shutdown complete")
 

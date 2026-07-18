@@ -2,6 +2,7 @@ import type {
   MoAChildHandle,
   MoAChildLaunchInput,
   MoAChildResult,
+  MoAChildWaitTimeouts,
   MoAExecutionAdapter,
   ResolvedMoATarget,
 } from "@oh-my-opencode/moa-core/adapter"
@@ -14,6 +15,7 @@ import { MoAChildSessionObserver, type MoASessionObserver } from "./moa-session-
 export interface MoABackgroundManager {
   launch(input: LaunchInput): Promise<Pick<BackgroundTask, "id" | "sessionId">>
   getTask(taskId: string): Partial<BackgroundTask> & Pick<BackgroundTask, "id" | "status"> | undefined
+  getTaskLastActivityAt(taskId: string): number | undefined
   readTaskOutput(taskId: string): Promise<BackgroundTaskOutputResult>
   cancelTask(
     taskId: string,
@@ -114,11 +116,13 @@ function waitForTask(
   manager: MoABackgroundManager,
   handle: MoAChildHandle,
   resolvedTarget: ResolvedMoATarget | undefined,
-  timeoutMs: number,
+  timeouts: MoAChildWaitTimeouts,
   signal: AbortSignal,
   pollIntervalMs: number,
 ): Promise<MoAChildResult> {
-  const deadline = Date.now() + timeoutMs
+  const startedAt = Date.now()
+  const hardDeadline = startedAt + timeouts.maxWallMs
+  let deadline = Math.min(startedAt + timeouts.baseMs, hardDeadline)
   return new Promise((resolve) => {
     let timer: ReturnType<typeof setTimeout> | undefined
     let settled = false
@@ -176,11 +180,20 @@ function waitForTask(
         finish(childResult({ handle, status, task, resolvedTarget }))
         return
       }
-      const remaining = deadline - Date.now()
-      if (remaining <= 0) {
+      const now = Date.now()
+      if (now >= hardDeadline) {
         finish(childResult({ handle, status: "timed_out", task, resolvedTarget }))
         return
       }
+      if (now >= deadline) {
+        const lastActivityAt = manager.getTaskLastActivityAt(handle.taskId)
+        if (lastActivityAt === undefined || now - lastActivityAt >= timeouts.idleWindowMs) {
+          finish(childResult({ handle, status: "timed_out", task, resolvedTarget }))
+          return
+        }
+        deadline = Math.min(deadline + timeouts.idleWindowMs, hardDeadline)
+      }
+      const remaining = Math.min(deadline, hardDeadline) - now
       timer = setTimeout(check, Math.min(pollIntervalMs, remaining))
     }
     signal.addEventListener("abort", check, { once: true })
@@ -258,13 +271,13 @@ export function createMoAExecutionAdapter(options: {
         ...(input.orchestration.slot !== undefined ? { slot: input.orchestration.slot } : {}),
       }
     },
-    waitForChild: async (handle, timeoutMs, signal): Promise<MoAChildResult> => {
+    waitForChild: async (handle, timeouts, signal): Promise<MoAChildResult> => {
       try {
         return await waitForTask(
           options.backgroundManager,
           handle,
           resolvedTargets.get(handle.taskId),
-          timeoutMs,
+          timeouts,
           signal,
           pollIntervalMs,
         )

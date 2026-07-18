@@ -90,6 +90,8 @@ export interface MoAPresetConfig {
   min_successful_advisors?: number
   advisor_timeout_ms?: number
   aggregator_timeout_ms?: number
+  idle_window_ms?: number
+  max_wall_ms?: number
   include_failures_in_aggregation?: boolean
   return_advisor_outputs?: boolean
 }

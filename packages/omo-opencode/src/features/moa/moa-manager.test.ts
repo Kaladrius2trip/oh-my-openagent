@@ -3,10 +3,11 @@ import type {
   MoAChildHandle,
   MoAChildLaunchInput,
   MoAChildResult,
+  MoAChildWaitTimeouts,
   MoAExecutionAdapter,
   ResolvedMoATarget,
 } from "@oh-my-opencode/moa-core/adapter"
-import type { MoAChildStatus, MoATarget } from "@oh-my-opencode/moa-core"
+import type { MoAChildStatus, MoAPresetConfig, MoATarget } from "@oh-my-opencode/moa-core"
 
 import { createMoAManager } from "./moa-manager"
 
@@ -20,6 +21,7 @@ const models = {
 class FakeAdapter implements MoAExecutionAdapter {
   readonly launches: MoAChildLaunchInput[] = []
   readonly cancellations: string[] = []
+  readonly waits: MoAChildWaitTimeouts[] = []
   firstLaunchResolutionCount = 0
   aggregatorStatus: MoAChildStatus = "completed"
   waitFailureSlot: string | undefined
@@ -53,7 +55,8 @@ class FakeAdapter implements MoAExecutionAdapter {
     return { taskId, role: input.role, ...(input.orchestration.slot !== undefined ? { slot: input.orchestration.slot } : {}) }
   }
 
-  async waitForChild(handle: MoAChildHandle, _timeoutMs: number, signal: AbortSignal): Promise<MoAChildResult> {
+  async waitForChild(handle: MoAChildHandle, timeouts: MoAChildWaitTimeouts, signal: AbortSignal): Promise<MoAChildResult> {
+    this.waits.push(timeouts)
     const target = this.targetByTask.get(handle.taskId)
     if (target === undefined) throw new Error(`Missing target for ${handle.taskId}`)
     if (this.waitFailureSlot !== undefined && handle.slot === this.waitFailureSlot) {
@@ -80,7 +83,19 @@ class FakeAdapter implements MoAExecutionAdapter {
   }
 }
 
-function createManager(adapter: FakeAdapter) {
+type ActivityTimeoutConfig = Pick<
+  MoAPresetConfig,
+  "advisor_timeout_ms" | "aggregator_timeout_ms" | "idle_window_ms" | "max_wall_ms"
+>
+
+const explicitActivityTimeouts: ActivityTimeoutConfig = {
+  advisor_timeout_ms: 50,
+  aggregator_timeout_ms: 50,
+  idle_window_ms: 25,
+  max_wall_ms: 200,
+}
+
+function createManager(adapter: FakeAdapter, activityTimeouts: ActivityTimeoutConfig = explicitActivityTimeouts) {
   return createMoAManager({
     config: {
       enabled: true,
@@ -105,8 +120,7 @@ function createManager(adapter: FakeAdapter) {
             on_effective_violation: "degrade",
           },
           min_successful_advisors: 2,
-          advisor_timeout_ms: 50,
-          aggregator_timeout_ms: 50,
+          ...activityTimeouts,
         },
       },
     },
@@ -144,6 +158,39 @@ describe("createMoAManager", () => {
     const aggregator = adapter.launches.find((launch) => launch.role === "aggregator")
     expect(advisor?.temperature).toBe(0.8)
     expect(aggregator?.temperature).toBe(0.2)
+  })
+
+  test("#given preset activity timeout values #when consultation runs #then advisor and aggregator waits receive them uniformly", async () => {
+    // given
+    const adapter = new FakeAdapter()
+
+    // when
+    await createManager(adapter).run({ prompt: "Choose an architecture" }, parent)
+
+    // then
+    expect(adapter.waits).toEqual(Array.from({ length: 4 }, () => ({
+      baseMs: 50,
+      idleWindowMs: 25,
+      maxWallMs: 200,
+    })))
+  })
+
+  test("#given activity timeout extensions are omitted #when consultation runs #then each role derives its hard cap from its base", async () => {
+    // given
+    const adapter = new FakeAdapter()
+    const manager = createManager(adapter, {
+      advisor_timeout_ms: 20,
+      aggregator_timeout_ms: 30,
+    })
+
+    // when
+    await manager.run({ prompt: "Choose an architecture" }, parent)
+
+    // then
+    expect(adapter.waits).toEqual([
+      ...Array.from({ length: 3 }, () => ({ baseMs: 20, idleWindowMs: 60_000, maxWallMs: 80 })),
+      { baseMs: 30, idleWindowMs: 60_000, maxWallMs: 120 },
+    ])
   })
 
   test("#given one of three advisors fails with threshold two #when consultation runs #then result is degraded", async () => {
