@@ -95,6 +95,9 @@ describe("MoAConsultToolResult", () => {
       execution: {
         policy: "consultation_only",
         toolsExposed: 3,
+        advisorPolicies: [{ name: "researcher", policy: "read_only" }],
+        advisorToolsExposed: ["read", "grep", "glob"],
+        aggregatorToolsExposed: [],
         mutationsPerformed: 0,
         implementationAuthority: "parent",
       },
@@ -110,6 +113,8 @@ describe("MoAConsultToolResult", () => {
     }
 
     expect(result.execution.toolsExposed).toBe(3)
+    expect(result.execution.advisorToolsExposed).toEqual(["read", "grep", "glob"])
+    expect(result.execution.aggregatorToolsExposed).toEqual([])
     expect(result.execution.implementationAuthority).toBe("parent")
   })
 })
