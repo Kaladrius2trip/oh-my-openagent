@@ -16,6 +16,7 @@ const distinctCategories = {
 function preset(options: {
   readonly disabled?: boolean
   readonly duplicateNames?: boolean
+  readonly readOnly?: boolean
   readonly temperature?: number
 } = {}) {
   return {
@@ -25,7 +26,7 @@ function preset(options: {
       {
         name: "architect",
         category: "fixture-a",
-        tool_policy: "none",
+        tool_policy: options.readOnly === true ? "read_only" : "none",
         ...(options.temperature === undefined ? {} : { temperature: options.temperature }),
       },
       {
@@ -163,6 +164,20 @@ describe("evaluateMoAConfig", () => {
     // then
     expect(result.valid).toBe(true)
     expect(result.warnings.map((issue) => issue.code)).toContain("unknown_model_hint")
+  })
+
+  test("#given a read-only advisor #when evaluated #then policy and exact tool exposure are reported", () => {
+    const result = evaluateMoAConfig(candidate(preset({ readOnly: true })), dependencies)
+
+    expect(result.toolExposure).toEqual({
+      advisorPolicies: [
+        { name: "architect", policy: "read_only" },
+        { name: "validator", policy: "none" },
+      ],
+      advisorToolsExposed: ["read", "grep", "glob"],
+      aggregatorToolsExposed: [],
+      toolsExposed: 3,
+    })
   })
 
   test("#given fallback chains can collapse #when evaluated #then prediction warning does not block", () => {
