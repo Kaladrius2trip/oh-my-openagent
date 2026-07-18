@@ -87,11 +87,11 @@ function createManager(adapter: FakeAdapter) {
           execution_policy: "consultation_only",
           prompt_pack: "omo-hermes-derived-v1",
           advisors: [
-            { name: "advisor-a", category: "advisor-a", role: "architect", mode: "analysis", tool_policy: "none" },
+            { name: "advisor-a", category: "advisor-a", role: "architect", mode: "analysis", temperature: 0.8, tool_policy: "none" },
             { name: "advisor-b", category: "advisor-b", role: "validator", mode: "analysis", tool_policy: "none" },
             { name: "advisor-c", category: "advisor-c", role: "challenger", mode: "analysis", tool_policy: "none" },
           ],
-          aggregator: { category: "aggregator" },
+          aggregator: { category: "aggregator", temperature: 0.2 },
           context: { mode: "task_only" },
           diversity: {
             min_distinct_providers: 2,
@@ -125,6 +125,20 @@ describe("createMoAManager", () => {
     expect(result.synthesis).toBe("final synthesis")
     expect(adapter.firstLaunchResolutionCount).toBe(4)
     expect(adapter.launches.filter((launch) => launch.role === "aggregator")).toHaveLength(1)
+  })
+
+  test("#given per-role temperatures #when consultation runs #then advisor and aggregator launch inputs preserve them", async () => {
+    // given
+    const adapter = new FakeAdapter()
+
+    // when
+    await createManager(adapter).run({ prompt: "Choose an architecture" }, parent)
+
+    // then
+    const advisor = adapter.launches.find((launch) => launch.orchestration.slot === "advisor-a")
+    const aggregator = adapter.launches.find((launch) => launch.role === "aggregator")
+    expect(advisor?.temperature).toBe(0.8)
+    expect(aggregator?.temperature).toBe(0.2)
   })
 
   test("#given one of three advisors fails with threshold two #when consultation runs #then result is degraded", async () => {
