@@ -50,6 +50,28 @@ describe("BUILTIN_PRESETS", () => {
       }
     }
   })
+
+  test("#given built-in research tiers #when policies are inspected #then deep presets are read-only and fast presets stay tool-free", () => {
+    const researchPresets = [
+      "architecture-balanced",
+      "hermes-like-frontier",
+      "code-review",
+      "planning-rigorous",
+      "security-critical",
+    ]
+    const toolFreePresets = ["decision-fast", "budget"]
+
+    for (const name of researchPresets) {
+      expect(BUILTIN_PRESETS[name]?.advisors.map((advisor) => advisor.tool_policy)).toEqual(
+        BUILTIN_PRESETS[name]?.advisors.map(() => "read_only"),
+      )
+    }
+    for (const name of toolFreePresets) {
+      expect(BUILTIN_PRESETS[name]?.advisors.map((advisor) => advisor.tool_policy)).toEqual(
+        BUILTIN_PRESETS[name]?.advisors.map(() => "none"),
+      )
+    }
+  })
 })
 
 describe("validatePreset", () => {
