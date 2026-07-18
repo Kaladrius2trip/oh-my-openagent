@@ -74,6 +74,8 @@ export const MoAPresetConfigSchema = z.object({
   min_successful_advisors: z.number().int().positive().optional(),
   advisor_timeout_ms: z.number().int().positive().optional(),
   aggregator_timeout_ms: z.number().int().positive().optional(),
+  idle_window_ms: z.number().int().positive().default(60_000),
+  max_wall_ms: z.number().int().positive().optional(),
   include_failures_in_aggregation: z.boolean().optional(),
   return_advisor_outputs: z.boolean().optional(),
 })
