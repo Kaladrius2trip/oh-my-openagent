@@ -1,14 +1,13 @@
 import type { MoAPromptPackConfig } from "../../types"
 
-/** Built-in prompt pack: Hermes advisory semantics adapted to OMO single-writer ownership. */
-export const omoHermesDerivedV1Pack: MoAPromptPackConfig = {
-  advisor_base: "builtin:moa-reference-advisor-v1",
+export const omoHermesDerivedV2Pack: MoAPromptPackConfig = {
+  advisor_base: "builtin:moa-reference-advisor-v2",
   advisor_modes: {
     analysis: "builtin:moa-mode-analysis-v1",
-    research: "builtin:moa-mode-research-v1",
+    research: "builtin:moa-mode-research-v2",
     planning: "builtin:moa-mode-planning-v1",
     review: "builtin:moa-mode-review-v1",
-    "evidence-search": "builtin:moa-mode-evidence-search-v1",
+    "evidence-search": "builtin:moa-mode-evidence-search-v2",
   },
   aggregator_base: "builtin:moa-consult-aggregator-v1",
   task_envelope: "builtin:moa-task-envelope-v1",
@@ -16,4 +15,4 @@ export const omoHermesDerivedV1Pack: MoAPromptPackConfig = {
   aggregator_output_contract: "builtin:moa-decision-bundle-v1",
 }
 
-export const OMO_HERMES_DERIVED_V1_PACK_ID = "omo-hermes-derived-v1"
+export const DEFAULT_PROMPT_PACK_ID = "omo-hermes-derived-v2"
