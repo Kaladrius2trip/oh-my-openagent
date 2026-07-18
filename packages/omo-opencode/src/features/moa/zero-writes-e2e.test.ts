@@ -20,6 +20,9 @@ class ConsultationAdapter implements MoAExecutionAdapter {
   readonly activeSessions = new Set<string>()
   readonly toolInvocations: string[] = []
   private readonly targets = new Map<string, ResolvedMoATarget>()
+  private readonly launchesByTask = new Map<string, MoAChildLaunchInput>()
+
+  constructor(private readonly evidencePath: string) {}
 
   async resolveTarget(target: MoATarget): Promise<ResolvedMoATarget> {
     const name = "category" in target ? target.category : target.subagent_type
@@ -36,6 +39,7 @@ class ConsultationAdapter implements MoAExecutionAdapter {
   async launchChild(input: MoAChildLaunchInput): Promise<MoAChildHandle> {
     const taskId = `task-${this.launches.length + 1}`
     this.launches.push(input)
+    this.launchesByTask.set(taskId, input)
     this.targets.set(taskId, input.target)
     this.activeSessions.add(taskId)
     return { taskId, sessionId: `session-${taskId}`, role: input.role, ...(input.orchestration.slot !== undefined ? { slot: input.orchestration.slot } : {}) }
@@ -44,6 +48,11 @@ class ConsultationAdapter implements MoAExecutionAdapter {
   async waitForChild(handle: MoAChildHandle): Promise<MoAChildResult> {
     const target = this.targets.get(handle.taskId)
     if (target === undefined) throw new Error(`Missing target for ${handle.taskId}`)
+    const launch = this.launchesByTask.get(handle.taskId)
+    if (handle.role === "advisor" && launch?.toolPolicy === "read_only") {
+      await readFile(this.evidencePath, "utf-8")
+      this.toolInvocations.push("advisor:read")
+    }
     this.activeSessions.delete(handle.taskId)
     return {
       handle,
@@ -64,14 +73,14 @@ afterEach(async () => {
 })
 
 describe("MoA consultation write boundary", () => {
-  test("#given a write-seeking objective #when full consultation runs #then no tools, files or sessions remain", async () => {
+  test("#given a write-seeking objective #when research consultation runs #then advisors only read and no files or sessions remain", async () => {
     // given
     const sandbox = await mkdtemp(path.join(tmpdir(), "omo-moa-zero-writes-"))
     sandboxes.push(sandbox)
     const sentinel = path.join(sandbox, "sentinel.txt")
     await writeFile(sentinel, "unchanged")
     const beforeFiles = await readdir(sandbox)
-    const adapter = new ConsultationAdapter()
+    const adapter = new ConsultationAdapter(sentinel)
     const manager = createMoAManager({
       config: {
         enabled: true,
@@ -81,7 +90,7 @@ describe("MoA consultation write boundary", () => {
           e2e: {
             execution_policy: "consultation_only",
             advisors: [
-              { name: "advisor-a", category: "advisor-a", tool_policy: "none" },
+              { name: "advisor-a", category: "advisor-a", tool_policy: "read_only" },
               { name: "advisor-b", category: "advisor-b", tool_policy: "none" },
             ],
             aggregator: { category: "aggregator" },
@@ -103,8 +112,20 @@ describe("MoA consultation write boundary", () => {
 
     // then
     expect(result.status).toBe("completed")
-    expect(adapter.toolInvocations).toHaveLength(0)
-    expect(adapter.launches.every((launch) => launch.toolPolicy === "none" && launch.capabilityProfile === "moa-consultation-only")).toBe(true)
+    expect(adapter.toolInvocations).toEqual(["advisor:read"])
+    expect(adapter.launches.find((launch) => launch.orchestration.slot === "advisor-a")).toMatchObject({
+      toolPolicy: "read_only",
+      capabilityProfile: "moa-research",
+    })
+    expect(adapter.launches.find((launch) => launch.orchestration.slot === "advisor-b")).toMatchObject({
+      toolPolicy: "none",
+      capabilityProfile: "moa-consultation-only",
+    })
+    expect(adapter.launches.find((launch) => launch.role === "aggregator")).toMatchObject({
+      toolPolicy: "none",
+      capabilityProfile: "moa-consultation-only",
+    })
+    expect(adapter.toolInvocations.filter((invocation) => invocation.startsWith("aggregator:"))).toEqual([])
     expect(adapter.activeSessions).toHaveLength(0)
     expect(await readdir(sandbox)).toEqual(beforeFiles)
     expect(await readFile(sentinel, "utf-8")).toBe("unchanged")
