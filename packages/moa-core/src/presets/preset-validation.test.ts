@@ -53,6 +53,13 @@ describe("BUILTIN_PRESETS", () => {
 })
 
 describe("validatePreset", () => {
+  test("#given a read-only advisor #when validated #then the preset remains valid", () => {
+    const preset = baseValidPreset()
+    preset.advisors[0] = { ...preset.advisors[0], tool_policy: "read_only" } as MoAPresetConfig["advisors"][number]
+
+    expect(validatePreset(preset)).toEqual([])
+  })
+
   test("#given a preset with zero advisors #when validated #then it reports no_advisors", () => {
     const preset = { ...baseValidPreset(), advisors: [], min_successful_advisors: undefined }
 

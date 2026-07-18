@@ -61,10 +61,14 @@ export function validatePreset(preset: MoAPresetConfig, options: ValidatePresetO
     if (advisor.mode !== undefined && !KNOWN_MODES.has(advisor.mode)) {
       errors.push({ code: "unknown_mode", message: `Advisor "${advisor.name}" has unknown mode "${advisor.mode}".` })
     }
-    if (advisor.tool_policy !== undefined && advisor.tool_policy !== "none") {
+    if (
+      advisor.tool_policy !== undefined
+      && advisor.tool_policy !== "none"
+      && advisor.tool_policy !== "read_only"
+    ) {
       errors.push({
         code: "invalid_tool_policy",
-        message: `Advisor "${advisor.name}" must use tool_policy "none".`,
+        message: `Advisor "${advisor.name}" must use tool_policy "none" or "read_only".`,
       })
     }
   }
