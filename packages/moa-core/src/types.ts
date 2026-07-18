@@ -43,12 +43,14 @@ export type MoAAdvisorConfig = MoATarget & {
   role?: MoAAdvisorRole
   mode?: MoAAdvisorMode
   prompt_append?: string
+  temperature?: number
   maxTokens?: number
   tool_policy?: MoAToolPolicy
 }
 
 export type MoAAggregatorConfig = MoATarget & {
   prompt_append?: string
+  temperature?: number
   maxTokens?: number
 }
 
@@ -108,4 +110,5 @@ export interface MoAResolvedModel {
   modelID: string
   variant?: string
   reasoningEffort?: string
+  temperature?: number
 }
