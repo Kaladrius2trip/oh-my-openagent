@@ -29,6 +29,7 @@ class FakeBackgroundManager {
     return fakeTasks.get(taskId)
   }
 
+  getTaskLastActivityAt(): undefined { return undefined }
   async readTaskOutput() { return { status: "resolved", output: "done" } as const }
   async cancelTask(): Promise<boolean> { return true }
   async shutdown(): Promise<void> {}
@@ -230,8 +231,8 @@ describe("MoA manager wiring", () => {
 
     const advisor = await adapter.launchChild(childInput("advisor", "architect"))
     const aggregator = await adapter.launchChild(childInput("aggregator"))
-    await adapter.waitForChild(advisor, 100, new AbortController().signal)
-    await adapter.waitForChild(aggregator, 100, new AbortController().signal)
+    await adapter.waitForChild(advisor, { baseMs: 100, idleWindowMs: 60, maxWallMs: 400 }, new AbortController().signal)
+    await adapter.waitForChild(aggregator, { baseMs: 100, idleWindowMs: 60, maxWallMs: 400 }, new AbortController().signal)
 
     expect(observedSessions).toEqual([
       { sessionId: "session-1", title: "MoA advisor: architect" },

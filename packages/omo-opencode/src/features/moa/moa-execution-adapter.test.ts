@@ -43,6 +43,7 @@ describe("createMoAExecutionAdapter", () => {
           return { id: `bg-${launches.length}`, sessionId: `session-${launches.length}` }
         },
         getTask: () => undefined,
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
@@ -110,6 +111,7 @@ describe("createMoAExecutionAdapter", () => {
           return { id: "bg-1" }
         },
         getTask: () => undefined,
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
@@ -151,6 +153,7 @@ describe("createMoAExecutionAdapter", () => {
             status: "completed",
           }],
         }),
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "resolved", output: "advisor report" }),
         cancelTask: async () => true,
       },
@@ -165,7 +168,7 @@ describe("createMoAExecutionAdapter", () => {
       sessionId: "child-session",
       role: "advisor",
       slot: "architect",
-    }, 100, new AbortController().signal)
+    }, { baseMs: 100, idleWindowMs: 60, maxWallMs: 400 }, new AbortController().signal)
 
     // then
     expect(result.status).toBe("completed")
@@ -185,6 +188,7 @@ describe("createMoAExecutionAdapter", () => {
           sessionId: "child-session",
           model: target.model,
         }),
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "failed", reason: "assistant_text_missing" }),
         cancelTask: async () => true,
       },
@@ -199,7 +203,7 @@ describe("createMoAExecutionAdapter", () => {
       sessionId: "child-session",
       role: "advisor",
       slot: "architect",
-    }, 100, new AbortController().signal)
+    }, { baseMs: 100, idleWindowMs: 60, maxWallMs: 400 }, new AbortController().signal)
 
     // then
     expect(result.status).toBe("failed")
@@ -214,6 +218,7 @@ describe("createMoAExecutionAdapter", () => {
       backgroundManager: {
         launch: async () => ({ id: "bg-1" }),
         getTask: () => undefined,
+        getTaskLastActivityAt: () => undefined,
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async (taskId, options) => {
           cancellations.push({ taskId, reason: options?.reason, skipNotification: options?.skipNotification })
