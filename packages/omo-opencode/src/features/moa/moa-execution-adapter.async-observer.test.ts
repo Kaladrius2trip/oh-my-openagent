@@ -40,6 +40,7 @@ test("#given observer readiness is pending #when the pre-prompt session callback
         return { id: "bg-1", sessionId: "session-1" }
       },
       getTask: () => ({ id: "bg-1", status: "running", model: target.model }),
+      readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
       cancelTask: async () => true,
     },
     parent: { sessionID: "parent-session", messageID: "parent-message" },

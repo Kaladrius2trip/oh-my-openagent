@@ -48,6 +48,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-1" }
         },
         getTask: () => task("bg-1", "completed"),
+        readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
       parent: {
@@ -96,6 +97,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: `bg-${taskCount}`, sessionId: `session-${taskCount}` }
         },
         getTask: (taskId) => task(taskId, "completed"),
+        readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
       parent: { sessionID: "parent-session", messageID: "parent-message" },
@@ -133,6 +135,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-new" }
         },
         getTask: () => task("bg-1", "completed"),
+        readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
       parent: { sessionID: "parent-session", messageID: "parent-message" },
@@ -174,6 +177,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-1" }
         },
         getTask: () => task("bg-1", backgroundStatus),
+        readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
       parent: { sessionID: "parent-session", messageID: "parent-message" },
@@ -205,6 +209,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-1" }
         },
         getTask: () => task("bg-1", "cancelled"),
+        readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
       parent: { sessionID: "parent-session", messageID: "parent-message" },
@@ -235,6 +240,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           throw new Error("launch failed")
         },
         getTask: () => undefined,
+        readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
       parent: { sessionID: "parent-session", messageID: "parent-message" },

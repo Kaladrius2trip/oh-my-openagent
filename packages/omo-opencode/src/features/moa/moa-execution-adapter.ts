@@ -7,13 +7,14 @@ import type {
 } from "@oh-my-opencode/moa-core/adapter"
 import { assertConsultationOnlyLaunch } from "@oh-my-opencode/moa-core/adapter"
 import type { MoAResolvedModel, MoATarget } from "@oh-my-opencode/moa-core"
-import type { BackgroundTask, LaunchInput } from "../background-agent"
+import type { BackgroundTask, BackgroundTaskOutputResult, LaunchInput } from "../background-agent"
 import { log as defaultLog } from "../../shared"
 import { MoAChildSessionObserver, type MoASessionObserver } from "./moa-session-observer"
 
 export interface MoABackgroundManager {
   launch(input: LaunchInput): Promise<Pick<BackgroundTask, "id" | "sessionId">>
   getTask(taskId: string): Partial<BackgroundTask> & Pick<BackgroundTask, "id" | "status"> | undefined
+  readTaskOutput(taskId: string): Promise<BackgroundTaskOutputResult>
   cancelTask(
     taskId: string,
     options?: { source?: string; reason?: string; abortSession?: boolean; skipNotification?: boolean },
@@ -71,19 +72,25 @@ function finalModel(
   throw new MoAChildTaskError(taskId, `MoA child ${taskId} has no resolved model`)
 }
 
-function childResult(
-  handle: MoAChildHandle,
-  status: MoAChildResult["status"],
-  task: ReturnType<MoABackgroundManager["getTask"]>,
-  resolvedTarget: ResolvedMoATarget | undefined,
-): MoAChildResult {
+type ChildResultInput = {
+  readonly handle: MoAChildHandle
+  readonly status: MoAChildResult["status"]
+  readonly task: ReturnType<MoABackgroundManager["getTask"]>
+  readonly resolvedTarget: ResolvedMoATarget | undefined
+  readonly output?: string
+  readonly errorCategory?: string
+}
+
+function childResult(input: ChildResultInput): MoAChildResult {
   return {
-    handle,
-    status,
-    ...(task?.result !== undefined ? { output: task.result } : {}),
-    finalModel: finalModel(task, resolvedTarget, handle.taskId),
-    fallbackCount: task?.attemptCount ?? Math.max(0, (task?.attempts?.length ?? 1) - 1),
-    ...(task?.error !== undefined ? { errorCategory: task.error } : {}),
+    handle: input.handle,
+    status: input.status,
+    ...(input.output !== undefined ? { output: input.output } : {}),
+    finalModel: finalModel(input.task, input.resolvedTarget, input.handle.taskId),
+    fallbackCount: input.task?.attemptCount ?? Math.max(0, (input.task?.attempts?.length ?? 1) - 1),
+    ...(input.errorCategory !== undefined
+      ? { errorCategory: input.errorCategory }
+      : input.task?.error !== undefined ? { errorCategory: input.task.error } : {}),
   }
 }
 
@@ -114,25 +121,64 @@ function waitForTask(
   const deadline = Date.now() + timeoutMs
   return new Promise((resolve) => {
     let timer: ReturnType<typeof setTimeout> | undefined
+    let settled = false
+    let resolvingOutput = false
     const finish = (result: MoAChildResult): void => {
+      if (settled) return
+      settled = true
       if (timer !== undefined) clearTimeout(timer)
       signal.removeEventListener("abort", check)
       resolve(result)
     }
+    const resolveCompletedOutput = async (
+      task: ReturnType<MoABackgroundManager["getTask"]>,
+    ): Promise<void> => {
+      let output: BackgroundTaskOutputResult
+      try {
+        output = await manager.readTaskOutput(handle.taskId)
+      } catch {
+        finish(childResult({
+          handle,
+          status: "failed",
+          task,
+          resolvedTarget,
+          errorCategory: "output_resolution_failed",
+        }))
+        return
+      }
+      if (output.status === "failed") {
+        finish(childResult({
+          handle,
+          status: "failed",
+          task,
+          resolvedTarget,
+          errorCategory: "output_resolution_failed",
+        }))
+        return
+      }
+      finish(childResult({ handle, status: "completed", task, resolvedTarget, output: output.output }))
+    }
     const check = (): void => {
       const task = manager.getTask(handle.taskId)
       if (signal.aborted) {
-        finish(childResult(handle, "cancelled", task, resolvedTarget))
+        finish(childResult({ handle, status: "cancelled", task, resolvedTarget }))
         return
       }
       const status = terminalStatus(task)
       if (status !== undefined) {
-        finish(childResult(handle, status, task, resolvedTarget))
+        if (status === "completed") {
+          if (!resolvingOutput) {
+            resolvingOutput = true
+            void resolveCompletedOutput(task)
+          }
+          return
+        }
+        finish(childResult({ handle, status, task, resolvedTarget }))
         return
       }
       const remaining = deadline - Date.now()
       if (remaining <= 0) {
-        finish(childResult(handle, "timed_out", task, resolvedTarget))
+        finish(childResult({ handle, status: "timed_out", task, resolvedTarget }))
         return
       }
       timer = setTimeout(check, Math.min(pollIntervalMs, remaining))
