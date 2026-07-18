@@ -44,10 +44,20 @@ export type UpdateOmoConfigOptions = {
   readonly scope: "project" | "user"
 }
 
-export type UpdateOmoConfigResult = {
+export type UpdateJsoncFileOptions = {
+  readonly edits: readonly OmoConfigEdit[]
+  readonly fileSystem?: OmoConfigWriteFileSystem
+  readonly initialContent?: string
+  readonly path: string
+  readonly rejectSymlinkedParent?: boolean
+}
+
+export type UpdateJsoncFileResult = {
   readonly backupPath?: string
   readonly path: string
 }
+
+export type UpdateOmoConfigResult = UpdateJsoncFileResult
 
 export const DEFAULT_WRITE_FILE_SYSTEM: OmoConfigWriteFileSystem = {
   copyFileSync,

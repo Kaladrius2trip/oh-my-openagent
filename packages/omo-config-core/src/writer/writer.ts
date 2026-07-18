@@ -6,12 +6,18 @@ import { resolveUserOmoConfigPath } from "../loader"
 import {
   DEFAULT_WRITE_FILE_SYSTEM,
   OmoConfigWriteError,
+  type UpdateJsoncFileOptions,
+  type UpdateJsoncFileResult,
   type UpdateOmoConfigOptions,
   type UpdateOmoConfigResult,
 } from "./types"
 
 const EMPTY_OMO_CONFIG = `// OMO configuration
 {
+}
+`
+
+const EMPTY_JSONC = `{
 }
 `
 
@@ -114,16 +120,16 @@ function assertJsoncCanBeModified(path: string, content: string): void {
   throw new OmoConfigWriteError(path, "parse", new SyntaxError(message))
 }
 
-export function updateOmoConfig(options: UpdateOmoConfigOptions): UpdateOmoConfigResult {
+export function updateJsoncFile(options: UpdateJsoncFileOptions): UpdateJsoncFileResult {
   const fileSystem = options.fileSystem ?? DEFAULT_WRITE_FILE_SYSTEM
-  const path = resolveWritePath(options)
+  const path = options.path
   const directory = dirname(path)
   const existed = fileSystem.existsSync(path)
-  let content = EMPTY_OMO_CONFIG
+  let content = options.initialContent ?? EMPTY_JSONC
 
   try {
     fileSystem.mkdirSync(directory, { recursive: true })
-    if (options.scope === "project") assertProjectConfigDirectoryIsSafe(directory, fileSystem)
+    if (options.rejectSymlinkedParent === true) assertProjectConfigDirectoryIsSafe(directory, fileSystem)
     if (existed) {
       assertConfigPathIsSafe(path, fileSystem)
       content = fileSystem.readFileSync(path, "utf-8")
@@ -156,4 +162,14 @@ export function updateOmoConfig(options: UpdateOmoConfigOptions): UpdateOmoConfi
 
   writeAtomically(path, nextContent, fileSystem)
   return backupPath === undefined ? { path } : { backupPath, path }
+}
+
+export function updateOmoConfig(options: UpdateOmoConfigOptions): UpdateOmoConfigResult {
+  return updateJsoncFile({
+    path: resolveWritePath(options),
+    edits: options.edits,
+    initialContent: EMPTY_OMO_CONFIG,
+    rejectSymlinkedParent: options.scope === "project",
+    ...(options.fileSystem === undefined ? {} : { fileSystem: options.fileSystem }),
+  })
 }
