@@ -1,8 +1,9 @@
 import type { TmuxPaneInfo } from "./types"
 
-const MANDATORY_PANE_FIELD_COUNT = 10
+const MANDATORY_PANE_FIELD_COUNT = 11
 
 type ParsedPaneState = {
+  windowId: string
   windowWidth: number
   windowHeight: number
   windowActive: boolean
@@ -12,6 +13,7 @@ type ParsedPaneState = {
 
 type ParsedPaneLine = {
   pane: TmuxPaneInfo
+  windowId: string
   windowWidth: number
   windowHeight: number
   windowActive: boolean
@@ -20,6 +22,7 @@ type ParsedPaneLine = {
 
 type MandatoryPaneFields = [
   paneId: string,
+  windowId: string,
   widthString: string,
   heightString: string,
   leftString: string,
@@ -49,6 +52,7 @@ export function parsePaneStateOutput(stdout: string): ParsedPaneState | null {
   if (!latestPaneLine) return null
 
   return {
+    windowId: latestPaneLine.windowId,
     windowWidth: latestPaneLine.windowWidth,
     windowHeight: latestPaneLine.windowHeight,
     windowActive: latestPaneLine.windowActive,
@@ -62,7 +66,7 @@ function parsePaneLine(line: string): ParsedPaneLine | null {
   const mandatoryFields = getMandatoryPaneFields(fields)
   if (!mandatoryFields) return null
 
-  const [paneId, widthString, heightString, leftString, topString, activeString, windowWidthString, windowHeightString, windowActiveString, sessionAttachedString] = mandatoryFields
+  const [paneId, windowId, widthString, heightString, leftString, topString, activeString, windowWidthString, windowHeightString, windowActiveString, sessionAttachedString] = mandatoryFields
 
   const width = parseInteger(widthString)
   const height = parseInteger(heightString)
@@ -98,6 +102,7 @@ function parsePaneLine(line: string): ParsedPaneLine | null {
       title: fields.slice(MANDATORY_PANE_FIELD_COUNT).join("\t"),
       isActive,
     },
+    windowId,
     windowWidth,
     windowHeight,
     windowActive,
@@ -108,10 +113,11 @@ function parsePaneLine(line: string): ParsedPaneLine | null {
 function getMandatoryPaneFields(fields: string[]): MandatoryPaneFields | null {
   if (fields.length < MANDATORY_PANE_FIELD_COUNT) return null
 
-  const [paneId, widthString, heightString, leftString, topString, activeString, windowWidthString, windowHeightString, windowActiveString, sessionAttachedString] = fields
+  const [paneId, windowId, widthString, heightString, leftString, topString, activeString, windowWidthString, windowHeightString, windowActiveString, sessionAttachedString] = fields
 
   if (
     paneId === undefined ||
+    windowId === undefined ||
     widthString === undefined ||
     heightString === undefined ||
     leftString === undefined ||
@@ -127,6 +133,7 @@ function getMandatoryPaneFields(fields: string[]): MandatoryPaneFields | null {
 
   return [
     paneId,
+    windowId,
     widthString,
     heightString,
     leftString,

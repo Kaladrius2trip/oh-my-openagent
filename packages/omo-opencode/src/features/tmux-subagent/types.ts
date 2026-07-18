@@ -39,6 +39,7 @@ export interface TmuxPaneInfo {
 }
 
 export interface WindowState {
+  windowId?: string
   windowWidth: number
   windowHeight: number
   windowActive?: boolean
@@ -46,6 +47,11 @@ export interface WindowState {
   mainPane: TmuxPaneInfo | null
   agentPanes: TmuxPaneInfo[]
 }
+
+export type WindowStateQueryResult =
+  | { readonly kind: "ok"; readonly state: WindowState }
+  | { readonly kind: "source_gone" }
+  | { readonly kind: "transient"; readonly detail: string }
 
 export type SplitDirection = "-h" | "-v"
 
