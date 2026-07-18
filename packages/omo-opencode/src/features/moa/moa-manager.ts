@@ -101,6 +101,7 @@ async function launchAdvisors(
       prompt,
       ...MOA_CONSULTATION_LAUNCH_CONTROLS,
       orchestration: { kind: "moa", runId: run.runId, role: "advisor", slot: slot.name },
+      ...(slot.temperature !== undefined ? { temperature: slot.temperature } : {}),
       ...(slot.maxTokens !== undefined ? { maxTokens: slot.maxTokens } : {}),
     })
     run.handles.push(handle)
@@ -208,6 +209,7 @@ export function createMoAManager(options: {
         role: "aggregator", target: aggregatorTarget, prompt: aggregatePrompt,
         ...MOA_CONSULTATION_LAUNCH_CONTROLS,
         orchestration: { kind: "moa", runId: active.runId, role: "aggregator" },
+        ...(preset.aggregator.temperature !== undefined ? { temperature: preset.aggregator.temperature } : {}),
         ...(preset.aggregator.maxTokens !== undefined ? { maxTokens: preset.aggregator.maxTokens } : {}),
       })
       active.handles.push(aggregator)
