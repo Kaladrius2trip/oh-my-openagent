@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import {
   isCompactionAgent,
+  extractFinalAssistantOutput,
   findNearestMessageExcludingCompaction,
   resolvePromptContextFromSessionMessages,
 } from "./compaction-aware-message-resolver"
@@ -306,5 +307,67 @@ describe("resolvePromptContextFromSessionMessages", () => {
       model: { providerID: "anthropic", modelID: "claude-opus-4-1" },
       tools: { bash: true },
     })
+  })
+})
+
+describe("extractFinalAssistantOutput", () => {
+  test("#given multiple assistant turns #when output is extracted #then only newest clean turn text parts are returned", () => {
+    // given
+    const messages = [
+      { info: { role: "assistant" }, parts: [{ type: "text", text: "older report" }] },
+      {
+        info: { role: "assistant" },
+        parts: [{ type: "compaction" }, { type: "text", text: "compaction summary" }],
+      },
+      {
+        info: { role: "assistant" },
+        parts: [
+          { type: "reasoning", text: "private reasoning" },
+          { type: "text", text: "final section one" },
+          { type: "tool", text: "ignored tool" },
+          { type: "text", text: "final section two" },
+        ],
+      },
+    ]
+
+    // when
+    const result = extractFinalAssistantOutput(messages)
+
+    // then
+    expect(result).toEqual({
+      status: "resolved",
+      output: "final section one\n\nfinal section two",
+    })
+  })
+
+  test("#given newest clean assistant turn has no final text #when output is extracted #then typed failure is returned", () => {
+    // given
+    const messages = [{
+      info: { role: "assistant" },
+      parts: [{ type: "reasoning", text: "reasoning without final answer" }],
+    }]
+
+    // when
+    const result = extractFinalAssistantOutput(messages)
+
+    // then
+    expect(result).toEqual({ status: "failed", reason: "assistant_text_missing" })
+  })
+
+  test("#given newest clean assistant turn reports an error #when output is extracted #then typed failure is returned", () => {
+    // given
+    const messages = [
+      { info: { role: "assistant" }, parts: [{ type: "text", text: "older report" }] },
+      {
+        info: { role: "assistant", error: { message: "provider failed" } },
+        parts: [{ type: "text", text: "partial report" }],
+      },
+    ]
+
+    // when
+    const result = extractFinalAssistantOutput(messages)
+
+    // then
+    expect(result).toEqual({ status: "failed", reason: "assistant_message_error" })
   })
 })
