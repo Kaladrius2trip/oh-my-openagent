@@ -8,9 +8,9 @@ import {
   replaceTmuxPane,
 } from "../../shared/tmux"
 import { getTmuxPath } from "../../tools/interactive-bash/tmux-path-resolver"
-import { queryWindowState } from "./pane-state-querier"
+import { queryWindowState, unwrapWindowState } from "./pane-state-querier"
 import { log } from "../../shared"
-import type { ActionResult } from "./action-executor-core"
+import { createSpawnActionResult, type ActionResult } from "./action-executor-core"
 
 export type { ActionExecutorDeps, ActionResult } from "./action-executor-core"
 
@@ -47,7 +47,7 @@ async function enforceLayoutAndMainPane(ctx: ExecuteContext): Promise<void> {
     return
   }
 
-  const latestState = await queryWindowState(sourcePaneId)
+  const latestState = unwrapWindowState(await queryWindowState(sourcePaneId))
   if (!latestState?.mainPane) {
     await enforceMainPane(ctx.windowState, ctx.config)
     return
@@ -118,14 +118,13 @@ export async function executeAction(
 		action.splitDirection
 	)
 
-  if (result.success) {
+  if (result.kind === "ok") {
     await enforceLayoutAndMainPane(ctx)
+  } else {
+    log("[action-executor] tmux spawn failed", { kind: result.kind, stderr: result.stderr })
   }
 
-  return {
-    success: result.success,
-    paneId: result.paneId,
-  }
+  return createSpawnActionResult(result)
 }
 
 export async function executeActions(

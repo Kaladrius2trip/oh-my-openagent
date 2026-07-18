@@ -1,11 +1,33 @@
 import type { TmuxConfig } from "../../config/schema"
 import type { applyLayout, closeTmuxPane, enforceMainPaneWidth, replaceTmuxPane, spawnTmuxPane } from "../../shared/tmux"
 import type { PaneAction, WindowState } from "./types"
+import type { SpawnResult } from "../../shared/tmux"
+
+export type TmuxSpawnFailure = Exclude<SpawnResult, { readonly kind: "ok" }>
 
 export interface ActionResult {
 	success: boolean
 	paneId?: string
 	error?: string
+	tmuxFailure?: TmuxSpawnFailure
+}
+
+function truncateStderr(stderr: string): string {
+	return stderr.length <= 240 ? stderr : `${stderr.slice(0, 240)}...`
+}
+
+export function createSpawnActionResult(result: SpawnResult): ActionResult {
+	switch (result.kind) {
+		case "ok":
+			return { success: true, paneId: result.paneId }
+		case "transient":
+		case "terminal":
+			return {
+				success: false,
+				error: truncateStderr(result.stderr),
+				tmuxFailure: result,
+			}
+	}
 }
 
 export interface ExecuteContext {
@@ -74,12 +96,9 @@ export async function executeActionWithDeps(
 		action.splitDirection,
 	)
 
-	if (result.success) {
+	if (result.kind === "ok") {
 		await enforceMainPane(ctx.windowState, ctx.config, deps)
 	}
 
-	return {
-		success: result.success,
-		paneId: result.paneId,
-	}
+	return createSpawnActionResult(result)
 }
