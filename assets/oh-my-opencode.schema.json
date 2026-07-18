@@ -6302,7 +6302,7 @@
           "type": "string"
         },
         "default_prompt_pack": {
-          "default": "omo-hermes-derived-v1",
+          "default": "omo-hermes-derived-v2",
           "type": "string"
         },
         "max_advisors_per_run": {
@@ -6451,12 +6451,17 @@
                       "maximum": 9007199254740991
                     },
                     "tool_policy": {
+                      "default": "none",
                       "type": "string",
-                      "const": "none"
+                      "enum": [
+                        "none",
+                        "read_only"
+                      ]
                     }
                   },
                   "required": [
-                    "name"
+                    "name",
+                    "tool_policy"
                   ],
                   "additionalProperties": false
                 }
