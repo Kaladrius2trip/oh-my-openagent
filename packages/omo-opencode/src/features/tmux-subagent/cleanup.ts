@@ -1,7 +1,7 @@
 import type { TmuxConfig } from "../../config/schema"
 import { log } from "../../shared"
 import type { TrackedSession } from "./types"
-import { queryWindowState } from "./pane-state-querier"
+import { queryWindowState, unwrapWindowState } from "./pane-state-querier"
 import { executeAction } from "./action-executor"
 
 export async function cleanupTmuxSessions(params: {
@@ -20,7 +20,7 @@ export async function cleanupTmuxSessions(params: {
   }
 
   log("[tmux-session-manager] closing all panes", { count: params.sessions.size })
-  const state = params.sourcePaneId ? await queryWindowState(params.sourcePaneId) : null
+  const state = params.sourcePaneId ? unwrapWindowState(await queryWindowState(params.sourcePaneId)) : null
 
   if (state) {
     const closePromises = Array.from(params.sessions.values()).map((tracked) =>

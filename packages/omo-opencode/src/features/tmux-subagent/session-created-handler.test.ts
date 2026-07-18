@@ -1,11 +1,11 @@
 import { describe, test, expect, mock, afterEach } from "bun:test"
 
-const mockQueryWindowState = mock(async (_paneId: string) => ({
+const mockQueryWindowState = mock(async (_paneId: string) => ({ kind: "ok" as const, state: {
   windowWidth: 244,
   windowHeight: 44,
   mainPane: { paneId: "%0", width: 130, height: 44, left: 0, top: 0, title: "main", isActive: true },
   agentPanes: [],
-}))
+} }))
 
 const mockExecuteActions = mock(async (_actions: unknown[], _ctx: unknown) => ({
   success: true,
@@ -182,9 +182,11 @@ describe("handleSessionCreated – #3505 session readiness race", () => {
     // Pre-populate sessions map as if pane was already spawned
     deps.sessions.set("ses_existing", {
       sessionId: "ses_existing",
-      paneId: "%5",
-      description: "TestAgent",
-      createdAt: new Date(),
+	      paneId: "%5",
+	      description: "TestAgent",
+	      mode: "interactive",
+	      attachActivated: false,
+	      createdAt: new Date(),
       lastSeenAt: new Date(),
       closePending: false,
       closeRetryCount: 0,
