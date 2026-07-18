@@ -482,6 +482,8 @@ Temperature precedence: slot temperature > resolved category temperature > provi
 
 Advisor `tool_policy` defaults to `"none"`. Set it to `"read_only"` only when that advisor needs evidence absent from supplied context. Read-only advisors receive `read`, `grep` and `glob`, capped at 12 tool calls per child. Existing user and agent denials still win. They receive no shell, write, edit, network, MCP, delegation or background-task tools. Aggregators always remain tool-free.
 
+Read-only tool results become model context for that advisor and may be sent to its configured provider. Do not enable `read_only` for repositories or paths whose contents the selected provider may not receive. Keep credentials outside readable project files and use existing user or agent denials to narrow access.
+
 See [Mixture of Advisors](moa.md) for preset catalog, security model and result contract. See [MoA Prompt Reference](moa-prompts.md) for composition and override policy.
 
 ### Sisyphus Agent

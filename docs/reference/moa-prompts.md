@@ -35,7 +35,9 @@ Error text is sanitized before envelope rendering. Absolute paths, UUIDs and sta
 
 Built-in IDs use `builtin:` references and carry explicit template versions. Project config can select built-ins but cannot shadow built-in IDs.
 
-Default pack includes tool-aware advisor base v2, five mode profiles, role profiles, tool-policy blocks, task envelope, aggregation envelope, advisor report contract and decision-bundle contract. Identical trusted template inputs produce identical system hashes.
+Default pack includes tool-aware advisor base v2, source-safe advisor report v2, discrepancy-first aggregator v2, five mode profiles, role profiles, tool-policy blocks, task envelope, aggregation envelope and decision-bundle contract. Identical trusted template inputs produce identical system hashes.
+
+Advisor v2 treats file and tool instructions as untrusted data, requires source attribution and marks weakly corroborated claims. Credential, token, key and secret values must be redacted. Aggregator v2 builds a discrepancy ledger before merging agreements and does not treat repeated claims as independent evidence.
 
 ## File overrides
 
