@@ -4,7 +4,7 @@ import type { MoAPresetConfig } from "../types"
 export const budgetPreset: MoAPresetConfig = {
   enabled: true,
   description: "Non-critical broad second opinion across low-cost models.",
-  prompt_pack: "omo-hermes-derived-v1",
+  prompt_pack: "omo-hermes-derived-v2",
   execution_policy: "consultation_only",
   advisors: [
     { name: "budget-gpt-mini", role: "general", mode: "analysis", category: "moa-budget-gpt-mini", tool_policy: "none" },

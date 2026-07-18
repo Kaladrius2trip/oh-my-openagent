@@ -4,7 +4,7 @@ import type { MoAPresetConfig } from "../types"
 export const architectureBalancedPreset: MoAPresetConfig = {
   enabled: true,
   description: "Three-provider architecture consultation.",
-  prompt_pack: "omo-hermes-derived-v1",
+  prompt_pack: "omo-hermes-derived-v2",
   execution_policy: "consultation_only",
   advisors: [
     { name: "architect", role: "architect", mode: "analysis", category: "moa-architect", tool_policy: "none" },

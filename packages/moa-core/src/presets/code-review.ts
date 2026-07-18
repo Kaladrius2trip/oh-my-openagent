@@ -4,7 +4,7 @@ import type { MoAPresetConfig } from "../types"
 export const codeReviewPreset: MoAPresetConfig = {
   enabled: true,
   description: "Deep code review and regression analysis.",
-  prompt_pack: "omo-hermes-derived-v1",
+  prompt_pack: "omo-hermes-derived-v2",
   execution_policy: "consultation_only",
   advisors: [
     { name: "researcher", role: "researcher", mode: "research", category: "moa-researcher", tool_policy: "none" },
