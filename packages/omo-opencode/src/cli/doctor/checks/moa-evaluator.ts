@@ -4,7 +4,11 @@ import type {
   MoATarget,
   MoAToolExposure,
 } from "@oh-my-opencode/moa-core"
-import { describeMoAToolExposure } from "@oh-my-opencode/moa-core"
+import {
+  describeMoAToolExposure,
+  MOA_READ_ONLY_TOOL_NAMES,
+  TOOL_GROUP_HARD_DENY,
+} from "@oh-my-opencode/moa-core"
 import type { ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
 import { MoAConfigSchema } from "@oh-my-opencode/moa-core/config"
 import { evaluateConfiguredDiversity, type MoADiversityCheck } from "@oh-my-opencode/moa-core/diversity"
@@ -32,6 +36,7 @@ export type MoAEvaluationDependencies = {
   readonly builtinCategories: CategoriesConfig
   readonly builtinPresets: Readonly<Record<string, MoAPresetConfig>>
   readonly knownModels?: ReadonlySet<string>
+  readonly knownTools?: ReadonlySet<string>
   readonly presetName?: string
   readonly supportsTemperature?: (model: string) => boolean | undefined
 }
@@ -148,6 +153,38 @@ function modelHintWarnings(targets: readonly ResolvedMoATarget[], knownModels: R
     ))
 }
 
+const DEFAULT_KNOWN_READ_ONLY_TOOLS = new Set<string>([
+  ...MOA_READ_ONLY_TOOL_NAMES,
+  "list",
+  "todoread",
+])
+const HARD_DENIED_TOOL_GROUP_ENTRIES = new Set<string>(TOOL_GROUP_HARD_DENY)
+
+function toolGroupWarnings(
+  config: MoAConfig,
+  knownTools: ReadonlySet<string> = DEFAULT_KNOWN_READ_ONLY_TOOLS,
+): MoAValidationIssue[] {
+  return (config.tool_groups?.["read_only"] ?? []).flatMap((tool) => {
+    if (HARD_DENIED_TOOL_GROUP_ENTRIES.has(tool)) {
+      return [issue(
+        "hard_denied_tool_group_entry",
+        "MoA tool group entry is hard-denied",
+        `read_only includes hard-denied tool "${tool}". Runtime resolution removes it.`,
+        [tool],
+      )]
+    }
+    if (!knownTools.has(tool)) {
+      return [issue(
+        "unknown_tool_group_entry",
+        "MoA tool group entry is unknown",
+        `read_only includes unknown tool "${tool}". Verify the host registers it.`,
+        [tool],
+      )]
+    }
+    return []
+  })
+}
+
 function failedEvaluation(errors: readonly MoAValidationIssue[], presetName: string, enabled = false): MoAConfigEvaluation {
   return { valid: false, enabled, presetName, targets: [], errors, warnings: [] }
 }
@@ -197,6 +234,7 @@ export function evaluateMoAConfig(candidate: RawMoAConfig, dependencies: MoAEval
   const targets = advisorResolutions.flatMap((resolution) => resolution.ok ? [resolution.target] : [])
   const allTargets = aggregatorResolution.ok ? [...targets, aggregatorResolution.target] : targets
   const warnings = [
+    ...toolGroupWarnings(config, dependencies.knownTools),
     ...temperatureWarnings(preset, categories, dependencies.supportsTemperature),
     ...modelHintWarnings(allTargets, dependencies.knownModels),
   ]
@@ -221,7 +259,7 @@ export function evaluateMoAConfig(candidate: RawMoAConfig, dependencies: MoAEval
     targets,
     configuredDiversity,
     fallbackPrediction,
-    toolExposure: describeMoAToolExposure(preset),
+    toolExposure: describeMoAToolExposure(preset, config),
     errors,
     warnings,
   }
