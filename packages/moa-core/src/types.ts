@@ -101,6 +101,7 @@ export interface MoAConfig {
   default_preset?: string
   default_prompt_pack?: string
   max_advisors_per_run?: number
+  tool_groups?: Record<string, readonly string[]>
   prompt_packs?: Record<string, MoAPromptPackConfig>
   presets?: Record<string, MoAPresetConfig>
 }

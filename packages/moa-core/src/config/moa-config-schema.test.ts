@@ -1,7 +1,7 @@
 /// <reference types="bun-types" />
 
 import { describe, expect, test } from "bun:test"
-import { MoAPresetConfigSchema } from "./moa-config-schema"
+import { MoAConfigSchema, MoAPresetConfigSchema } from "./moa-config-schema"
 
 const basePreset = {
   advisors: [{ name: "architect", category: "moa-architect" }],
@@ -88,5 +88,33 @@ describe("MoAPresetConfigSchema advisor tool policy", () => {
 
     // when / then
     expect(() => MoAPresetConfigSchema.parse(input)).toThrow()
+  })
+})
+
+describe("MoAConfigSchema tool groups", () => {
+  test("#given string-array tool groups and an unrelated unknown key #when parsed #then groups remain and unknown data is stripped", () => {
+    // given
+    const input = {
+      tool_groups: {
+        read_only: ["read", "grep", "glob", "list"],
+        future_group: ["custom_read"],
+      },
+      unknown_top_level_key: true,
+    }
+
+    // when
+    const result = MoAConfigSchema.parse(input)
+
+    // then
+    expect(result.tool_groups).toEqual(input.tool_groups)
+    expect("unknown_top_level_key" in result).toBe(false)
+  })
+
+  test.each([
+    { read_only: "read" },
+    { read_only: ["read", 1] },
+  ])("#given a non-string-array tool group #when parsed #then configuration is rejected", (toolGroups) => {
+    // when / then
+    expect(() => MoAConfigSchema.parse({ tool_groups: toolGroups })).toThrow()
   })
 })

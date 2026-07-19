@@ -86,6 +86,7 @@ export const MoAConfigSchema = z.object({
   default_preset: z.string().default("architecture-balanced"),
   default_prompt_pack: z.string().default("omo-hermes-derived-v2"),
   max_advisors_per_run: z.number().int().min(1).max(8).default(8),
+  tool_groups: z.record(z.string(), z.array(z.string())).optional(),
   prompt_packs: z.record(z.string(), MoAPromptPackConfigSchema).optional(),
   presets: z.record(z.string(), MoAPresetConfigSchema).optional(),
 })
