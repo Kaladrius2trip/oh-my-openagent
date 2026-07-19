@@ -5,6 +5,7 @@ import type { TmuxConfig } from "../../config/schema"
 import type { ExecuteActionsResult } from "./action-executor"
 import type { TmuxUtilDeps } from "./manager"
 import { TmuxSessionManager } from "./manager"
+import { passthroughSessionPaneDeduplicator } from "./session-pane-deduplicator.test-support"
 import type { TrackedSession, WindowState } from "./types"
 
 const config: TmuxConfig = {
@@ -64,6 +65,7 @@ function dependencies(overrides: Partial<TmuxUtilDeps> = {}): Partial<TmuxUtilDe
     executeAction: async () => ({ success: true }),
     activateTmuxPane: async () => true,
     activateReadOnlyTmuxPane: async () => true,
+    sessionPaneDeduplicator: passthroughSessionPaneDeduplicator,
     log: () => undefined,
     ...overrides,
   }
