@@ -802,7 +802,7 @@ export class BackgroundManager {
       log(`[background-agent] Failed to get parent session: ${err}`)
       return null
     })
-    const parentDirectory = parentSession?.data?.directory ?? this.directory
+    const parentDirectory = input.directory ?? parentSession?.data?.directory ?? this.directory
     log(`[background-agent] Parent dir: ${parentSession?.data?.directory}, using: ${parentDirectory}`)
 
     const createResult = await this.client.session.create({
