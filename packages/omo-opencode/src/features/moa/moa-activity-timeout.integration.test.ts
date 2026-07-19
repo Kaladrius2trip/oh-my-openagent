@@ -106,7 +106,7 @@ describe("MoA activity timeout with real BackgroundManager", () => {
     }
   })
 
-  test("#given child emits no parts #when base deadline arrives #then adapter times out without liveness grace", async () => {
+  test("#given child emits no parts and status API is unavailable #when soft windows pass #then only hard cap times out", async () => {
     // given
     const { manager, adapter } = createHarness()
     try {
@@ -124,8 +124,8 @@ describe("MoA activity timeout with real BackgroundManager", () => {
 
       // then
       expect(result.status).toBe("timed_out")
-      expect(elapsed).toBeGreaterThanOrEqual(35)
-      expect(elapsed).toBeLessThan(100)
+      expect(elapsed).toBeGreaterThanOrEqual(195)
+      expect(elapsed).toBeLessThan(400)
     } finally {
       await manager.shutdown()
     }
