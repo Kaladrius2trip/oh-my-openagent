@@ -256,6 +256,13 @@ function createBackgroundManagerWithOptions(options: Partial<ConstructorParamete
   })
 }
 
+function mockAllSessionsStopped(manager: BackgroundManager): void {
+  const state = cast<{
+    client: { session: { status?: () => Promise<{ data: Record<string, { type: string }> }> } }
+  }>(manager)
+  state.client.session.status = async () => ({ data: {} })
+}
+
 function getConcurrencyManager(manager: BackgroundManager): ConcurrencyManager {
   return (cast<{ concurrencyManager: ConcurrencyManager }>(manager)).concurrencyManager
 }
@@ -5285,7 +5292,7 @@ describe("BackgroundManager.checkAndInterruptStaleTasks", () => {
     expect(task.status).toBe("cancelled")
   })
 
-  test("should interrupt running session when lastUpdate exceeds stale timeout", async () => {
+  test("should preserve running session when lastUpdate exceeds stale timeout", async () => {
     //#given
     const client = {
       session: {
@@ -5320,8 +5327,8 @@ describe("BackgroundManager.checkAndInterruptStaleTasks", () => {
     await manager["checkAndInterruptStaleTasks"]({ "session-running": { type: "running" } })
 
     //#then
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("Stale timeout")
+    expect(task.status).toBe("running")
+    expect(task.error).toBeUndefined()
   })
 
   test("should interrupt task when session is idle and lastUpdate exceeds stale timeout", async () => {
@@ -5365,7 +5372,7 @@ describe("BackgroundManager.checkAndInterruptStaleTasks", () => {
     expect(task.error).toContain("Stale timeout")
   })
 
-  test("should interrupt running session even with very old lastUpdate", async () => {
+  test("should preserve running session even with very old lastUpdate", async () => {
     //#given
     const client = {
       session: {
@@ -5399,11 +5406,11 @@ describe("BackgroundManager.checkAndInterruptStaleTasks", () => {
     await manager["checkAndInterruptStaleTasks"]({ "session-long": { type: "running" } })
 
     //#then
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("Stale timeout")
+    expect(task.status).toBe("running")
+    expect(task.error).toBeUndefined()
   })
 
-  test("should interrupt running session with no progress after message staleness timeout", async () => {
+  test("should preserve running session with no progress after message staleness timeout", async () => {
     //#given - no progress at all, but session is running
     const client = {
       session: {
@@ -5435,8 +5442,8 @@ describe("BackgroundManager.checkAndInterruptStaleTasks", () => {
     await manager["checkAndInterruptStaleTasks"]({ "session-rnp": { type: "running" } })
 
     //#then
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("no activity")
+    expect(task.status).toBe("running")
+    expect(task.error).toBeUndefined()
   })
 
   test("should interrupt task with no lastUpdate after messageStalenessTimeout", async () => {
@@ -6915,6 +6922,7 @@ describe("BackgroundManager.handleEvent - session.error", () => {
   test("retry path releases current concurrency slot and prefers current provider in fallback entry", async () => {
     //#given
     const manager = createBackgroundManager()
+    mockAllSessionsStopped(manager)
     const concurrencyManager = getConcurrencyManager(manager)
     const concurrencyKey = "anthropic/claude-opus-4.7-thinking"
     await concurrencyManager.acquire(concurrencyKey)
@@ -6947,6 +6955,7 @@ describe("BackgroundManager.handleEvent - session.error", () => {
         },
       },
     })
+    await waitUntil(() => task.status === "pending", 600)
 
     //#then
     expect(task.status).toBe("pending")
@@ -6965,6 +6974,7 @@ describe("BackgroundManager.handleEvent - session.error", () => {
   test("retry path triggers on session.status retry events", async () => {
     //#given
     const manager = createBackgroundManager()
+    mockAllSessionsStopped(manager)
     stubProcessKey(manager)
 
     const sessionID = "ses_status_retry"
@@ -6985,6 +6995,7 @@ describe("BackgroundManager.handleEvent - session.error", () => {
         },
       },
     })
+    await waitUntil(() => task.status === "pending", 600)
 
     //#then
     expect(task.status).toBe("pending")
@@ -7001,6 +7012,7 @@ describe("BackgroundManager.handleEvent - session.error", () => {
   test("retry path triggers on message.updated assistant error events", async () => {
     //#given
     const manager = createBackgroundManager()
+    mockAllSessionsStopped(manager)
     stubProcessKey(manager)
 
     const sessionID = "ses_message_updated_retry"
@@ -7030,6 +7042,7 @@ describe("BackgroundManager.handleEvent - session.error", () => {
         info: messageInfo,
       },
     })
+    await waitUntil(() => task.status === "pending", 600)
 
     //#then
     expect(task.status).toBe("pending")
