@@ -22,6 +22,7 @@ export function buildTaskRecord(input: LaunchInput, id: string, queuedAt: Date):
     continuationPolicy: input.continuationPolicy,
     toolPolicy: input.toolPolicy,
     capabilityProfile: input.capabilityProfile,
+    researchToolWhitelist: input.researchToolWhitelist,
     maxToolCalls: input.maxToolCalls,
     orchestration: input.orchestration,
     model: input.model,

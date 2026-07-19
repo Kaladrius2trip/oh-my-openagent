@@ -647,6 +647,7 @@ export class BackgroundManager {
         continuationPolicy: input.continuationPolicy,
         toolPolicy: input.toolPolicy,
         capabilityProfile: input.capabilityProfile,
+        researchToolWhitelist: input.researchToolWhitelist,
         maxToolCalls: input.maxToolCalls,
         orchestration: input.orchestration,
         model: input.model,
@@ -941,6 +942,7 @@ The fallback retry session is now created and can be inspected directly.
       userPermission: input.userPermission,
       toolPolicy: input.toolPolicy,
       capabilityProfile: input.capabilityProfile,
+      researchToolWhitelist: input.researchToolWhitelist,
     })
     setSessionTools(sessionID, launchTools)
 
@@ -998,6 +1000,7 @@ The fallback retry session is now created and can be inspected directly.
             userPermission: input.userPermission,
             toolPolicy: input.toolPolicy,
             capabilityProfile: input.capabilityProfile,
+            researchToolWhitelist: input.researchToolWhitelist,
           })
           const fallbackBody = { ...fallbackBodyWithDefaults, tools: fallbackTools }
           setSessionTools(sessionID, fallbackTools)
@@ -1498,6 +1501,7 @@ The fallback retry session is now created and can be inspected directly.
               userPermission: existingTask.userPermission,
               toolPolicy: existingTask.toolPolicy,
               capabilityProfile: existingTask.capabilityProfile,
+              researchToolWhitelist: existingTask.researchToolWhitelist,
             })
             setSessionTools(existingTask.sessionId!, tools)
             return tools
