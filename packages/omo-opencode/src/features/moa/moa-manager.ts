@@ -1,4 +1,4 @@
-import { BUILTIN_PRESETS, DEFAULT_PRESET_NAME, type MoAConfig, type MoAPresetConfig, type MoARunStatus, type MoATarget, validatePreset } from "@oh-my-opencode/moa-core"
+import { BUILTIN_PRESETS, DEFAULT_PRESET_NAME, resolveMoAResearchToolWhitelist, type MoAConfig, type MoAPresetConfig, type MoARunStatus, type MoATarget, validatePreset } from "@oh-my-opencode/moa-core"
 import { MOA_CONSULTATION_LAUNCH_CONTROLS, MOA_RESEARCH_LAUNCH_CONTROLS, type MoAChildHandle, type MoAChildResult, type MoAChildWaitTimeouts, type MoAExecutionAdapter, type ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
 import { buildSanitizedContext, type MoAContextMessage } from "@oh-my-opencode/moa-core/context"
 import { evaluateConfiguredDiversity, evaluateEffectiveDiversity, type MoADiversityCheck } from "@oh-my-opencode/moa-core/diversity"
@@ -152,8 +152,12 @@ export function createMoAManager(options: {
       const packId = preset.prompt_pack ?? options.config.default_prompt_pack ?? DEFAULT_PROMPT_PACK_ID
       const pack = resolvePromptPack(packId, { extraPacks: options.config.prompt_packs })
       const boundedContext = buildSanitizedContext({ config: preset.context ?? {}, messages: context.messages ?? [] })
+      const researchToolWhitelist = resolveMoAResearchToolWhitelist(options.config)
       const [advisorTargets, aggregatorTarget] = await Promise.all([
-        Promise.all(preset.advisors.map((slot) => active.adapter.resolveTarget(slot))),
+        Promise.all(preset.advisors.map(async (slot) => {
+          const target = await active.adapter.resolveTarget(slot)
+          return slot.tool_policy === "read_only" ? { ...target, researchToolWhitelist } : target
+        })),
         active.adapter.resolveTarget(preset.aggregator),
       ])
       if (active.controller.signal.aborted) return result(active, advisorResults)

@@ -102,6 +102,7 @@ function createManager(adapter: FakeAdapter, activityTimeouts: ActivityTimeoutCo
       default_preset: "test",
       default_prompt_pack: "omo-hermes-derived-v2",
       max_advisors_per_run: 8,
+      tool_groups: { read_only: ["read", "edit", "list"] },
       presets: {
         test: {
           execution_policy: "consultation_only",
@@ -171,6 +172,9 @@ describe("createMoAManager", () => {
     expect(researchAdvisor).toMatchObject({ toolPolicy: "read_only", capabilityProfile: "moa-research" })
     expect(toolFreeAdvisor).toMatchObject({ toolPolicy: "none", capabilityProfile: "moa-consultation-only" })
     expect(aggregator).toMatchObject({ toolPolicy: "none", capabilityProfile: "moa-consultation-only" })
+    expect(researchAdvisor?.target.researchToolWhitelist).toEqual(["read", "list"])
+    expect(toolFreeAdvisor?.target.researchToolWhitelist).toBeUndefined()
+    expect(aggregator?.target.researchToolWhitelist).toBeUndefined()
     expect(researchAdvisor?.prompt).toContain("Read-only research tools are available for this advisor.")
     expect(toolFreeAdvisor?.prompt).not.toContain("Read-only research tools are available for this advisor.")
   })
