@@ -173,6 +173,18 @@ describe("createMoAManager", () => {
     expect(adapter.parentContexts[0]?.directory).toBe("/explicit/project")
   })
 
+  test("#given pre-fetched memory context #when consultation runs #then only advisor envelopes receive the untrusted block", async () => {
+    const adapter = new FakeAdapter()
+
+    await createManager(adapter).run({ prompt: "Choose an architecture", memoryContext: "memory-marker" }, parent)
+
+    const advisorPrompts = adapter.launches.filter((launch) => launch.role === "advisor").map((launch) => launch.prompt)
+    const aggregatorPrompt = adapter.launches.find((launch) => launch.role === "aggregator")?.prompt
+    expect(advisorPrompts.every((prompt) => prompt.includes("<untrusted_memory_context>"))).toBe(true)
+    expect(advisorPrompts.every((prompt) => prompt.includes("memory-marker"))).toBe(true)
+    expect(aggregatorPrompt).not.toContain("<untrusted_memory_context>")
+  })
+
   test("#given mixed advisor tool policies #when consultation runs #then only configured advisors receive research controls", async () => {
     const adapter = new FakeAdapter()
 

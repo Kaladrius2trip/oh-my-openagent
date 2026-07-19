@@ -171,6 +171,7 @@ export function createMoAManager(options: {
         context: boundedContext,
         toolPolicy: slot.tool_policy ?? "none",
         ...(request.constraints !== undefined ? { constraints: request.constraints } : {}),
+        ...(request.memoryContext !== undefined ? { memoryContext: request.memoryContext } : {}),
         ...(slot.prompt_append !== undefined ? { promptAppend: slot.prompt_append } : {}),
       }).text)
       const handles = await launchAdvisors(active, preset, advisorTargets, advisorPrompts)
