@@ -11,6 +11,8 @@ import {
   selectFallbackProvider,
 } from "../../shared/model-error-classifier"
 import { transformModelForProvider } from "../../shared/provider-model-id-transform"
+import { resolveDispatchClient } from "../../shared/live-server-route"
+import { isRecord } from "../../shared/record-type-guard"
 import { abortWithTimeout } from "./abort-with-timeout"
 import { ensureCurrentAttempt, scheduleRetryAttempt } from "./attempt-lifecycle"
 
@@ -18,6 +20,13 @@ export class TeamModeFallbackError extends Error {
   constructor(message: string) {
     super(message)
     this.name = "TeamModeFallbackError"
+  }
+}
+
+export class FallbackRetryBlockedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "FallbackRetryBlockedError"
   }
 }
 
@@ -35,6 +44,7 @@ export type FallbackRetryHandlerDeps = {
   selectFallbackProvider: typeof selectFallbackProvider
   transformModelForProvider: typeof transformModelForProvider
   isProviderExhaustionFallbackEligible: (error: unknown) => boolean
+  abortAndConfirmStopped: (client: OpencodeClient, sessionID: string) => Promise<boolean>
 }
 
 const defaultFallbackRetryHandlerDeps: FallbackRetryHandlerDeps = {
@@ -47,6 +57,54 @@ const defaultFallbackRetryHandlerDeps: FallbackRetryHandlerDeps = {
   selectFallbackProvider,
   transformModelForProvider,
   isProviderExhaustionFallbackEligible,
+  abortAndConfirmStopped,
+}
+
+const fallbackRetryInFlight = new Map<string, Promise<boolean>>()
+
+export async function abortAndConfirmStopped(
+  client: OpencodeClient,
+  sessionID: string,
+  abortTimeoutMs = 10_000,
+): Promise<boolean> {
+  try {
+    const resolved = await resolveDispatchClient(client, sessionID)
+    const routedClient = resolved.client as OpencodeClient
+    if (!await abortWithTimeout(routedClient, sessionID, abortTimeoutMs)) return false
+    if (typeof routedClient.session?.status !== "function") return false
+
+    const response = await routedClient.session.status()
+    if (!isRecord(response) || !isRecord(response.data) || Array.isArray(response.data)) {
+      return false
+    }
+    const sessionStatus = response.data[sessionID]
+    if (sessionStatus === undefined) return true
+    return isRecord(sessionStatus)
+      && !Array.isArray(sessionStatus)
+      && sessionStatus.type === "idle"
+  } catch {
+    return false
+  }
+}
+
+function runFallbackRetryOnce(
+  taskId: string,
+  operation: () => Promise<boolean>,
+): Promise<boolean> {
+  const existing = fallbackRetryInFlight.get(taskId)
+  if (existing !== undefined) return existing
+
+  const pending = operation()
+  fallbackRetryInFlight.set(taskId, pending)
+  void pending.then(
+    () => {
+      if (fallbackRetryInFlight.get(taskId) === pending) fallbackRetryInFlight.delete(taskId)
+    },
+    () => {
+      if (fallbackRetryInFlight.get(taskId) === pending) fallbackRetryInFlight.delete(taskId)
+    },
+  )
+  return pending
 }
 
 export function buildRetryLaunchInput(
@@ -180,19 +238,9 @@ export async function tryFallbackRetry(args: {
     nextModel: `${providerID}/${nextFallback.model}`,
   })
 
-  if (task.concurrencyKey) {
-    concurrencyManager.release(task.concurrencyKey)
-    task.concurrencyKey = undefined
-  }
-
-  const idleTimer = idleDeferralTimers.get(task.id)
-  if (idleTimer) {
-    clearTimeout(idleTimer)
-    idleDeferralTimers.delete(task.id)
-  }
-
   const previousSessionID = task.sessionId
   const previousModel = task.model
+  const previousConcurrencyKey = task.concurrencyKey
 
   const transformedModelId = deps.transformModelForProvider(providerID, nextFallback.model)
   const nextModel = {
@@ -205,31 +253,6 @@ export async function tryFallbackRetry(args: {
     ...(nextFallback.maxTokens !== undefined ? { maxTokens: nextFallback.maxTokens } : {}),
     ...(nextFallback.thinking !== undefined ? { thinking: nextFallback.thinking } : {}),
   }
-  task.attemptCount = selectedAttemptCount
-  const failedAttemptID = ensureCurrentAttempt(task, previousModel).attemptId
-  const nextAttempt = failedAttemptID
-    ? scheduleRetryAttempt(task, failedAttemptID, nextModel, errorInfo.message)
-    : undefined
-  if (!nextAttempt) {
-    return false
-  }
-
-  task.queuedAt = new Date()
-  task.retryNotification = {
-    previousSessionID,
-    failedModel: previousModel ? `${previousModel.providerID}/${previousModel.modelID}` : undefined,
-    failedError: errorInfo.message,
-    nextModel: `${providerID}/${transformedModelId}`,
-  }
-
-  onRetrying?.({
-    task,
-    source,
-    previousSessionID,
-    failedModel: task.retryNotification.failedModel,
-    failedError: errorInfo.message,
-    nextModel: `${providerID}/${transformedModelId}`,
-  })
 
   // Guard: a team-mode task (teamRunId set) MUST carry an onSessionCreated callback so
   // the fallback session gets registered in the team-session registry under the original
@@ -246,17 +269,64 @@ export async function tryFallbackRetry(args: {
     )
   }
 
-  const rawKey = task.model ? `${task.model.providerID}/${task.model.modelID}` : task.agent
+  const rawKey = `${nextModel.providerID}/${nextModel.modelID}`
   const key = concurrencyManager.getConcurrencyKey(rawKey)
   const queue = queuesByKey.get(key) ?? []
   const retryInput = buildRetryLaunchInput(task, nextModel)
 
-  if (previousSessionID) {
-    await abortWithTimeout(client, previousSessionID).catch(() => {})
-  }
+  return runFallbackRetryOnce(task.id, async () => {
+    if (previousSessionID) {
+      const stopped = await deps.abortAndConfirmStopped(client, previousSessionID)
+      if (!stopped) {
+        throw new FallbackRetryBlockedError(
+          `Fallback retry blocked: session ${previousSessionID} termination was not confirmed`,
+        )
+      }
+    }
 
-  queue.push({ task, input: retryInput, attemptID: nextAttempt.attemptId, rawConcurrencyKey: rawKey })
-  queuesByKey.set(key, queue)
-  processKey(key)
-  return true
+    task.attemptCount = selectedAttemptCount
+    const failedAttemptID = ensureCurrentAttempt(task, previousModel).attemptId
+    const nextAttempt = scheduleRetryAttempt(task, failedAttemptID, nextModel, errorInfo.message)
+    if (!nextAttempt) return false
+
+    task.queuedAt = new Date()
+    task.retryNotification = {
+      previousSessionID,
+      failedModel: previousModel ? `${previousModel.providerID}/${previousModel.modelID}` : undefined,
+      failedError: errorInfo.message,
+      nextModel: `${providerID}/${transformedModelId}`,
+    }
+
+    const idleTimer = idleDeferralTimers.get(task.id)
+    if (idleTimer) {
+      clearTimeout(idleTimer)
+      idleDeferralTimers.delete(task.id)
+    }
+
+    if (previousConcurrencyKey) {
+      concurrencyManager.release(previousConcurrencyKey)
+      task.concurrencyKey = undefined
+    }
+
+    try {
+      onRetrying?.({
+        task,
+        source,
+        previousSessionID,
+        failedModel: task.retryNotification.failedModel,
+        failedError: errorInfo.message,
+        nextModel: `${providerID}/${transformedModelId}`,
+      })
+    } catch (error) {
+      deps.log("[background-agent] Failed to publish fallback retry notification:", {
+        taskId: task.id,
+        error,
+      })
+    }
+
+    queue.push({ task, input: retryInput, attemptID: nextAttempt.attemptId, rawConcurrencyKey: rawKey })
+    queuesByKey.set(key, queue)
+    processKey(key)
+    return true
+  })
 }
