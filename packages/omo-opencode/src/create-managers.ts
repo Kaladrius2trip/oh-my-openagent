@@ -226,7 +226,7 @@ export function createManagers(args: {
       config: normalizeMoAConfig(pluginConfig.moa),
       createAdapter: (parent) => createMoAExecutionAdapter({
         backgroundManager,
-        parent,
+        parent: { ...parent, directory: parent.directory ?? ctx.directory },
         resolveTarget,
         ...(sessionObserver !== undefined ? { sessionObserver } : {}),
       }),

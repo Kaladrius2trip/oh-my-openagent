@@ -213,6 +213,7 @@ describe("MoA manager wiring", () => {
     await adapter.launchChild(childInput("advisor", "architect"))
 
     expect(moaLaunchInputs[0]?.onSessionCreated).toBeUndefined()
+    expect(moaLaunchInputs[0]?.directory).toBe("/tmp/project")
     expect(observedSessions).toEqual([])
   })
 
