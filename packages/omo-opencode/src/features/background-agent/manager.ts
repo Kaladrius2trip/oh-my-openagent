@@ -265,6 +265,20 @@ export type BackgroundTaskOutputResult =
         | "message_read_failed"
     }
 
+export type BackgroundTaskLiveness =
+  | {
+      readonly kind: "active"
+      readonly sessionID: string
+      readonly status: "busy" | "retry" | "running"
+    }
+  | { readonly kind: "starting" }
+  | { readonly kind: "quiescent"; readonly sessionID: string }
+  | {
+      readonly kind: "terminal"
+      readonly status: "completed" | "error" | "cancelled" | "interrupt"
+    }
+  | { readonly kind: "unknown"; readonly reason: string }
+
 export class BackgroundManager {
 
 
@@ -1111,6 +1125,61 @@ The fallback retry session is now created and can be inspected directly.
   getTaskLastActivityAt(taskId: string): number | undefined {
     const sessionId = this.getTask(taskId)?.sessionId
     return sessionId === undefined ? undefined : this.taskLastActivityBySession.get(sessionId)
+  }
+
+  async getTaskLiveness(taskId: string): Promise<BackgroundTaskLiveness> {
+    const task = this.getTask(taskId)
+    if (task === undefined) {
+      return { kind: "unknown", reason: `Task ${taskId} was not found` }
+    }
+    if (
+      task.status === "completed"
+      || task.status === "error"
+      || task.status === "cancelled"
+      || task.status === "interrupt"
+    ) {
+      return { kind: "terminal", status: task.status }
+    }
+    if (task.status === "pending" || task.sessionId === undefined) {
+      return { kind: "starting" }
+    }
+
+    const sessionID = task.sessionId
+    try {
+      const resolved = await resolveDispatchClient(this.client, sessionID)
+      const client = resolved.client as OpencodeClient
+      if (typeof client.session?.status !== "function") {
+        return { kind: "unknown", reason: "session.status is unavailable" }
+      }
+
+      const response = await client.session.status()
+      if (!isRecord(response) || !isRecord(response.data) || Array.isArray(response.data)) {
+        return { kind: "unknown", reason: "session.status returned malformed data" }
+      }
+
+      const sessionStatus = response.data[sessionID]
+      if (sessionStatus === undefined) {
+        return { kind: "quiescent", sessionID }
+      }
+      if (!isRecord(sessionStatus) || Array.isArray(sessionStatus) || typeof sessionStatus.type !== "string") {
+        return { kind: "unknown", reason: "session.status returned a malformed session entry" }
+      }
+      const sessionStatusType = String(sessionStatus.type)
+      if (
+        sessionStatusType === "busy"
+        || sessionStatusType === "retry"
+        || sessionStatusType === "running"
+      ) {
+        return { kind: "active", sessionID, status: sessionStatusType }
+      }
+      if (sessionStatusType === "idle") {
+        return { kind: "quiescent", sessionID }
+      }
+      return { kind: "unknown", reason: `Unknown session status: ${sessionStatusType}` }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      return { kind: "unknown", reason: `session.status failed: ${reason}` }
+    }
   }
 
   async readTaskOutput(taskId: string): Promise<BackgroundTaskOutputResult> {

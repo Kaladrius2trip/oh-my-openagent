@@ -3,6 +3,7 @@
 import { afterEach, describe, expect, jest, test } from "bun:test"
 import type { MoAChildHandle, MoAChildResult, MoAChildWaitTimeouts, ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
 import type { BackgroundTask } from "../background-agent"
+import type { BackgroundTaskLiveness } from "../background-agent/manager"
 import { createMoAExecutionAdapter } from "./moa-execution-adapter"
 
 const target: ResolvedMoATarget = {
@@ -28,8 +29,7 @@ const timeouts: MoAChildWaitTimeouts = {
 
 type MutableWaitState = {
   status: BackgroundTask["status"]
-  lastActivityAt: number | undefined
-  continuouslyActive: boolean
+  liveness: BackgroundTaskLiveness
 }
 
 function createWaitFixture(): {
@@ -38,13 +38,12 @@ function createWaitFixture(): {
 } {
   const state: MutableWaitState = {
     status: "running",
-    lastActivityAt: undefined,
-    continuouslyActive: false,
+    liveness: { kind: "active", sessionID: handle.sessionId!, status: "busy" },
   }
   const backgroundManager = {
     launch: async () => ({ id: handle.taskId, sessionId: handle.sessionId }),
     getTask: () => ({ id: handle.taskId, status: state.status, sessionId: handle.sessionId, model: target.model }),
-    getTaskLastActivityAt: () => state.continuouslyActive ? Date.now() : state.lastActivityAt,
+    getTaskLiveness: async () => state.liveness,
     readTaskOutput: async () => ({ status: "resolved" as const, output: "advisor report" }),
     cancelTask: async () => true,
   }
@@ -69,16 +68,22 @@ afterEach(() => {
 })
 
 describe("MoA activity-aware child timeout", () => {
-  test("#given activity ten seconds before base deadline #when child completes during grace #then completed output is preserved", async () => {
+  test("#given busy runner with no stream activity #when soft timeout windows pass and child completes #then completed output is preserved", async () => {
     jest.useFakeTimers()
     // given
     const fixture = createWaitFixture()
     const resultPromise = fixture.wait()
-    jest.advanceTimersByTime(140_000)
-    fixture.state.lastActivityAt = Date.now()
+    let settled = false
+    void resultPromise.then(() => {
+      settled = true
+    })
 
     // when
-    jest.advanceTimersByTime(10_000)
+    jest.advanceTimersByTime(timeouts.baseMs)
+    await Promise.resolve()
+    jest.advanceTimersByTime(timeouts.idleWindowMs + 1_000)
+    await Promise.resolve()
+    expect(settled).toBe(false)
     fixture.state.status = "completed"
     jest.advanceTimersByTime(1_000)
     const result = await resultPromise
@@ -88,45 +93,11 @@ describe("MoA activity-aware child timeout", () => {
     expect(result.output).toBe("advisor report")
   })
 
-  test("#given activity one hundred twenty seconds before base deadline #when checkpoint arrives #then child times out without extension", async () => {
+  test("#given status API failure #when soft timeout windows pass #then task remains pending until hard cap", async () => {
     jest.useFakeTimers()
     // given
     const fixture = createWaitFixture()
-    const startedAt = Date.now()
-    const resultPromise = fixture.wait()
-    jest.advanceTimersByTime(30_000)
-    fixture.state.lastActivityAt = Date.now()
-
-    // when
-    jest.advanceTimersByTime(120_000)
-    const result = await resultPromise
-
-    // then
-    expect(result.status).toBe("timed_out")
-    expect(Date.now() - startedAt).toBe(timeouts.baseMs)
-  })
-
-  test("#given no recorded activity #when base deadline arrives #then child times out without extension", async () => {
-    jest.useFakeTimers()
-    // given
-    const fixture = createWaitFixture()
-    const startedAt = Date.now()
-    const resultPromise = fixture.wait()
-
-    // when
-    jest.advanceTimersByTime(timeouts.baseMs)
-    const result = await resultPromise
-
-    // then
-    expect(result.status).toBe("timed_out")
-    expect(Date.now() - startedAt).toBe(timeouts.baseMs)
-  })
-
-  test("#given continuously active child #when repeated grace checkpoints reach hard cap #then wait times out at cap", async () => {
-    jest.useFakeTimers()
-    // given
-    const fixture = createWaitFixture()
-    fixture.state.continuouslyActive = true
+    fixture.state.liveness = { kind: "unknown", reason: "status unavailable" }
     const startedAt = Date.now()
     const resultPromise = fixture.wait()
     let settled = false
@@ -137,8 +108,71 @@ describe("MoA activity-aware child timeout", () => {
     // when
     jest.advanceTimersByTime(timeouts.baseMs)
     await Promise.resolve()
+    jest.advanceTimersByTime(timeouts.idleWindowMs + 1_000)
+    await Promise.resolve()
     expect(settled).toBe(false)
+    jest.advanceTimersByTime(timeouts.maxWallMs - timeouts.baseMs - timeouts.idleWindowMs - 1_000)
+    await Promise.resolve()
+    const result = await resultPromise
+
+    // then
+    expect(result.status).toBe("timed_out")
+    expect(Date.now() - startedAt).toBe(timeouts.maxWallMs)
+  })
+
+  test("#given quiescent runner #when child completes during inactivity grace #then completion wins", async () => {
+    jest.useFakeTimers()
+    // given
+    const fixture = createWaitFixture()
+    fixture.state.liveness = { kind: "quiescent", sessionID: handle.sessionId! }
+    const resultPromise = fixture.wait()
+
+    // when
+    jest.advanceTimersByTime(timeouts.baseMs)
+    await Promise.resolve()
+    jest.advanceTimersByTime(timeouts.idleWindowMs - 1_000)
+    await Promise.resolve()
+    fixture.state.status = "completed"
+    jest.advanceTimersByTime(1_000)
+    const result = await resultPromise
+
+    // then
+    expect(result.status).toBe("completed")
+    expect(result.output).toBe("advisor report")
+  })
+
+  test("#given persistently quiescent runner #when inactivity grace elapses #then task times out", async () => {
+    jest.useFakeTimers()
+    // given
+    const fixture = createWaitFixture()
+    fixture.state.liveness = { kind: "quiescent", sessionID: handle.sessionId! }
+    const startedAt = Date.now()
+    const resultPromise = fixture.wait()
+
+    // when
+    jest.advanceTimersByTime(timeouts.baseMs)
+    await Promise.resolve()
+    jest.advanceTimersByTime(timeouts.idleWindowMs)
+    await Promise.resolve()
+    const result = await resultPromise
+
+    // then
+    expect(result.status).toBe("timed_out")
+    expect(Date.now() - startedAt).toBe(timeouts.baseMs + timeouts.idleWindowMs)
+  })
+
+  test("#given busy runner forever #when hard wall cap arrives #then task times out exactly at cap", async () => {
+    jest.useFakeTimers()
+    // given
+    const fixture = createWaitFixture()
+    const startedAt = Date.now()
+    const resultPromise = fixture.wait()
+
+    // when
+    jest.advanceTimersByTime(timeouts.baseMs)
+    await Promise.resolve()
     jest.advanceTimersByTime(timeouts.maxWallMs - timeouts.baseMs)
+    await Promise.resolve()
     const result = await resultPromise
 
     // then
@@ -153,9 +187,8 @@ describe("MoA activity-aware child timeout", () => {
     const controller = new AbortController()
     const startedAt = Date.now()
     const resultPromise = fixture.wait(controller.signal)
-    jest.advanceTimersByTime(140_000)
-    fixture.state.lastActivityAt = Date.now()
-    jest.advanceTimersByTime(10_000)
+    jest.advanceTimersByTime(timeouts.baseMs)
+    await Promise.resolve()
 
     // when
     controller.abort()

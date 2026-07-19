@@ -8,7 +8,7 @@ import type {
 } from "@oh-my-opencode/moa-core/adapter"
 import { assertConsultationOnlyLaunch } from "@oh-my-opencode/moa-core/adapter"
 import type { MoAResolvedModel, MoATarget } from "@oh-my-opencode/moa-core"
-import type { BackgroundTask, BackgroundTaskOutputResult, LaunchInput } from "../background-agent"
+import type { BackgroundTask, BackgroundTaskLiveness, BackgroundTaskOutputResult, LaunchInput } from "../background-agent"
 import { log as defaultLog } from "../../shared"
 import { MoAChildSessionObserver, type MoASessionObserver } from "./moa-session-observer"
 
@@ -18,7 +18,7 @@ const MOA_RESEARCH_MAX_TOOL_CALLS = 12
 export interface MoABackgroundManager {
   launch(input: LaunchInput): Promise<Pick<BackgroundTask, "id" | "sessionId">>
   getTask(taskId: string): Partial<BackgroundTask> & Pick<BackgroundTask, "id" | "status"> | undefined
-  getTaskLastActivityAt(taskId: string): number | undefined
+  getTaskLiveness(taskId: string): Promise<BackgroundTaskLiveness>
   readTaskOutput(taskId: string): Promise<BackgroundTaskOutputResult>
   cancelTask(
     taskId: string,
@@ -126,11 +126,12 @@ function waitForTask(
 ): Promise<MoAChildResult> {
   const startedAt = Date.now()
   const hardDeadline = startedAt + timeouts.maxWallMs
-  let deadline = Math.min(startedAt + timeouts.baseMs, hardDeadline)
+  const softDeadline = Math.min(startedAt + timeouts.baseMs, hardDeadline)
   return new Promise((resolve) => {
     let timer: ReturnType<typeof setTimeout> | undefined
     let settled = false
     let resolvingOutput = false
+    let quiescent: { sessionID: string; since: number } | undefined
     const finish = (result: MoAChildResult): void => {
       if (settled) return
       settled = true
@@ -166,39 +167,71 @@ function waitForTask(
       }
       finish(childResult({ handle, status: "completed", task, resolvedTarget, output: output.output }))
     }
-    const check = (): void => {
-      const task = manager.getTask(handle.taskId)
-      if (signal.aborted) {
-        finish(childResult({ handle, status: "cancelled", task, resolvedTarget }))
-        return
-      }
+    const finishTerminalTask = (
+      task: ReturnType<MoABackgroundManager["getTask"]>,
+    ): boolean => {
       const status = terminalStatus(task)
-      if (status !== undefined) {
-        if (status === "completed") {
-          if (!resolvingOutput) {
-            resolvingOutput = true
-            void resolveCompletedOutput(task)
-          }
-          return
+      if (status === undefined) return false
+      if (status === "completed") {
+        if (!resolvingOutput) {
+          resolvingOutput = true
+          void resolveCompletedOutput(task)
         }
-        finish(childResult({ handle, status, task, resolvedTarget }))
-        return
+        return true
       }
+      finish(childResult({ handle, status, task, resolvedTarget }))
+      return true
+    }
+    const scheduleCheck = (now: number, deadline: number): void => {
+      const remaining = deadline - now
+      timer = setTimeout(check, Math.min(pollIntervalMs, remaining))
+    }
+    const runCheck = async (): Promise<void> => {
+      if (settled) return
+      let task = manager.getTask(handle.taskId)
       const now = Date.now()
       if (now >= hardDeadline) {
         finish(childResult({ handle, status: "timed_out", task, resolvedTarget }))
         return
       }
-      if (now >= deadline) {
-        const lastActivityAt = manager.getTaskLastActivityAt(handle.taskId)
-        if (lastActivityAt === undefined || now - lastActivityAt >= timeouts.idleWindowMs) {
+      if (signal.aborted) {
+        finish(childResult({ handle, status: "cancelled", task, resolvedTarget }))
+        return
+      }
+      if (finishTerminalTask(task)) return
+      if (now < softDeadline) {
+        scheduleCheck(now, softDeadline)
+        return
+      }
+
+      const liveness = await manager.getTaskLiveness(handle.taskId)
+      if (settled) return
+      task = manager.getTask(handle.taskId)
+      const checkedAt = Date.now()
+      if (checkedAt >= hardDeadline) {
+        finish(childResult({ handle, status: "timed_out", task, resolvedTarget }))
+        return
+      }
+      if (signal.aborted) {
+        finish(childResult({ handle, status: "cancelled", task, resolvedTarget }))
+        return
+      }
+      if (finishTerminalTask(task)) return
+
+      if (liveness.kind === "quiescent") {
+        if (quiescent?.sessionID !== liveness.sessionID) {
+          quiescent = { sessionID: liveness.sessionID, since: checkedAt }
+        } else if (checkedAt - quiescent.since >= timeouts.idleWindowMs) {
           finish(childResult({ handle, status: "timed_out", task, resolvedTarget }))
           return
         }
-        deadline = Math.min(deadline + timeouts.idleWindowMs, hardDeadline)
+      } else {
+        quiescent = undefined
       }
-      const remaining = Math.min(deadline, hardDeadline) - now
-      timer = setTimeout(check, Math.min(pollIntervalMs, remaining))
+      scheduleCheck(checkedAt, hardDeadline)
+    }
+    const check = (): void => {
+      void runCheck()
     }
     signal.addEventListener("abort", check, { once: true })
     check()

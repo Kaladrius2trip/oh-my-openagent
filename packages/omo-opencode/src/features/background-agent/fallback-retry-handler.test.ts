@@ -1,5 +1,11 @@
 import { afterAll, beforeEach, describe, expect, mock, test } from "bun:test"
-import { tryFallbackRetry, TeamModeFallbackError, type FallbackRetryHandlerDeps } from "./fallback-retry-handler"
+import {
+  abortAndConfirmStopped,
+  FallbackRetryBlockedError,
+  tryFallbackRetry,
+  TeamModeFallbackError,
+  type FallbackRetryHandlerDeps,
+} from "./fallback-retry-handler"
 import type { FallbackEntry } from "../../shared/model-requirements"
 import type { ProviderModelsCache } from "../../shared/connected-providers-cache"
 import { QUESTION_DENIED_SESSION_PERMISSION } from "../../shared/question-denied-session-permission"
@@ -75,15 +81,19 @@ function createMockConcurrencyManager(): ConcurrencyManager {
 function createMockClient(): {
   client: OpencodeClient
   abortMock: ReturnType<typeof mock>
+  statusMock: ReturnType<typeof mock>
 } {
   const abortMock = mock(async () => ({}))
+  const statusMock = mock(async () => ({ data: {} }))
   return {
     client: {
       session: {
         abort: abortMock,
+        status: statusMock,
       },
     } as never,
     abortMock,
+    statusMock,
   }
 }
 
@@ -92,7 +102,7 @@ function createDefaultArgs(taskOverrides: Partial<BackgroundTask> = {}) {
   const queuesByKey = new Map<string, QueueItem[]>()
   const idleDeferralTimers = new Map<string, ReturnType<typeof setTimeout>>()
   const concurrencyManager = createMockConcurrencyManager()
-  const { client, abortMock } = createMockClient()
+  const { client, abortMock, statusMock } = createMockClient()
   const task = createMockTask(taskOverrides)
 
   return {
@@ -102,6 +112,7 @@ function createDefaultArgs(taskOverrides: Partial<BackgroundTask> = {}) {
     concurrencyManager,
     client,
     abortMock,
+    statusMock,
     idleDeferralTimers,
     queuesByKey,
     processKey: processKeyFn,
@@ -246,6 +257,65 @@ describe("tryFallbackRetry", () => {
       expect(args.processKey).toHaveBeenCalledWith(key)
     })
 
+    test("aborts and confirms stop before release notification queue and processing", async () => {
+      const args = createDefaultArgs({ sessionId: "session-to-abort" })
+      const order: string[] = []
+      args.abortMock.mockImplementation(async () => {
+        order.push("abort")
+        return {}
+      })
+      args.statusMock.mockImplementation(async () => {
+        order.push("status")
+        return { data: { "session-to-abort": { type: "idle" } } }
+      })
+      args.concurrencyManager.release = mock(() => {
+        expect(args.task.status).toBe("pending")
+        order.push("release")
+      })
+      const onRetrying = mock(() => {
+        order.push("notify")
+      })
+      const queue: QueueItem[] = []
+      const push = queue.push.bind(queue)
+      queue.push = (...items: QueueItem[]) => {
+        order.push("queue.push")
+        return push(...items)
+      }
+      args.queuesByKey.set("provider-a/fallback-model-1", queue)
+      args.processKey.mockImplementation(() => {
+        order.push("processKey")
+      })
+
+      await tryFallbackRetry({ ...args, onRetrying })
+
+      expect(order).toEqual(["abort", "status", "release", "notify", "queue.push", "processKey"])
+      expect(queue).toHaveLength(1)
+    })
+
+    test("coalesces concurrent retry signals into one abort and one queued attempt", async () => {
+      const args = createDefaultArgs({ sessionId: "session-to-abort" })
+      const deferred = createDeferredPromise()
+      args.abortMock.mockImplementation(async () => {
+        await deferred.promise
+        return {}
+      })
+
+      const first = tryFallbackRetry(args)
+      const second = tryFallbackRetry(args)
+      await Promise.resolve()
+
+      expect(args.abortMock).toHaveBeenCalledTimes(1)
+      deferred.resolve()
+      const results = await Promise.all([first, second])
+
+      expect(results).toEqual([true, true])
+      expect(args.abortMock).toHaveBeenCalledTimes(1)
+      expect(args.statusMock).toHaveBeenCalledTimes(1)
+      const queued = [...args.queuesByKey.values()].flat()
+      expect(queued).toHaveLength(1)
+      expect(args.processKey).toHaveBeenCalledTimes(1)
+    })
+
     test("queues fallback retry on provider key when provider concurrency is configured", async () => {
       const args = createDefaultArgs({
         model: { providerID: "anthropic", modelID: "claude-opus-4-7" },
@@ -351,6 +421,72 @@ describe("tryFallbackRetry", () => {
       expect(queuedAttemptID).toBeDefined()
       expect(nextAttempt?.attemptId).toBeDefined()
       expect(queuedAttemptID).toBe(nextAttempt?.attemptId ?? "")
+    })
+  })
+
+  describe("#given previous session termination cannot be confirmed", () => {
+    async function expectBlockedWithoutMutation(
+      args: ReturnType<typeof createDefaultArgs>,
+    ): Promise<void> {
+      const taskBefore = {
+        ...args.task,
+        model: args.task.model === undefined ? undefined : { ...args.task.model },
+        attempts: args.task.attempts?.map((attempt) => ({ ...attempt })),
+      }
+      const onRetrying = mock(() => {})
+      const timer = setTimeout(() => {}, 60_000)
+      args.idleDeferralTimers.set(args.task.id, timer)
+
+      await expect(tryFallbackRetry({ ...args, onRetrying })).rejects.toThrow(FallbackRetryBlockedError)
+
+      expect(args.task).toEqual(taskBefore)
+      expect(args.concurrencyManager.release).not.toHaveBeenCalled()
+      expect(onRetrying).not.toHaveBeenCalled()
+      expect(args.idleDeferralTimers.get(args.task.id)).toBe(timer)
+      expect(args.queuesByKey.size).toBe(0)
+      expect(args.processKey).not.toHaveBeenCalled()
+      clearTimeout(timer)
+    }
+
+    test("blocks retry without mutation when abort rejects", async () => {
+      const args = createDefaultArgs({ sessionId: "session-to-abort" })
+      args.abortMock.mockRejectedValueOnce(new Error("abort rejected"))
+
+      await expectBlockedWithoutMutation(args)
+    })
+
+    test("blocks retry without mutation when abort returns an error", async () => {
+      const args = createDefaultArgs({ sessionId: "session-to-abort" })
+      args.abortMock.mockResolvedValueOnce({ error: { message: "abort failed" } })
+
+      await expectBlockedWithoutMutation(args)
+    })
+
+    test("blocks retry without mutation when abort times out", async () => {
+      const args = createDefaultArgs({ sessionId: "session-to-abort" })
+      args.abortMock.mockImplementationOnce(() => new Promise(() => {}))
+      args.deps = {
+        ...retryHandlerDeps,
+        abortAndConfirmStopped: (client, sessionID) => abortAndConfirmStopped(client, sessionID, 1),
+      }
+
+      await expectBlockedWithoutMutation(args)
+    })
+
+    test("blocks retry without mutation when post-abort status is busy", async () => {
+      const args = createDefaultArgs({ sessionId: "session-to-abort" })
+      args.statusMock.mockResolvedValueOnce({
+        data: { "session-to-abort": { type: "busy" } },
+      })
+
+      await expectBlockedWithoutMutation(args)
+    })
+
+    test("blocks retry without mutation when post-abort status read fails", async () => {
+      const args = createDefaultArgs({ sessionId: "session-to-abort" })
+      args.statusMock.mockRejectedValueOnce(new Error("status failed"))
+
+      await expectBlockedWithoutMutation(args)
     })
   })
 

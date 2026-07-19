@@ -308,7 +308,7 @@ describe("checkAndInterruptStaleTasks", () => {
     expect(task.status).toBe("running")
   })
 
-  it("should interrupt busy session task when lastUpdate exceeds stale timeout", async () => {
+  it("should keep busy session task running when lastUpdate exceeds stale timeout", async () => {
     //#given - the session still reports busy, but no progress arrived within the configured timeout
     const task = createRunningTask({
       startedAt: new Date(Date.now() - 900_000),
@@ -329,11 +329,11 @@ describe("checkAndInterruptStaleTasks", () => {
     })
 
     //#then
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("Stale timeout")
+    expect(task.status).toBe("running")
+    expect(mockClient.session.abort).not.toHaveBeenCalled()
   })
 
-  it("should keep stale-progress task running when abort returns SDK error", async () => {
+  it("should keep busy stale-progress task concurrency state unchanged", async () => {
     //#given
     const task = createRunningTask({
       startedAt: new Date(Date.now() - 900_000),
@@ -345,8 +345,6 @@ describe("checkAndInterruptStaleTasks", () => {
     })
     const releaseMock = mock(() => {})
     const onTaskInterrupted = mock(() => {})
-    mockClient.session.abort.mockImplementationOnce(() => Promise.resolve({ error: { message: "still running" } }))
-
     //#when
     await checkAndInterruptStaleTasks({
       tasks: [task],
@@ -439,7 +437,7 @@ describe("checkAndInterruptStaleTasks", () => {
     expect(task.status).toBe("running")
   })
 
-  it("should interrupt busy session when it exceeds configured no-progress timeout", async () => {
+  it("should keep busy session running beyond configured no-progress timeout", async () => {
     //#given - the session reports busy, but no progress event arrived within the configured timeout
     const task = createRunningTask({
       startedAt: new Date(Date.now() - 15 * 60 * 1000),
@@ -457,9 +455,9 @@ describe("checkAndInterruptStaleTasks", () => {
     })
 
     //#then
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("no activity")
-    expect(mockNotify).toHaveBeenCalledWith(task)
+    expect(task.status).toBe("running")
+    expect(mockClient.session.abort).not.toHaveBeenCalled()
+    expect(mockNotify).not.toHaveBeenCalled()
   })
 
   it("should interrupt task when session is idle and lastUpdate exceeds stale timeout", async () => {
@@ -487,7 +485,7 @@ describe("checkAndInterruptStaleTasks", () => {
     expect(task.error).toContain("Stale timeout")
   })
 
-  it("should interrupt running session task when lastUpdate exceeds stale timeout", async () => {
+  it("should keep running session task alive when lastUpdate exceeds stale timeout", async () => {
     //#given - the session reports running, but no progress arrived within the configured timeout
     const task = createRunningTask({
       startedAt: new Date(Date.now() - 900_000),
@@ -508,11 +506,11 @@ describe("checkAndInterruptStaleTasks", () => {
     })
 
     //#then
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("Stale timeout")
+    expect(task.status).toBe("running")
+    expect(mockClient.session.abort).not.toHaveBeenCalled()
   })
 
-  it("should interrupt running session with no progress after message staleness timeout", async () => {
+  it("should keep running session with no progress after message staleness timeout", async () => {
     //#given - the session reports running, but no progress ever arrived within the configured timeout
     const task = createRunningTask({
       startedAt: new Date(Date.now() - 15 * 60 * 1000),
@@ -530,8 +528,8 @@ describe("checkAndInterruptStaleTasks", () => {
     })
 
     //#then
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("no activity")
+    expect(task.status).toBe("running")
+    expect(mockClient.session.abort).not.toHaveBeenCalled()
   })
 
   it("should NOT cancel healthy task on first missing status poll", async () => {
@@ -766,7 +764,7 @@ describe("checkAndInterruptStaleTasks", () => {
     expect(task.error).toContain("session gone from status registry")
   })
 
-  it("should interrupt task when busy session exceeds stale timeout", async () => {
+  it("should not interrupt busy session when output is stale", async () => {
     //#given - lastUpdate is 5min old and session is still "busy"
     const task = createRunningTask({
       startedAt: new Date(Date.now() - 300_000),
@@ -786,12 +784,12 @@ describe("checkAndInterruptStaleTasks", () => {
       sessionStatuses: { "ses-1": { type: "busy" } },
     })
 
-    //#then
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("Stale timeout")
+    //#then - busy proves an active runner even when output is silent
+    expect(task.status).toBe("running")
+    expect(mockClient.session.abort).not.toHaveBeenCalled()
   })
 
-  it("should interrupt task when retry session exceeds stale timeout", async () => {
+  it("should not interrupt retrying session when output is stale", async () => {
     //#given - lastUpdate is 5min old but session is retrying
     const task = createRunningTask({
       startedAt: new Date(Date.now() - 300_000),
@@ -811,12 +809,12 @@ describe("checkAndInterruptStaleTasks", () => {
       sessionStatuses: { "ses-1": { type: "retry" } },
     })
 
-    //#then
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("Stale timeout")
+    //#then - retry proves an active runner
+    expect(task.status).toBe("running")
+    expect(mockClient.session.abort).not.toHaveBeenCalled()
   })
 
-  it("should interrupt busy session with no progress after message staleness timeout", async () => {
+  it("should not interrupt busy session with no stream progress", async () => {
     //#given - no progress at all, session is still "busy"
     const task = createRunningTask({
       startedAt: new Date(Date.now() - 15 * 60 * 1000),
@@ -833,9 +831,9 @@ describe("checkAndInterruptStaleTasks", () => {
       sessionStatuses: { "ses-1": { type: "busy" } },
     })
 
-    //#then
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("no activity")
+    //#then - runner status, not stream output, controls liveness
+    expect(task.status).toBe("running")
+    expect(mockClient.session.abort).not.toHaveBeenCalled()
   })
 
   it("should release concurrency key when interrupting a never-updated task", async () => {

@@ -29,7 +29,7 @@ class FakeBackgroundManager {
     return fakeTasks.get(taskId)
   }
 
-  getTaskLastActivityAt(): undefined { return undefined }
+  async getTaskLiveness() { return { kind: "starting" } as const }
   async readTaskOutput() { return { status: "resolved", output: "done" } as const }
   async cancelTask(): Promise<boolean> { return true }
   async shutdown(): Promise<void> {}

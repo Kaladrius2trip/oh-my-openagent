@@ -219,13 +219,11 @@ export async function checkAndInterruptStaleTasks(args: {
     }
 
     const sessionGone = sessionMissing && (task.consecutiveMissedPolls ?? 0) >= MIN_SESSION_GONE_POLLS
-    const shouldSkipInactivityTimeout = task.teamRunId !== undefined && !sessionGone
-    const shouldRefreshFromSessionActivity = !sessionGone
-      && sessionStatus !== undefined
-      && isActiveSessionStatus(sessionStatus)
+    const sessionActive = sessionStatus !== undefined && isActiveSessionStatus(sessionStatus)
+    const shouldSkipInactivityTimeout = !sessionGone && (task.teamRunId !== undefined || sessionActive)
+    const shouldRefreshFromSessionActivity = !sessionGone && sessionActive
 
     if (!task.progress?.lastUpdate) {
-      if (shouldSkipInactivityTimeout) continue
       if (sessionMissing && !sessionGone) continue
       const effectiveTimeout = sessionGone ? sessionGoneTimeoutMs : messageStalenessMs
       if (runtime <= effectiveTimeout) continue
@@ -235,6 +233,8 @@ export async function checkAndInterruptStaleTasks(args: {
         if (activityRefresh.type === "unavailable") continue
         if (activityRefresh.type === "activity" && now - activityRefresh.activityTime <= effectiveTimeout) continue
       }
+
+      if (shouldSkipInactivityTimeout) continue
 
       if (sessionGone) {
         const existence = await checkSessionExistence(client, sessionID, directory)
@@ -265,8 +265,6 @@ export async function checkAndInterruptStaleTasks(args: {
       continue
     }
 
-    if (shouldSkipInactivityTimeout) continue
-
     if (runtime < MIN_RUNTIME_BEFORE_STALE_MS) continue
 
     let timeSinceLastUpdate = now - task.progress.lastUpdate.getTime()
@@ -283,6 +281,8 @@ export async function checkAndInterruptStaleTasks(args: {
         timeSinceLastUpdate = now - refreshedLastUpdate
       }
     }
+
+    if (shouldSkipInactivityTimeout) continue
 
     if (task.status !== "running") continue
 
