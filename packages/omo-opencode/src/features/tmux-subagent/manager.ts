@@ -1,6 +1,7 @@
+// allow: SIZE_OK - legacy tmux lifecycle orchestrator; PR16 changes only pane ownership seams.
 import type { PluginInput } from "@opencode-ai/plugin"
 import type { TmuxConfig } from "../../config/schema"
-import type { TrackedSession, CapacityConfig, TmuxPaneMode, WindowState, WindowStateQueryResult } from "./types"
+import type { TrackedSession, CapacityConfig, PaneAction, TmuxPaneMode, WindowState, WindowStateQueryResult } from "./types"
 import * as sharedModule from "../../shared"
 import { resolveSessionEventID } from "../../shared/event-session-id"
 import {
@@ -17,9 +18,9 @@ import {
   activateTmuxPane,
   classifyTmuxError,
 } from "../../shared/tmux"
-import { queryWindowState as defaultQueryWindowState, unwrapWindowState } from "./pane-state-querier"
+import { queryWindowState as defaultQueryWindowState } from "./pane-state-querier"
 import { decideSpawnActions, decideCloseAction, type SessionMapping } from "./decision-engine"
-import { executeActions, executeAction } from "./action-executor"
+import { executeActions, executeAction, type ExecuteActionsResult, type ExecuteContext } from "./action-executor"
 import { TmuxPollingManager } from "./polling-manager"
 import {
   createTrackedSession,
@@ -38,6 +39,10 @@ import {
   type DeferredAttachLoop,
   type DeferredDrainOutcome,
 } from "./deferred-attach-loop"
+import {
+  createSessionPaneDeduplicator,
+  type SessionPaneDeduplicator,
+} from "./session-pane-deduplicator"
 type OpencodeClient = PluginInput["client"]
 
 type SpawnStage =
@@ -60,6 +65,11 @@ interface DeferredSession {
   mode: TmuxPaneMode
 }
 
+type IsolatedContainerSpawnOutcome =
+  | { readonly kind: "spawned"; readonly paneId: string }
+  | { readonly kind: "existing" }
+  | { readonly kind: "none" }
+
 export interface TmuxUtilDeps {
   isInsideTmux: () => boolean
   getCurrentPaneId: () => string | undefined
@@ -69,6 +79,7 @@ export interface TmuxUtilDeps {
   executeAction: typeof executeAction
   activateTmuxPane: typeof activateTmuxPane
   activateReadOnlyTmuxPane: typeof activateReadOnlyTmuxPane
+  sessionPaneDeduplicator: SessionPaneDeduplicator
   log: typeof sharedModule.log
 }
 
@@ -100,6 +111,7 @@ const defaultTmuxDeps: TmuxUtilDeps = {
   executeAction,
   activateTmuxPane,
   activateReadOnlyTmuxPane,
+  sessionPaneDeduplicator: createSessionPaneDeduplicator(),
   log: sharedModule.log,
 }
 
@@ -123,6 +135,10 @@ function createIsolatedSessionManagerId(): string {
   return managerId
 }
 
+function assertNever(value: never): never {
+  throw new Error(`Unexpected variant: ${String(value)}`)
+}
+
 export class TmuxSessionManager {
   private client: OpencodeClient
   private tmuxConfig: TmuxConfig
@@ -140,6 +156,7 @@ export class TmuxSessionManager {
   private readonly deferredAttachLoop: DeferredAttachLoop
   private pendingDeferredOverflowWarnings = 0
   private deps: TmuxUtilDeps
+  private readonly sessionPaneDeduplicator: SessionPaneDeduplicator
   private shouldSkipSession: (sessionId: string) => boolean
   private pollingManager: TmuxPollingManager
   private isolatedContainerPaneId: string | undefined
@@ -158,6 +175,7 @@ export class TmuxSessionManager {
     this.tmuxConfig = tmuxConfig
     this.projectDirectory = ctx.directory || process.cwd()
     this.deps = { ...defaultTmuxDeps, ...deps }
+    this.sessionPaneDeduplicator = this.deps.sessionPaneDeduplicator
     this.shouldSkipSession = options.shouldSkipSession ?? (() => false)
     this.failedReadinessCache = new FailedReadinessCache({
       ttlMs: FAILED_READINESS_SESSION_TTL_MS,
@@ -222,8 +240,8 @@ export class TmuxSessionManager {
   private async spawnInIsolatedContainer(
     sessionId: string,
     title: string,
-  ): Promise<string | null> {
-    if (!this.isIsolated()) return null
+  ): Promise<IsolatedContainerSpawnOutcome> {
+    if (!this.isIsolated()) return { kind: "none" }
     if (this.isolatedWindowPaneId) {
         const stateResult = await this.deps.queryWindowState(this.isolatedWindowPaneId).catch((error): WindowStateQueryResult => {
         this.deps.log("[tmux-session-manager] failed to query isolated window state", {
@@ -234,7 +252,7 @@ export class TmuxSessionManager {
       })
       if (stateResult.kind === "ok") {
         this.isolatedContainerNullStateCount = 0
-        return null
+        return { kind: "none" }
       }
       this.isolatedContainerNullStateCount += 1
       this.deps.log("[tmux-session-manager] isolated container state query returned null", {
@@ -243,7 +261,7 @@ export class TmuxSessionManager {
         maxNullStateCount: MAX_ISOLATED_CONTAINER_NULL_STATE_COUNT,
       })
       if (this.isolatedContainerNullStateCount < MAX_ISOLATED_CONTAINER_NULL_STATE_COUNT) {
-        return null
+        return { kind: "none" }
       }
       this.isolatedContainerPaneId = undefined
       this.isolatedWindowPaneId = undefined
@@ -253,18 +271,38 @@ export class TmuxSessionManager {
     const isolation = this.tmuxConfig.isolation
     this.deps.log("[tmux-session-manager] creating isolated tmux container", { isolation, sessionId, title })
 
-    const result = isolation === "session"
-      ? await spawnTmuxSession(
-        sessionId,
-        title,
-        this.tmuxConfig,
-        this.serverUrl,
-        this.projectDirectory,
-        this.sourcePaneRecovery.getPaneId(),
-        undefined,
-        this.isolatedSessionManagerId,
-      )
-      : await spawnTmuxWindow(sessionId, title, this.tmuxConfig, this.serverUrl, this.projectDirectory)
+    const spawnOutcome = await this.sessionPaneDeduplicator.run(
+      sessionId,
+      () => isolation === "session"
+        ? spawnTmuxSession(
+          sessionId,
+          title,
+          this.tmuxConfig,
+          this.serverUrl,
+          this.projectDirectory,
+          this.sourcePaneRecovery.getPaneId(),
+          undefined,
+          this.isolatedSessionManagerId,
+        )
+        : spawnTmuxWindow(sessionId, title, this.tmuxConfig, this.serverUrl, this.projectDirectory),
+      (result) => result.paneId,
+    )
+    let result: Awaited<ReturnType<typeof spawnTmuxWindow>>
+    switch (spawnOutcome.kind) {
+      case "existing":
+        this.deps.log("[tmux-session-manager] isolated pane spawn skipped because session already has a tmux pane", {
+          sessionId,
+          paneId: spawnOutcome.paneId,
+        })
+        return { kind: "existing" }
+      case "discarded":
+        return { kind: "none" }
+      case "spawned":
+        result = spawnOutcome.result
+        break
+      default:
+        return assertNever(spawnOutcome)
+    }
 
     if (result.success && result.paneId) {
       this.isolatedContainerPaneId = result.paneId
@@ -274,10 +312,10 @@ export class TmuxSessionManager {
         isolation,
         paneId: result.paneId,
       })
-      return result.paneId
+      return { kind: "spawned", paneId: result.paneId }
     }
     this.deps.log("[tmux-session-manager] failed to create isolated container", { isolation, sessionId })
-    return null
+    return { kind: "none" }
   }
 
   private getCapacityConfig(): CapacityConfig {
@@ -865,12 +903,13 @@ export class TmuxSessionManager {
 
     this.failedReadinessCache.clear(sessionId)
 
-    const isolatedPaneId = await this.spawnInIsolatedContainer(sessionId, title)
-    if (isolatedPaneId) {
-      await this.addTrackedSession(session, isolatedPaneId)
+    const isolatedSpawn = await this.spawnInIsolatedContainer(sessionId, title)
+    if (isolatedSpawn.kind === "existing") return
+    if (isolatedSpawn.kind === "spawned") {
+      await this.addTrackedSession(session, isolatedSpawn.paneId)
       this.deps.log("[tmux-session-manager] first subagent spawned in isolated window", {
         sessionId,
-        paneId: isolatedPaneId,
+        paneId: isolatedSpawn.paneId,
       })
       return
     }
@@ -936,16 +975,14 @@ export class TmuxSessionManager {
       return
     }
 
-    const result = await this.deps.executeActions(
-      decision.actions,
-      {
-        config: this.tmuxConfig,
-        directory: this.projectDirectory,
-        serverUrl: this.serverUrl,
-        windowState: state,
-        sourcePaneId,
-      },
-    )
+    const result = await this.executeDeduplicatedActions(sessionId, decision.actions, {
+      config: this.tmuxConfig,
+      directory: this.projectDirectory,
+      serverUrl: this.serverUrl,
+      windowState: state,
+      sourcePaneId,
+    })
+    if (!result) return
 
     for (const { action, result: actionResult } of result.results) {
       if (action.type === "close" && actionResult.success) {
@@ -1003,13 +1040,14 @@ export class TmuxSessionManager {
         this.enqueueDeferredSession(sessionId, title, mode)
         return
       }
-      const retryResult = await this.deps.executeActions(retryDecision.actions, {
+      const retryResult = await this.executeDeduplicatedActions(sessionId, retryDecision.actions, {
         config: this.tmuxConfig,
         directory: this.projectDirectory,
         serverUrl: this.serverUrl,
         windowState: recovered.state,
         sourcePaneId: recoveredSourcePaneId,
       })
+      if (!retryResult) return
       if (retryResult.success && retryResult.spawnedPaneId) {
         await this.addTrackedSession(session, retryResult.spawnedPaneId)
         this.failedReadinessCache.clear(sessionId)
@@ -1043,6 +1081,32 @@ export class TmuxSessionManager {
           windowState: state,
         },
       )
+    }
+  }
+
+  private async executeDeduplicatedActions(
+    sessionId: string,
+    actions: PaneAction[],
+    context: ExecuteContext,
+  ): Promise<ExecuteActionsResult | null> {
+    const outcome = await this.sessionPaneDeduplicator.run(
+      sessionId,
+      () => this.deps.executeActions(actions, context),
+      (result) => result.spawnedPaneId,
+    )
+    switch (outcome.kind) {
+      case "spawned":
+        return outcome.result
+      case "discarded":
+        return { ...outcome.result, success: false }
+      case "existing":
+        this.deps.log("[tmux-session-manager] pane spawn skipped because session already has a tmux pane", {
+          sessionId,
+          paneId: outcome.paneId,
+        })
+        return null
+      default:
+        return assertNever(outcome)
     }
   }
 
@@ -1137,13 +1201,17 @@ export class TmuxSessionManager {
           return "success"
         }
 
-        const isolatedPaneId = await this.spawnInIsolatedContainer(sessionId, deferred.title)
-        if (isolatedPaneId) {
-          await this.addTrackedSession(deferred, isolatedPaneId)
+        const isolatedSpawn = await this.spawnInIsolatedContainer(sessionId, deferred.title)
+        if (isolatedSpawn.kind === "existing") {
+          this.removeDeferredSession(sessionId)
+          return "success"
+        }
+        if (isolatedSpawn.kind === "spawned") {
+          await this.addTrackedSession(deferred, isolatedSpawn.paneId)
           this.removeDeferredSession(sessionId)
           this.deps.log("[tmux-session-manager] deferred session attached in isolated window", {
             sessionId,
-            paneId: isolatedPaneId,
+            paneId: isolatedSpawn.paneId,
           })
           return "success"
         }
@@ -1186,13 +1254,17 @@ export class TmuxSessionManager {
         return "success"
       }
 
-      const result = await this.deps.executeActions(decision.actions, {
+      const result = await this.executeDeduplicatedActions(sessionId, decision.actions, {
         config: this.tmuxConfig,
         directory: this.projectDirectory,
         serverUrl: this.serverUrl,
         windowState: state,
         sourcePaneId: effectiveSourcePaneId,
       })
+      if (!result) {
+        this.removeDeferredSession(sessionId)
+        return "success"
+      }
 
       if (!result.success || !result.spawnedPaneId) {
         this.deps.log("[tmux-session-manager] deferred session attach failed", {

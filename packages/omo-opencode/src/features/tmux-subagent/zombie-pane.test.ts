@@ -5,6 +5,7 @@ import type { ActionResult, ExecuteContext, ExecuteActionsResult } from "./actio
 import type { TmuxUtilDeps } from "./manager"
 import type { TrackedSession, WindowStateQueryResult } from "./types"
 import * as sharedTmuxOriginal from "../../shared/tmux"
+import { passthroughSessionPaneDeduplicator } from "./session-pane-deduplicator.test-support"
 
 const sharedTmuxSnapshot = { ...sharedTmuxOriginal }
 
@@ -70,6 +71,7 @@ const mockTmuxDeps: TmuxUtilDeps = {
   executeAction: mockExecuteAction,
   activateTmuxPane: async () => true,
   activateReadOnlyTmuxPane: async () => true,
+  sessionPaneDeduplicator: passthroughSessionPaneDeduplicator,
   log: () => {},
 }
 
@@ -131,6 +133,8 @@ function createTrackedSession(overrides?: Partial<TrackedSession>): TrackedSessi
     sessionId: "ses_pending",
     paneId: "%1",
     description: "Pending pane",
+    mode: "interactive",
+    attachActivated: false,
     createdAt: new Date(),
     lastSeenAt: new Date(),
     closePending: false,
