@@ -47,6 +47,8 @@ export interface MoAConsultRequest {
   readonly preset?: string
   readonly constraints?: string
   readonly directory?: string
+  /** Host-provided memory data. Prompt composition treats this as untrusted input. */
+  readonly memoryContext?: string
 }
 
 export type MoAAdvisorConfig = MoATarget & {

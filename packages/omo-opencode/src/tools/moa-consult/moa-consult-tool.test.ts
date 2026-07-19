@@ -141,6 +141,15 @@ describe("createMoaConsultTool", () => {
     expect(requests[0]?.directory).toBe("/tmp/moa")
   })
 
+  test("passes pre-fetched memory context through to the manager", async () => {
+    const { manager, requests } = createFakeManager()
+    const moaTool = createMoaConsultTool(manager, config)
+
+    await moaTool.execute({ prompt: "review", memoryContext: "memory-marker" }, context)
+
+    expect(requests[0]?.memoryContext).toBe("memory-marker")
+  })
+
   test("reports the bounded read-only tool surface for a research-enabled preset", async () => {
     const { manager } = createFakeManager()
     const moaTool = createMoaConsultTool(manager, {
