@@ -1,8 +1,8 @@
-import type { MoAResolvedModel, MoATarget, MoAToolPolicy } from "../types"
+import type { MoAResolvedAdvisor, MoAResolvedModel, MoATarget, MoAToolPolicy } from "../types"
 
 export type ResolvedFallbackTarget = MoAResolvedModel
 
-export interface ResolvedMoATarget {
+export interface ResolvedMoATarget extends MoAResolvedAdvisor {
   requested: MoATarget
   agent: string
   category?: string

@@ -38,6 +38,10 @@ export type MoAContextMode = "task_only" | "recent_text" | "recent_state"
 
 export type MoATarget = { category: string; subagent_type?: never } | { subagent_type: string; category?: never }
 
+export interface MoAResolvedAdvisor {
+  readonly researchToolWhitelist?: readonly string[]
+}
+
 export type MoAAdvisorConfig = MoATarget & {
   name: string
   role?: MoAAdvisorRole
