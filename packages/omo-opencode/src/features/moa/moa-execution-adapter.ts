@@ -256,6 +256,9 @@ export function createMoAExecutionAdapter(options: {
           suppressTmuxSpawn: true,
           toolPolicy: isResearchAdvisor ? "default" : "none",
           capabilityProfile: input.capabilityProfile,
+          ...(isResearchAdvisor && input.target.researchToolWhitelist !== undefined
+            ? { researchToolWhitelist: input.target.researchToolWhitelist }
+            : {}),
           ...(isResearchAdvisor ? { maxToolCalls: MOA_RESEARCH_MAX_TOOL_CALLS } : {}),
           continuationPolicy: "forbid",
           orchestration: input.orchestration,
