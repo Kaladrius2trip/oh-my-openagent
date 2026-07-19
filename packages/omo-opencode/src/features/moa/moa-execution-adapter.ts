@@ -30,6 +30,7 @@ export interface MoAAdapterParentContext {
   readonly sessionID: string
   readonly messageID: string
   readonly agent?: string
+  readonly directory?: string
   readonly model?: { readonly providerID: string; readonly modelID: string }
 }
 
@@ -241,6 +242,7 @@ export function createMoAExecutionAdapter(options: {
           parentSessionId: options.parent.sessionID,
           parentMessageId: options.parent.messageID,
           parentAgent: options.parent.agent,
+          directory: options.parent.directory,
           parentModel: options.parent.model,
           model: {
             ...input.target.model,

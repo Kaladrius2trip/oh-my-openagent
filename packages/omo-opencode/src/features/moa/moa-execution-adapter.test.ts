@@ -59,6 +59,7 @@ describe("createMoAExecutionAdapter", () => {
         sessionID: "parent-session",
         messageID: "parent-message",
         agent: "sisyphus",
+        directory: "/target/project",
         model: { providerID: "openai", modelID: "gpt-5.6-sol" },
       },
       resolveTarget: async () => target,
@@ -82,6 +83,7 @@ describe("createMoAExecutionAdapter", () => {
         continuationPolicy: "forbid",
         parentSessionId: "parent-session",
         parentMessageId: "parent-message",
+        directory: "/target/project",
       })
       expect(launch.orchestration?.kind).toBe("moa")
     }
