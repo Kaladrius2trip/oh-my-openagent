@@ -91,6 +91,13 @@ function createAtlasHarness(): {
         sessionAlive.set(path.id, false)
         return {}
       },
+      status: async () => ({
+        data: Object.fromEntries(
+          [...sessionAlive.entries()]
+            .filter(([, alive]) => alive)
+            .map(([sessionID]) => [sessionID, { type: "idle" }]),
+        ),
+      }),
     },
   }
   const manager = new BackgroundManager({ pluginContext: createPluginInput(client, directory) })
