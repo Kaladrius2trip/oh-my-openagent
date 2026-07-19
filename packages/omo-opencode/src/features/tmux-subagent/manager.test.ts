@@ -6,7 +6,6 @@ import type { ActionResult, ExecuteContext } from './action-executor'
 import type { TmuxSessionManager as TmuxSessionManagerType, TmuxUtilDeps } from './manager'
 import * as sharedModule from '../../shared'
 import * as sharedTmuxOriginal from '../../shared/tmux'
-import { passthroughSessionPaneDeduplicator } from './session-pane-deduplicator.test-support'
 
 const sharedTmuxSnapshot = { ...sharedTmuxOriginal }
 
@@ -106,7 +105,6 @@ const mockTmuxDeps: TmuxUtilDeps = {
   executeAction: mockExecuteAction,
   activateTmuxPane: mockActivateTmuxPane,
   activateReadOnlyTmuxPane: mockActivateReadOnlyTmuxPane,
-  sessionPaneDeduplicator: passthroughSessionPaneDeduplicator,
   log: (...args) => sharedModule.log(...args),
 }
 

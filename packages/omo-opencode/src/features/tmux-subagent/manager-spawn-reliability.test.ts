@@ -4,7 +4,6 @@ import { unsafeTestValue } from "../../../../../test-support/unsafe-test-value"
 import type { TmuxConfig } from "../../config/schema"
 import type { ExecuteActionsResult, ExecuteContext } from "./action-executor"
 import { TmuxSessionManager, type TmuxUtilDeps } from "./manager"
-import { passthroughSessionPaneDeduplicator } from "./session-pane-deduplicator.test-support"
 import type { PaneAction, WindowState, WindowStateQueryResult } from "./types"
 
 const config = {
@@ -76,7 +75,7 @@ describe("TmuxSessionManager spawn reliability", () => {
     const queriedTargets: string[] = []
     const getCurrentPaneId = mock(() => "%1")
     let spawnIndex = 0
-    const executeActions = mock(async (actions: PaneAction[], _context: ExecuteContext): Promise<ExecuteActionsResult> => {
+    const executeActions = mock(async (actions: PaneAction[], context: ExecuteContext): Promise<ExecuteActionsResult> => {
       spawnIndex += 1
       const paneId = spawnIndex === 1 ? "%9" : "%10"
       return {
@@ -99,7 +98,6 @@ describe("TmuxSessionManager spawn reliability", () => {
       executeAction: async () => ({ success: true }),
       activateTmuxPane: async () => true,
       activateReadOnlyTmuxPane: async () => true,
-      sessionPaneDeduplicator: passthroughSessionPaneDeduplicator,
       log: () => undefined,
     }
     const context = unsafeTestValue<ConstructorParameters<typeof TmuxSessionManager>[0]>({
@@ -149,7 +147,6 @@ describe("TmuxSessionManager spawn reliability", () => {
       executeAction: async () => ({ success: true }),
       activateTmuxPane: async () => true,
       activateReadOnlyTmuxPane: async () => true,
-      sessionPaneDeduplicator: passthroughSessionPaneDeduplicator,
       log,
     }
     const context = unsafeTestValue<ConstructorParameters<typeof TmuxSessionManager>[0]>({
@@ -204,7 +201,6 @@ describe("TmuxSessionManager spawn reliability", () => {
       executeAction: async () => ({ success: true }),
       activateTmuxPane: async () => true,
       activateReadOnlyTmuxPane: async () => true,
-      sessionPaneDeduplicator: passthroughSessionPaneDeduplicator,
       log: () => undefined,
     }
     const context = unsafeTestValue<ConstructorParameters<typeof TmuxSessionManager>[0]>({
@@ -245,7 +241,7 @@ describe("TmuxSessionManager spawn reliability", () => {
       { kind: "ok", state: state("@7", "%1") },
       { kind: "ok", state: state("@7", "%5") },
     ]
-    const executeActions = mock(async (actions: PaneAction[], _context: ExecuteContext): Promise<ExecuteActionsResult> => {
+    const executeActions = mock(async (actions: PaneAction[], context: ExecuteContext): Promise<ExecuteActionsResult> => {
       if (executeActions.mock.calls.length === 1) {
         const action = actions[0]
         if (!action) throw new Error("Expected spawn action")
@@ -267,7 +263,6 @@ describe("TmuxSessionManager spawn reliability", () => {
       executeAction: async () => ({ success: true }),
       activateTmuxPane: async () => true,
       activateReadOnlyTmuxPane: async () => true,
-      sessionPaneDeduplicator: passthroughSessionPaneDeduplicator,
       log: () => undefined,
     }
     const context = unsafeTestValue<ConstructorParameters<typeof TmuxSessionManager>[0]>({
@@ -305,7 +300,6 @@ describe("TmuxSessionManager spawn reliability", () => {
       executeAction: async () => ({ success: true }),
       activateTmuxPane: async () => true,
       activateReadOnlyTmuxPane: async () => true,
-      sessionPaneDeduplicator: passthroughSessionPaneDeduplicator,
       log: () => undefined,
     }
     const context = unsafeTestValue<ConstructorParameters<typeof TmuxSessionManager>[0]>({
@@ -359,7 +353,6 @@ describe("TmuxSessionManager spawn reliability", () => {
       executeAction: async () => ({ success: true }),
       activateTmuxPane: async () => true,
       activateReadOnlyTmuxPane: async () => true,
-      sessionPaneDeduplicator: passthroughSessionPaneDeduplicator,
       log: () => undefined,
     }
     const statuses = Object.fromEntries(Array.from({ length: 6 }, (_, index) => [`burst-${index}`, { type: "running" }]))
