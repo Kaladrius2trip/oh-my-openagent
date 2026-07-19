@@ -28,6 +28,7 @@ export interface ComposeAdvisorPromptInput {
   requestedTarget: string
   originalTask: string
   constraints?: string
+  memoryContext?: string
   context: SanitizedContextView
   toolPolicy?: MoAToolPolicy
   promptAppend?: string
@@ -77,6 +78,11 @@ function roleHintBlock(promptAppend: string | undefined): string | undefined {
   return `<role_hint>\n${escapeEnvelopeValue(promptAppend)}\n</role_hint>`
 }
 
+function memoryContextBlock(memoryContext: string | undefined): string | undefined {
+  if (memoryContext === undefined) return undefined
+  return `<untrusted_memory_context>\n${escapeEnvelopeValue(memoryContext)}\n</untrusted_memory_context>`
+}
+
 export function composeAdvisorPrompt(pack: ResolvedPromptPack, input: ComposeAdvisorPromptInput): ComposedPrompt {
   const base = pack.advisorBase.content
   const modeTemplate = pack.advisorModes[input.mode]
@@ -99,7 +105,16 @@ export function composeAdvisorPrompt(pack: ResolvedPromptPack, input: ComposeAdv
   })
 
   const systemPortion = joinBlocks([base, modeTemplate.content, roleTemplate.content, toolPolicyTemplate.content, contract])
-  const text = joinBlocks([base, modeTemplate.content, roleTemplate.content, toolPolicyTemplate.content, roleHintBlock(input.promptAppend), envelope, contract])
+  const text = joinBlocks([
+    base,
+    modeTemplate.content,
+    roleTemplate.content,
+    toolPolicyTemplate.content,
+    roleHintBlock(input.promptAppend),
+    envelope,
+    memoryContextBlock(input.memoryContext),
+    contract,
+  ])
 
   return {
     text,
