@@ -44,6 +44,7 @@ function createBackgroundTask(): BackgroundTask {
     toolPolicy: "none",
     capabilityProfile: "moa-consultation-only",
     researchToolWhitelist: ["read", "list"],
+    directory: "/target/project",
     maxToolCalls: 12,
     orchestration: {
       kind: "moa",
@@ -100,6 +101,7 @@ describe("fallback retry launch input", () => {
         toolPolicy: "none",
         capabilityProfile: "moa-consultation-only",
         researchToolWhitelist: ["read", "list"],
+        directory: "/target/project",
         maxToolCalls: 12,
         orchestration: {
           kind: "moa",
@@ -107,6 +109,13 @@ describe("fallback retry launch input", () => {
           role: "advisor",
           slot: "correctness",
         },
+      })
+      expect({
+        directory: retryInput?.directory,
+        researchToolWhitelist: retryInput?.researchToolWhitelist,
+      }).toEqual({
+        directory: task.directory,
+        researchToolWhitelist: task.researchToolWhitelist,
       })
     })
 

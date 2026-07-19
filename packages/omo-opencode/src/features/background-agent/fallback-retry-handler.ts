@@ -55,6 +55,7 @@ export function buildRetryLaunchInput(
 ): LaunchInput {
   return {
     description: task.description,
+    directory: task.directory,
     prompt: task.prompt,
     agent: task.agent,
     parentSessionId: task.parentSessionId,
