@@ -56,7 +56,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-1" }
         },
         getTask: () => task("bg-1", "completed"),
-        getTaskLastActivityAt: () => undefined,
+    getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
@@ -106,7 +106,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: `bg-${taskCount}`, sessionId: `session-${taskCount}` }
         },
         getTask: (taskId) => task(taskId, "completed"),
-        getTaskLastActivityAt: () => undefined,
+    getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
@@ -145,7 +145,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-new" }
         },
         getTask: () => task("bg-1", "completed"),
-        getTaskLastActivityAt: () => undefined,
+    getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
@@ -188,7 +188,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-1" }
         },
         getTask: () => task("bg-1", backgroundStatus),
-        getTaskLastActivityAt: () => undefined,
+    getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "resolved", output: "report" }),
         cancelTask: async () => true,
       },
@@ -225,7 +225,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           return { id: "bg-1", sessionId: "session-1" }
         },
         getTask: () => task("bg-1", "cancelled"),
-        getTaskLastActivityAt: () => undefined,
+    getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
@@ -257,7 +257,7 @@ describe("createMoAExecutionAdapter observe-only sessions", () => {
           throw new Error("launch failed")
         },
         getTask: () => undefined,
-        getTaskLastActivityAt: () => undefined,
+    getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
