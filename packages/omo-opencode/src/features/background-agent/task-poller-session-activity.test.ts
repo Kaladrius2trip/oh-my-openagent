@@ -97,7 +97,7 @@ describe("checkAndInterruptStaleTasks persisted session activity", () => {
     expect(mockNotify).not.toHaveBeenCalled()
   })
 
-  test("cancels a busy task when persisted session activity is also stale", async () => {
+  test("keeps a busy task running when persisted session activity is also stale", async () => {
     //#given - local progress is older than persisted activity, but both are outside the stale window
     spyOn(globalThis.Date, "now").mockReturnValue(fixedTime)
     const localActivity = new Date(Date.now() - 45 * 60 * 1000)
@@ -121,12 +121,10 @@ describe("checkAndInterruptStaleTasks persisted session activity", () => {
       getSessionActivity: async () => ({ type: "activity", activity: stalePersistedActivity }),
     })
 
-    //#then - cancellation still happens, but the stale age reflects persisted activity
-    expect(task.status).toBe("cancelled")
-    expect(task.error).toContain("Stale timeout")
-    expect(task.error).toContain("10min")
+    //#then - busy status remains authoritative while persisted activity stays progress metadata
+    expect(task.status).toBe("running")
     expect(task.progress?.lastUpdate).toEqual(stalePersistedActivity)
-    expect(mockNotify).toHaveBeenCalledWith(task)
+    expect(mockNotify).not.toHaveBeenCalled()
   })
 
   test("keeps a busy task running when persisted session activity lookup is unavailable", async () => {
