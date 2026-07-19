@@ -42,6 +42,13 @@ export interface MoAResolvedAdvisor {
   readonly researchToolWhitelist?: readonly string[]
 }
 
+export interface MoAConsultRequest {
+  readonly prompt: string
+  readonly preset?: string
+  readonly constraints?: string
+  readonly directory?: string
+}
+
 export type MoAAdvisorConfig = MoATarget & {
   name: string
   role?: MoAAdvisorRole

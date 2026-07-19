@@ -9,7 +9,7 @@ import type {
 } from "@oh-my-opencode/moa-core/adapter"
 import type { MoAChildStatus, MoAPresetConfig, MoATarget } from "@oh-my-opencode/moa-core"
 
-import { createMoAManager } from "./moa-manager"
+import { createMoAManager, type MoAParentContext } from "./moa-manager"
 
 const models = {
   "advisor-a": { providerID: "anthropic", modelID: "claude-opus-4-7" },
@@ -20,6 +20,7 @@ const models = {
 
 class FakeAdapter implements MoAExecutionAdapter {
   readonly launches: MoAChildLaunchInput[] = []
+  readonly parentContexts: MoAParentContext[] = []
   readonly cancellations: string[] = []
   readonly waits: MoAChildWaitTimeouts[] = []
   firstLaunchResolutionCount = 0
@@ -125,7 +126,10 @@ function createManager(adapter: FakeAdapter, activityTimeouts: ActivityTimeoutCo
         },
       },
     },
-    createAdapter: () => adapter,
+    createAdapter: (context) => {
+      adapter.parentContexts.push(context)
+      return adapter
+    },
     createRunId: () => "run-1",
   })
 }
@@ -159,6 +163,14 @@ describe("createMoAManager", () => {
     const aggregator = adapter.launches.find((launch) => launch.role === "aggregator")
     expect(advisor?.temperature).toBe(0.8)
     expect(aggregator?.temperature).toBe(0.2)
+  })
+
+  test("#given an explicit consult directory #when consultation runs #then adapter creation receives it", async () => {
+    const adapter = new FakeAdapter()
+
+    await createManager(adapter).run({ prompt: "Choose an architecture", directory: "/explicit/project" }, parent)
+
+    expect(adapter.parentContexts[0]?.directory).toBe("/explicit/project")
   })
 
   test("#given mixed advisor tool policies #when consultation runs #then only configured advisors receive research controls", async () => {
