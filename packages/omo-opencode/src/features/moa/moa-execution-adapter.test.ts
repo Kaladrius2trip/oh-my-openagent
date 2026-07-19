@@ -51,7 +51,7 @@ describe("createMoAExecutionAdapter", () => {
           return { id: `bg-${launches.length}`, sessionId: `session-${launches.length}` }
         },
         getTask: () => undefined,
-        getTaskLastActivityAt: () => undefined,
+      getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
@@ -121,7 +121,7 @@ describe("createMoAExecutionAdapter", () => {
           return { id: "bg-1" }
         },
         getTask: () => undefined,
-        getTaskLastActivityAt: () => undefined,
+      getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
@@ -154,7 +154,7 @@ describe("createMoAExecutionAdapter", () => {
           return { id: "bg-1" }
         },
         getTask: () => undefined,
-        getTaskLastActivityAt: () => undefined,
+      getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async () => true,
       },
@@ -196,7 +196,7 @@ describe("createMoAExecutionAdapter", () => {
             status: "completed",
           }],
         }),
-        getTaskLastActivityAt: () => undefined,
+      getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "resolved", output: "advisor report" }),
         cancelTask: async () => true,
       },
@@ -231,7 +231,7 @@ describe("createMoAExecutionAdapter", () => {
           sessionId: "child-session",
           model: target.model,
         }),
-        getTaskLastActivityAt: () => undefined,
+      getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "failed", reason: "assistant_text_missing" }),
         cancelTask: async () => true,
       },
@@ -261,7 +261,7 @@ describe("createMoAExecutionAdapter", () => {
       backgroundManager: {
         launch: async () => ({ id: "bg-1" }),
         getTask: () => undefined,
-        getTaskLastActivityAt: () => undefined,
+      getTaskLiveness: async () => ({ kind: "starting" as const }),
         readTaskOutput: async () => ({ status: "failed", reason: "task_missing" }),
         cancelTask: async (taskId, options) => {
           cancellations.push({ taskId, reason: options?.reason, skipNotification: options?.skipNotification })
