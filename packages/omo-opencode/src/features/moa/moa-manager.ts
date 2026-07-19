@@ -57,12 +57,13 @@ export class MoARunError extends Error {
 
 const DEFAULT_CHILD_TIMEOUT_MS = 150_000
 const DEFAULT_IDLE_WINDOW_MS = 60_000
+const DEFAULT_MAX_WALL_MS = 1_800_000
 
-function childWaitTimeouts(preset: MoAPresetConfig, baseMs: number): MoAChildWaitTimeouts {
+export function childWaitTimeouts(preset: MoAPresetConfig, baseMs: number): MoAChildWaitTimeouts {
   return {
     baseMs,
     idleWindowMs: preset.idle_window_ms ?? DEFAULT_IDLE_WINDOW_MS,
-    maxWallMs: preset.max_wall_ms ?? baseMs * 4,
+    maxWallMs: preset.max_wall_ms ?? DEFAULT_MAX_WALL_MS,
   }
 }
 

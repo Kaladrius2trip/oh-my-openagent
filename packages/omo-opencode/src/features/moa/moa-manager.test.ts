@@ -9,7 +9,13 @@ import type {
 } from "@oh-my-opencode/moa-core/adapter"
 import type { MoAChildStatus, MoAPresetConfig, MoATarget } from "@oh-my-opencode/moa-core"
 
-import { createMoAManager, type MoAParentContext } from "./moa-manager"
+import { childWaitTimeouts, createMoAManager, type MoAParentContext } from "./moa-manager"
+
+test("advisor wall cap defaults to a 30min anti-runaway bound so active advisors run to completion", () => {
+  const timeouts = childWaitTimeouts({} as MoAPresetConfig, 300_000)
+  expect(timeouts.maxWallMs).toBe(1_800_000)
+  expect(timeouts.idleWindowMs).toBe(60_000)
+})
 
 const models = {
   "advisor-a": { providerID: "anthropic", modelID: "claude-opus-4-7" },
@@ -218,7 +224,7 @@ describe("createMoAManager", () => {
     })))
   })
 
-  test("#given activity timeout extensions are omitted #when consultation runs #then each role derives its hard cap from its base", async () => {
+  test("#given no wall cap override #when consultation runs #then each role uses the fixed anti-runaway wall cap so active children run to completion", async () => {
     // given
     const adapter = new FakeAdapter()
     const manager = createManager(adapter, {
@@ -231,8 +237,8 @@ describe("createMoAManager", () => {
 
     // then
     expect(adapter.waits).toEqual([
-      ...Array.from({ length: 3 }, () => ({ baseMs: 20, idleWindowMs: 60_000, maxWallMs: 80 })),
-      { baseMs: 30, idleWindowMs: 60_000, maxWallMs: 120 },
+      ...Array.from({ length: 3 }, () => ({ baseMs: 20, idleWindowMs: 60_000, maxWallMs: 1_800_000 })),
+      { baseMs: 30, idleWindowMs: 60_000, maxWallMs: 1_800_000 },
     ])
   })
 
