@@ -5,6 +5,7 @@ export function buildTaskRecord(input: LaunchInput, id: string, queuedAt: Date):
     id,
     status: "pending",
     queuedAt,
+    directory: input.directory,
     description: input.description,
     prompt: input.prompt,
     agent: input.agent,

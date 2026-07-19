@@ -100,6 +100,7 @@ export interface BackgroundTaskAttempt {
 
 export interface BackgroundTask extends BackgroundTaskPolicyFields {
   id: string
+  directory?: string
   sessionId?: string
   rootSessionId?: string
   parentSessionId: string
@@ -171,6 +172,7 @@ export interface BackgroundTaskSnapshot {
 
 export interface LaunchInput extends BackgroundTaskPolicyFields {
   description: string
+  directory?: string
   prompt: string
   agent: string
   parentSessionId: string

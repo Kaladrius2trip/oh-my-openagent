@@ -629,6 +629,7 @@ export class BackgroundManager {
         rootSessionId: spawnReservation.spawnContext.rootSessionID,
         // Do NOT set startedAt - will be set when running
         // Do NOT set sessionID - will be set when running
+        directory: input.directory,
         description: input.description,
         prompt: input.prompt,
         agent: input.agent,

@@ -38,6 +38,7 @@ afterEach(() => {
 function createLaunchInput(overrides: Partial<LaunchInput> = {}): LaunchInput {
   return {
     description: "Consult an advisor",
+    directory: "/target/project",
     prompt: "Review the proposal",
     agent: "oracle",
     parentSessionId: "parent-session",
@@ -77,6 +78,7 @@ describe("background task policy persistence", () => {
 
       expect(task).toMatchObject({
         ...controls,
+        directory: "/target/project",
         parentSessionId: "parent-session",
       })
     })
@@ -96,6 +98,7 @@ describe("background task policy persistence", () => {
 
       expect(persisted).toMatchObject({
         ...controls,
+        directory: "/target/project",
         parentSessionId: "parent-session",
       })
       expect(getContinuationSessionMetadata(sessionID)).toEqual({
