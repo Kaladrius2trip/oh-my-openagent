@@ -78,6 +78,7 @@ export function buildRetryLaunchInput(
     continuationPolicy: task.continuationPolicy,
     toolPolicy: task.toolPolicy,
     capabilityProfile: task.capabilityProfile,
+    researchToolWhitelist: task.researchToolWhitelist,
     maxToolCalls: task.maxToolCalls,
     orchestration: task.orchestration,
   }
