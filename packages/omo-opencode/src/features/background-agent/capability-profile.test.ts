@@ -124,6 +124,36 @@ describe("background task capability profiles", () => {
       expect(tools.glob).toBe(true)
     })
 
+    test("when a resolved whitelist adds list then list is exposed and a read-bucket denial is written", () => {
+      const resolveTools = createCapabilityProfileResolver(() => ({}))
+
+      const tools = resolveTools({
+        agent: "oracle",
+        includeTeamToolDenylist: true,
+        capabilityProfile: "moa-research",
+        researchToolWhitelist: ["read", "list"],
+        userPermission: { list: "deny" },
+      })
+
+      expect(tools).toMatchObject({ read: true, list: false })
+      expect(Object.entries(tools).filter(([, enabled]) => enabled).map(([name]) => name)).toEqual(["read"])
+    })
+
+    test("when a resolved whitelist attempts to add MCP resource tools then fixed denials remain", () => {
+      const resolveTools = createCapabilityProfileResolver(() => ({}))
+
+      const tools = resolveTools({
+        agent: "oracle",
+        includeTeamToolDenylist: true,
+        capabilityProfile: "moa-research",
+        researchToolWhitelist: ["read", "list_mcp_resources", "read_mcp_resource"],
+      })
+
+      expect(tools.read).toBe(true)
+      expect(tools.list_mcp_resources).toBe(false)
+      expect(tools.read_mcp_resource).toBe(false)
+    })
+
     test("when malicious policies allow extra tools then no capability is added", () => {
       const resolveTools = createCapabilityProfileResolver(() => ({
         bash: true,

@@ -94,6 +94,7 @@ export function normalizeMoAConfig(config: MoAConfigParsed): MoAConfig {
     default_preset: config.default_preset,
     default_prompt_pack: config.default_prompt_pack,
     max_advisors_per_run: config.max_advisors_per_run,
+    ...(config.tool_groups !== undefined ? { tool_groups: config.tool_groups } : {}),
     ...(config.prompt_packs !== undefined ? {
       prompt_packs: Object.fromEntries(Object.entries(config.prompt_packs).map(([name, pack]) => [name, normalizePromptPack(name, pack)])),
     } : {}),

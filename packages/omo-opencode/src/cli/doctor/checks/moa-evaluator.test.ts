@@ -180,6 +180,34 @@ describe("evaluateMoAConfig", () => {
     })
   })
 
+  test("#given an unknown read_only group entry #when evaluated #then doctor warns without failing", () => {
+    const base = candidate(preset({ readOnly: true }))
+    const config = {
+      ...base,
+      moa: { ...base.moa, tool_groups: { read_only: ["read", "mystery_reader"] } },
+    }
+
+    const result = evaluateMoAConfig(config, dependencies)
+
+    expect(result.valid).toBe(true)
+    expect(result.warnings.map((warning) => warning.code)).toContain("unknown_tool_group_entry")
+    expect(result.toolExposure?.advisorToolsExposed).toEqual(["read", "mystery_reader"])
+  })
+
+  test("#given a hard-denied read_only group entry #when evaluated #then doctor warns and reports the filtered surface", () => {
+    const base = candidate(preset({ readOnly: true }))
+    const config = {
+      ...base,
+      moa: { ...base.moa, tool_groups: { read_only: ["read", "edit"] } },
+    }
+
+    const result = evaluateMoAConfig(config, dependencies)
+
+    expect(result.valid).toBe(true)
+    expect(result.warnings.map((warning) => warning.code)).toContain("hard_denied_tool_group_entry")
+    expect(result.toolExposure?.advisorToolsExposed).toEqual(["read"])
+  })
+
   test("#given fallback chains can collapse #when evaluated #then prediction warning does not block", () => {
     // given
     const config = candidate()

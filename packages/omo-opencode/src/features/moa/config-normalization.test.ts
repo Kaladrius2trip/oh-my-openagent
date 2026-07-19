@@ -23,4 +23,18 @@ describe("normalizeMoAConfig", () => {
     expect(normalized.presets?.test?.advisors[0]?.temperature).toBe(0.8)
     expect(normalized.presets?.test?.aggregator.temperature).toBe(0.2)
   })
+
+  test("#given parsed tool groups #when normalized #then the group map is preserved", () => {
+    // given
+    const parsed = MoAConfigSchema.parse({
+      enabled: true,
+      tool_groups: { read_only: ["read", "list"] },
+    })
+
+    // when
+    const normalized = normalizeMoAConfig(parsed)
+
+    // then
+    expect(normalized.tool_groups).toEqual({ read_only: ["read", "list"] })
+  })
 })

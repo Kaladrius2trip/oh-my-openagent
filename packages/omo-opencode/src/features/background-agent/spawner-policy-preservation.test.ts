@@ -69,6 +69,34 @@ describe("background-agent spawner capability policy", () => {
     expect(promptCalls[0]?.body.tools).toEqual({ "*": false })
   })
 
+  test("given a research launch when dispatched then the resolved whitelist reaches the child prompt", async () => {
+    const promptCalls: PromptRequest[] = []
+    const input: LaunchInput = {
+      description: "Research advisor",
+      prompt: "Inspect the proposal",
+      agent: "oracle",
+      parentSessionId: "parent-session",
+      parentMessageId: "parent-message",
+      toolPolicy: "default",
+      capabilityProfile: "moa-research",
+      researchToolWhitelist: ["read", "list"],
+    }
+    const task = createTask(input)
+
+    await startTask({ task, input, attemptID: "attempt-1" }, {
+      client: createClient(promptCalls, "research-session"),
+      directory: "/tmp/test",
+      concurrencyManager: new ConcurrencyManager(),
+      tmuxEnabled: false,
+      onTaskError: mock(() => {}),
+    })
+    await waitForPrompt(promptCalls)
+
+    expect(promptCalls[0]?.body.tools?.read).toBe(true)
+    expect(promptCalls[0]?.body.tools?.list).toBe(true)
+    expect(promptCalls[0]?.body.tools?.grep).toBeUndefined()
+  })
+
   test("given a persisted tool-free task when resumed then wildcard denial reaches the child prompt", async () => {
     // given
     const promptCalls: PromptRequest[] = []

@@ -69,6 +69,14 @@ export function createMoaConsultTool(moaManager: MoAManager, config: MoAConfig):
         .string()
         .describe("Optional MoA preset name. Defaults to the configured default preset.")
         .optional(),
+      directory: tool.schema
+        .string()
+        .describe("Optional target project directory. Defaults to the parent session directory.")
+        .optional(),
+      memoryContext: tool.schema
+        .string()
+        .describe("Optional pre-fetched memory context appended to advisor envelopes as untrusted data.")
+        .optional(),
     },
     async execute(args, context) {
       const preset = args.preset ?? config.default_preset ?? DEFAULT_PRESET_NAME
@@ -76,7 +84,12 @@ export function createMoaConsultTool(moaManager: MoAManager, config: MoAConfig):
         return `Error: unknown MoA preset "${preset}". Available presets: ${[...knownPresetNames(config)].sort().join(", ")}.`
       }
       const runResult = await moaManager.run(
-        { prompt: args.prompt, preset },
+        {
+          prompt: args.prompt,
+          preset,
+          directory: args.directory ?? context.directory,
+          ...(args.memoryContext !== undefined ? { memoryContext: args.memoryContext } : {}),
+        },
         { sessionID: context.sessionID, messageID: context.messageID, agent: context.agent },
       )
       const consult = toConsultResult(config, preset, runResult)

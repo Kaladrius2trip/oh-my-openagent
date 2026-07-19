@@ -59,6 +59,7 @@ describe("createMoAExecutionAdapter", () => {
         sessionID: "parent-session",
         messageID: "parent-message",
         agent: "sisyphus",
+        directory: "/target/project",
         model: { providerID: "openai", modelID: "gpt-5.6-sol" },
       },
       resolveTarget: async () => target,
@@ -82,6 +83,7 @@ describe("createMoAExecutionAdapter", () => {
         continuationPolicy: "forbid",
         parentSessionId: "parent-session",
         parentMessageId: "parent-message",
+        directory: "/target/project",
       })
       expect(launch.orchestration?.kind).toBe("moa")
     }
@@ -144,6 +146,7 @@ describe("createMoAExecutionAdapter", () => {
 
   test("#given a read-only advisor #when adapter launches #then it enables the research profile with a fixed tool budget", async () => {
     const launches: LaunchInput[] = []
+    const researchTarget = { ...target, researchToolWhitelist: ["read", "list"] }
     const adapter = createMoAExecutionAdapter({
       backgroundManager: {
         launch: async (input) => {
@@ -156,11 +159,12 @@ describe("createMoAExecutionAdapter", () => {
         cancelTask: async () => true,
       },
       parent: { sessionID: "parent-session", messageID: "parent-message" },
-      resolveTarget: async () => target,
+      resolveTarget: async () => researchTarget,
     })
 
     await adapter.launchChild({
       ...childInput("advisor", "researcher"),
+      target: researchTarget,
       toolPolicy: "read_only",
       capabilityProfile: "moa-research",
     })
@@ -169,6 +173,7 @@ describe("createMoAExecutionAdapter", () => {
       toolPolicy: "default",
       capabilityProfile: "moa-research",
       maxToolCalls: 12,
+      researchToolWhitelist: ["read", "list"],
     })
   })
 

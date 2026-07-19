@@ -18,6 +18,7 @@ const controls = {
   continuationPolicy: "forbid",
   toolPolicy: "none",
   capabilityProfile: "moa-consultation-only",
+  researchToolWhitelist: ["read", "list"],
   maxToolCalls: 12,
   orchestration: {
     kind: "moa",
@@ -37,6 +38,7 @@ afterEach(() => {
 function createLaunchInput(overrides: Partial<LaunchInput> = {}): LaunchInput {
   return {
     description: "Consult an advisor",
+    directory: "/target/project",
     prompt: "Review the proposal",
     agent: "oracle",
     parentSessionId: "parent-session",
@@ -46,7 +48,7 @@ function createLaunchInput(overrides: Partial<LaunchInput> = {}): LaunchInput {
   }
 }
 
-function createBackgroundManager(): BackgroundManager {
+function createBackgroundManager(onPromptTools?: (tools: Record<string, boolean>) => void): BackgroundManager {
   const directory = tmpdir()
   const client = {
     session: {
@@ -54,7 +56,10 @@ function createBackgroundManager(): BackgroundManager {
         data: { id: path.id, directory },
       }),
       create: async () => ({ data: { id: "child-policy-session" } }),
-      promptAsync: async () => ({ data: {} }),
+      promptAsync: async (input: { body: { tools: Record<string, boolean> } }) => {
+        onPromptTools?.(input.body.tools)
+        return { data: {} }
+      },
     },
   }
   const manager = new BackgroundManager({
@@ -73,6 +78,7 @@ describe("background task policy persistence", () => {
 
       expect(task).toMatchObject({
         ...controls,
+        directory: "/target/project",
         parentSessionId: "parent-session",
       })
     })
@@ -92,11 +98,30 @@ describe("background task policy persistence", () => {
 
       expect(persisted).toMatchObject({
         ...controls,
+        directory: "/target/project",
         parentSessionId: "parent-session",
       })
       expect(getContinuationSessionMetadata(sessionID)).toEqual({
         continuationPolicy: "forbid",
       })
+    })
+
+    test("when BackgroundManager prompts a research child then it uses the persisted whitelist", async () => {
+      let publishTools: (tools: Record<string, boolean>) => void = () => {}
+      const promptTools = new Promise<Record<string, boolean>>((resolve) => {
+        publishTools = resolve
+      })
+      const manager = createBackgroundManager(publishTools)
+
+      await manager.launch(createLaunchInput({
+        toolPolicy: "default",
+        capabilityProfile: "moa-research",
+      }))
+
+      const tools = await promptTools
+      expect(tools.read).toBe(true)
+      expect(tools.list).toBe(true)
+      expect(tools.grep).toBeUndefined()
     })
   })
 })

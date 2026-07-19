@@ -629,6 +629,7 @@ export class BackgroundManager {
         rootSessionId: spawnReservation.spawnContext.rootSessionID,
         // Do NOT set startedAt - will be set when running
         // Do NOT set sessionID - will be set when running
+        directory: input.directory,
         description: input.description,
         prompt: input.prompt,
         agent: input.agent,
@@ -647,6 +648,7 @@ export class BackgroundManager {
         continuationPolicy: input.continuationPolicy,
         toolPolicy: input.toolPolicy,
         capabilityProfile: input.capabilityProfile,
+        researchToolWhitelist: input.researchToolWhitelist,
         maxToolCalls: input.maxToolCalls,
         orchestration: input.orchestration,
         model: input.model,
@@ -800,7 +802,7 @@ export class BackgroundManager {
       log(`[background-agent] Failed to get parent session: ${err}`)
       return null
     })
-    const parentDirectory = parentSession?.data?.directory ?? this.directory
+    const parentDirectory = input.directory ?? parentSession?.data?.directory ?? this.directory
     log(`[background-agent] Parent dir: ${parentSession?.data?.directory}, using: ${parentDirectory}`)
 
     const createResult = await this.client.session.create({
@@ -941,6 +943,7 @@ The fallback retry session is now created and can be inspected directly.
       userPermission: input.userPermission,
       toolPolicy: input.toolPolicy,
       capabilityProfile: input.capabilityProfile,
+      researchToolWhitelist: input.researchToolWhitelist,
     })
     setSessionTools(sessionID, launchTools)
 
@@ -998,6 +1001,7 @@ The fallback retry session is now created and can be inspected directly.
             userPermission: input.userPermission,
             toolPolicy: input.toolPolicy,
             capabilityProfile: input.capabilityProfile,
+            researchToolWhitelist: input.researchToolWhitelist,
           })
           const fallbackBody = { ...fallbackBodyWithDefaults, tools: fallbackTools }
           setSessionTools(sessionID, fallbackTools)
@@ -1498,6 +1502,7 @@ The fallback retry session is now created and can be inspected directly.
               userPermission: existingTask.userPermission,
               toolPolicy: existingTask.toolPolicy,
               capabilityProfile: existingTask.capabilityProfile,
+              researchToolWhitelist: existingTask.researchToolWhitelist,
             })
             setSessionTools(existingTask.sessionId!, tools)
             return tools

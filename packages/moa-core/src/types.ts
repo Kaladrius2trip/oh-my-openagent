@@ -38,6 +38,19 @@ export type MoAContextMode = "task_only" | "recent_text" | "recent_state"
 
 export type MoATarget = { category: string; subagent_type?: never } | { subagent_type: string; category?: never }
 
+export interface MoAResolvedAdvisor {
+  readonly researchToolWhitelist?: readonly string[]
+}
+
+export interface MoAConsultRequest {
+  readonly prompt: string
+  readonly preset?: string
+  readonly constraints?: string
+  readonly directory?: string
+  /** Host-provided memory data. Prompt composition treats this as untrusted input. */
+  readonly memoryContext?: string
+}
+
 export type MoAAdvisorConfig = MoATarget & {
   name: string
   role?: MoAAdvisorRole
@@ -101,6 +114,7 @@ export interface MoAConfig {
   default_preset?: string
   default_prompt_pack?: string
   max_advisors_per_run?: number
+  tool_groups?: Record<string, readonly string[]>
   prompt_packs?: Record<string, MoAPromptPackConfig>
   presets?: Record<string, MoAPresetConfig>
 }

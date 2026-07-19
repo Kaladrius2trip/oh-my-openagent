@@ -9,7 +9,7 @@ import type {
 } from "@oh-my-opencode/moa-core/adapter"
 import type { MoAChildStatus, MoAPresetConfig, MoATarget } from "@oh-my-opencode/moa-core"
 
-import { createMoAManager } from "./moa-manager"
+import { createMoAManager, type MoAParentContext } from "./moa-manager"
 
 const models = {
   "advisor-a": { providerID: "anthropic", modelID: "claude-opus-4-7" },
@@ -20,6 +20,7 @@ const models = {
 
 class FakeAdapter implements MoAExecutionAdapter {
   readonly launches: MoAChildLaunchInput[] = []
+  readonly parentContexts: MoAParentContext[] = []
   readonly cancellations: string[] = []
   readonly waits: MoAChildWaitTimeouts[] = []
   firstLaunchResolutionCount = 0
@@ -102,6 +103,7 @@ function createManager(adapter: FakeAdapter, activityTimeouts: ActivityTimeoutCo
       default_preset: "test",
       default_prompt_pack: "omo-hermes-derived-v2",
       max_advisors_per_run: 8,
+      tool_groups: { read_only: ["read", "edit", "list"] },
       presets: {
         test: {
           execution_policy: "consultation_only",
@@ -124,7 +126,10 @@ function createManager(adapter: FakeAdapter, activityTimeouts: ActivityTimeoutCo
         },
       },
     },
-    createAdapter: () => adapter,
+    createAdapter: (context) => {
+      adapter.parentContexts.push(context)
+      return adapter
+    },
     createRunId: () => "run-1",
   })
 }
@@ -160,6 +165,26 @@ describe("createMoAManager", () => {
     expect(aggregator?.temperature).toBe(0.2)
   })
 
+  test("#given an explicit consult directory #when consultation runs #then adapter creation receives it", async () => {
+    const adapter = new FakeAdapter()
+
+    await createManager(adapter).run({ prompt: "Choose an architecture", directory: "/explicit/project" }, parent)
+
+    expect(adapter.parentContexts[0]?.directory).toBe("/explicit/project")
+  })
+
+  test("#given pre-fetched memory context #when consultation runs #then only advisor envelopes receive the untrusted block", async () => {
+    const adapter = new FakeAdapter()
+
+    await createManager(adapter).run({ prompt: "Choose an architecture", memoryContext: "memory-marker" }, parent)
+
+    const advisorPrompts = adapter.launches.filter((launch) => launch.role === "advisor").map((launch) => launch.prompt)
+    const aggregatorPrompt = adapter.launches.find((launch) => launch.role === "aggregator")?.prompt
+    expect(advisorPrompts.every((prompt) => prompt.includes("<untrusted_memory_context>"))).toBe(true)
+    expect(advisorPrompts.every((prompt) => prompt.includes("memory-marker"))).toBe(true)
+    expect(aggregatorPrompt).not.toContain("<untrusted_memory_context>")
+  })
+
   test("#given mixed advisor tool policies #when consultation runs #then only configured advisors receive research controls", async () => {
     const adapter = new FakeAdapter()
 
@@ -171,6 +196,9 @@ describe("createMoAManager", () => {
     expect(researchAdvisor).toMatchObject({ toolPolicy: "read_only", capabilityProfile: "moa-research" })
     expect(toolFreeAdvisor).toMatchObject({ toolPolicy: "none", capabilityProfile: "moa-consultation-only" })
     expect(aggregator).toMatchObject({ toolPolicy: "none", capabilityProfile: "moa-consultation-only" })
+    expect(researchAdvisor?.target.researchToolWhitelist).toEqual(["read", "list"])
+    expect(toolFreeAdvisor?.target.researchToolWhitelist).toBeUndefined()
+    expect(aggregator?.target.researchToolWhitelist).toBeUndefined()
     expect(researchAdvisor?.prompt).toContain("Read-only research tools are available for this advisor.")
     expect(toolFreeAdvisor?.prompt).not.toContain("Read-only research tools are available for this advisor.")
   })

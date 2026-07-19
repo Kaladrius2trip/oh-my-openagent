@@ -115,6 +115,7 @@ export async function startTask(
     userPermission: input.userPermission,
     toolPolicy: input.toolPolicy,
     capabilityProfile: input.capabilityProfile,
+    researchToolWhitelist: input.researchToolWhitelist,
   })
   setSessionTools(sessionID, promptBody.tools)
 

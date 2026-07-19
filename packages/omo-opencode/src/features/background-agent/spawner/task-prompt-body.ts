@@ -6,7 +6,7 @@ type PromptModel = LaunchInput["model"]
 
 type TaskPromptPolicyOptions = Pick<
   LaunchInput,
-  "capabilityProfile" | "toolPolicy" | "userPermission"
+  "capabilityProfile" | "researchToolWhitelist" | "toolPolicy" | "userPermission"
 >
 
 type TaskPromptBodyOptions = TaskPromptPolicyOptions & (
@@ -63,6 +63,7 @@ export function buildTaskPromptBody(options: TaskPromptBodyOptions): TaskPromptB
       userPermission: options.userPermission,
       toolPolicy: options.toolPolicy,
       capabilityProfile: options.capabilityProfile,
+      researchToolWhitelist: options.researchToolWhitelist,
     }),
     parts: [createInternalAgentTextPart(options.prompt)],
   }

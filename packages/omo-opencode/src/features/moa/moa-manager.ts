@@ -1,20 +1,17 @@
-import { BUILTIN_PRESETS, DEFAULT_PRESET_NAME, type MoAConfig, type MoAPresetConfig, type MoARunStatus, type MoATarget, validatePreset } from "@oh-my-opencode/moa-core"
+import { BUILTIN_PRESETS, DEFAULT_PRESET_NAME, resolveMoAResearchToolWhitelist, type MoAConfig, type MoAConsultRequest, type MoAPresetConfig, type MoARunStatus, type MoATarget, validatePreset } from "@oh-my-opencode/moa-core"
 import { MOA_CONSULTATION_LAUNCH_CONTROLS, MOA_RESEARCH_LAUNCH_CONTROLS, type MoAChildHandle, type MoAChildResult, type MoAChildWaitTimeouts, type MoAExecutionAdapter, type ResolvedMoATarget } from "@oh-my-opencode/moa-core/adapter"
 import { buildSanitizedContext, type MoAContextMessage } from "@oh-my-opencode/moa-core/context"
 import { evaluateConfiguredDiversity, evaluateEffectiveDiversity, type MoADiversityCheck } from "@oh-my-opencode/moa-core/diversity"
 import { DEFAULT_PROMPT_PACK_ID, composeAdvisorPrompt, composeAggregatorPrompt, resolvePromptPack } from "@oh-my-opencode/moa-core/prompts"
 import { assertTransition, computeTerminalStatus, isTerminalStatus } from "@oh-my-opencode/moa-core/state"
 
-export interface MoARunRequest {
-  readonly prompt: string
-  readonly preset?: string
-  readonly constraints?: string
-}
+export type MoARunRequest = MoAConsultRequest
 
 export interface MoAParentContext {
   readonly sessionID: string
   readonly messageID: string
   readonly agent?: string
+  readonly directory?: string
   readonly model?: { readonly providerID: string; readonly modelID: string }
   readonly messages?: readonly MoAContextMessage[]
 }
@@ -142,7 +139,7 @@ export function createMoAManager(options: {
     const presetName = request.preset ?? options.config.default_preset ?? DEFAULT_PRESET_NAME
     const active: ActiveRun = {
       runId: createRunId(), presetName, status: "created", controller: new AbortController(),
-      adapter: options.createAdapter(context), handles: [],
+      adapter: options.createAdapter(request.directory === undefined ? context : { ...context, directory: request.directory }), handles: [],
     }
     runs.set(active.runId, active)
     let advisorResults: MoAChildResult[] = []
@@ -152,8 +149,12 @@ export function createMoAManager(options: {
       const packId = preset.prompt_pack ?? options.config.default_prompt_pack ?? DEFAULT_PROMPT_PACK_ID
       const pack = resolvePromptPack(packId, { extraPacks: options.config.prompt_packs })
       const boundedContext = buildSanitizedContext({ config: preset.context ?? {}, messages: context.messages ?? [] })
+      const researchToolWhitelist = resolveMoAResearchToolWhitelist(options.config)
       const [advisorTargets, aggregatorTarget] = await Promise.all([
-        Promise.all(preset.advisors.map((slot) => active.adapter.resolveTarget(slot))),
+        Promise.all(preset.advisors.map(async (slot) => {
+          const target = await active.adapter.resolveTarget(slot)
+          return slot.tool_policy === "read_only" ? { ...target, researchToolWhitelist } : target
+        })),
         active.adapter.resolveTarget(preset.aggregator),
       ])
       if (active.controller.signal.aborted) return result(active, advisorResults)
@@ -170,6 +171,7 @@ export function createMoAManager(options: {
         context: boundedContext,
         toolPolicy: slot.tool_policy ?? "none",
         ...(request.constraints !== undefined ? { constraints: request.constraints } : {}),
+        ...(request.memoryContext !== undefined ? { memoryContext: request.memoryContext } : {}),
         ...(slot.prompt_append !== undefined ? { promptAppend: slot.prompt_append } : {}),
       }).text)
       const handles = await launchAdvisors(active, preset, advisorTargets, advisorPrompts)

@@ -16,6 +16,7 @@ export interface CapabilityProfileInput {
   readonly userPermission?: BackgroundTaskUserPermission
   readonly toolPolicy?: BackgroundTaskToolPolicy
   readonly capabilityProfile?: BackgroundTaskCapabilityProfile
+  readonly researchToolWhitelist?: readonly string[]
 }
 
 export type CapabilityProfileResolver = (
@@ -32,11 +33,8 @@ export class CapabilityProfileError extends Error {
 
 const DENY_ALL_TOOLS = { "*": false } as const
 const RESEARCH_TOOL_NAMES = ["read", "grep", "glob"] as const
-const RESEARCH_TOOLS: Readonly<Record<string, boolean>> = {
+const RESEARCH_TOOL_HARD_DENIES: Readonly<Record<string, boolean>> = {
   "*": false,
-  read: true,
-  grep: true,
-  glob: true,
   list_mcp_resources: false,
   list_mcp_resource_templates: false,
   read_mcp_resource: false,
@@ -65,13 +63,15 @@ function resolvePinnedProfile(
           'Conflicting capability profile "moa-research" and tool policy "none".',
         )
       }
-      const researchTools = { ...RESEARCH_TOOLS }
-      for (const tool of RESEARCH_TOOL_NAMES) {
+      const researchTools: Record<string, boolean> = {}
+      for (const tool of input.researchToolWhitelist ?? RESEARCH_TOOL_NAMES) {
         if (input.userPermission?.[tool] === "deny" || agentRestrictions[tool] === false) {
           researchTools[tool] = false
+        } else {
+          researchTools[tool] = true
         }
       }
-      return researchTools
+      return { ...researchTools, ...RESEARCH_TOOL_HARD_DENIES }
     default:
       throw new CapabilityProfileError("unknown", `Unknown capability profile: ${String(profile)}`)
   }

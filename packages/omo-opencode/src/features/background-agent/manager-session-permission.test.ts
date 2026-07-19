@@ -7,6 +7,43 @@ import { BackgroundManager } from "./manager"
 import { unsafeTestValue } from "../../../../../test-support/unsafe-test-value"
 
 describe("BackgroundManager session permission", () => {
+  test("uses an explicit launch directory for child session creation and prompting", async () => {
+    const createCalls: Array<Record<string, unknown>> = []
+    let publishPrompt: (input: Record<string, unknown>) => void = () => {}
+    const promptCall = new Promise<Record<string, unknown>>((resolve) => {
+      publishPrompt = resolve
+    })
+    const client = {
+      session: {
+        get: async () => ({ data: { directory: "/parent" } }),
+        create: async (input: Record<string, unknown>) => {
+          createCalls.push(input)
+          return { data: { id: "ses_explicit_child" } }
+        },
+        promptAsync: async (input: Record<string, unknown>) => {
+          publishPrompt(input)
+          return {}
+        },
+        abort: async () => ({}),
+      },
+    }
+    const manager = new BackgroundManager({ pluginContext: unsafeTestValue<PluginInput>({ client, directory: tmpdir() }) })
+
+    await manager.launch({
+      description: "Test task",
+      prompt: "Do something",
+      agent: "explore",
+      parentSessionId: "ses_parent",
+      parentMessageId: "msg_parent",
+      directory: "/explicit/project",
+    })
+    const promptInput = await promptCall
+    manager.shutdown()
+
+    expect(createCalls[0]?.query).toEqual({ directory: "/explicit/project" })
+    expect(promptInput.query).toEqual({ directory: "/explicit/project" })
+  })
+
   test("passes parent directory route when prompting the child session", async () => {
     // given
     const promptCalls: Array<Record<string, unknown>> = []

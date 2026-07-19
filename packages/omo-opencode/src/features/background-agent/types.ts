@@ -30,6 +30,7 @@ export interface BackgroundTaskPolicyFields {
   readonly continuationPolicy?: BackgroundTaskContinuationPolicy
   readonly toolPolicy?: BackgroundTaskToolPolicy
   readonly capabilityProfile?: BackgroundTaskCapabilityProfile
+  readonly researchToolWhitelist?: readonly string[]
   readonly maxToolCalls?: number
   readonly orchestration?: BackgroundTaskOrchestration
 }
@@ -40,6 +41,7 @@ export interface ResolvedBackgroundTaskPolicies {
   readonly continuationPolicy: BackgroundTaskContinuationPolicy
   readonly toolPolicy: BackgroundTaskToolPolicy
   readonly capabilityProfile?: BackgroundTaskCapabilityProfile
+  readonly researchToolWhitelist?: readonly string[]
   readonly maxToolCalls?: number
   readonly orchestration?: BackgroundTaskOrchestration
 }
@@ -54,6 +56,9 @@ export function resolveBackgroundTaskPolicies(
     toolPolicy: fields.toolPolicy ?? "default",
     ...(fields.capabilityProfile !== undefined
       ? { capabilityProfile: fields.capabilityProfile }
+      : {}),
+    ...(fields.researchToolWhitelist !== undefined
+      ? { researchToolWhitelist: fields.researchToolWhitelist }
       : {}),
     ...(fields.maxToolCalls !== undefined ? { maxToolCalls: fields.maxToolCalls } : {}),
     ...(fields.orchestration !== undefined
@@ -95,6 +100,7 @@ export interface BackgroundTaskAttempt {
 
 export interface BackgroundTask extends BackgroundTaskPolicyFields {
   id: string
+  directory?: string
   sessionId?: string
   rootSessionId?: string
   parentSessionId: string
@@ -166,6 +172,7 @@ export interface BackgroundTaskSnapshot {
 
 export interface LaunchInput extends BackgroundTaskPolicyFields {
   description: string
+  directory?: string
   prompt: string
   agent: string
   parentSessionId: string
